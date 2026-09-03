@@ -5,7 +5,8 @@ import { Sparkline } from "@/components/metrics/time-series-chart"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { fetchMetricSeries, getHealth, listEvents, listWorkloads } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import { fetchMetricSeries, fetchHTTPSummary, getHealth, listEvents, listWorkloads, type HTTPServiceSummary } from "@/lib/api"
 import { formatBytes, formatPercent } from "@/lib/format"
 
 export function DashboardPage() {
@@ -13,6 +14,7 @@ export function DashboardPage() {
   const [events, setEvents] = useState<number | null>(null)
   const [workloads, setWorkloads] = useState<Awaited<ReturnType<typeof listWorkloads>>>([])
   const [cpuSeries, setCpuSeries] = useState<Record<string, { ts: string; value: number }[]>>({})
+  const [httpServices, setHttpServices] = useState<HTTPServiceSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,14 +24,16 @@ export function DashboardPage() {
       try {
         await getHealth()
         if (!cancelled) setHealth("ok")
-        const [ev, wl, series] = await Promise.all([
+        const [ev, wl, series, http] = await Promise.all([
           listEvents(undefined, "24h"),
           listWorkloads("30m"),
           fetchMetricSeries("cpu.usage", "1h"),
+          fetchHTTPSummary("1h"),
         ])
         if (cancelled) return
         setEvents(ev.length)
         setWorkloads(wl)
+        setHttpServices(http.filter((s) => s.requests > 0).slice(0, 8))
         const map: Record<string, { ts: string; value: number }[]> = {}
         for (const s of series.series ?? []) {
           map[s.container] = s.points ?? []
@@ -91,6 +95,45 @@ export function DashboardPage() {
           <p className="text-3xl font-semibold tabular-nums">{events ?? "—"}</p>
         </StatCard>
       </div>
+
+      {httpServices.length > 0 ? (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-medium">HTTP por serviço</h2>
+            <Link to="/explorer?metric=http.duration_ms" className="text-primary text-sm hover:underline">
+              Explorer
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {httpServices.map((s) => (
+              <Card key={s.service}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="truncate text-sm font-medium">{s.service}</CardTitle>
+                  <CardDescription>{s.requests} req · 1h</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Latência média</span>
+                    <span className="font-mono tabular-nums">{Math.round(s.avg_latency_ms)} ms</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Taxa de erro</span>
+                    <span
+                      className={cn(
+                        "font-mono tabular-nums",
+                        s.error_rate >= 0.05 && "text-destructive",
+                        s.error_rate >= 0.01 && s.error_rate < 0.05 && "text-amber-600",
+                      )}
+                    >
+                      {formatPercent(s.error_rate * 100)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <div className="mb-3 flex items-center justify-between">

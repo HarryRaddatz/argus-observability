@@ -21,6 +21,7 @@ type Store interface {
 
 	QueryMetrics(ctx context.Context, metricName string, labels model.Labels, since time.Time) ([]model.SeriesPoint, error)
 	QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error)
+	QueryHTTPServiceSummary(ctx context.Context, since time.Time) ([]model.HTTPServiceSummary, error)
 	ListWorkloads(ctx context.Context, since time.Time) ([]model.WorkloadSnapshot, error)
 	ListEvents(ctx context.Context, entityUID string, since time.Time, limit int) ([]model.Event, error)
 	SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error)

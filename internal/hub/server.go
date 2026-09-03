@@ -74,6 +74,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/logs/search", s.handleSearchLogs)
 	s.mux.HandleFunc("GET /api/v1/insights", s.handleInsights)
 	s.mux.HandleFunc("GET /api/v1/metrics/catalog", s.handleMetricsCatalog)
+	s.mux.HandleFunc("GET /api/v1/metrics/http/summary", s.handleHTTPSummary)
 	s.registerGroupRoutes()
 	s.registerFleetRoutes()
 }
@@ -233,10 +234,19 @@ func (s *Server) handleLogsBatch(w http.ResponseWriter, r *http.Request) {
 		_, fields := insights.EnrichLog(entries[i].Message, entries[i].Level)
 		entries[i].Fields = fields
 	}
+	var derived []model.MetricPoint
+	for i := range entries {
+		derived = append(derived, insights.DeriveMetricsFromLog(entries[i])...)
+	}
 	if err := s.store.WriteLogs(r.Context(), entries); err != nil {
 		s.logger.Error("write logs", "err", err)
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
+	}
+	if len(derived) > 0 {
+		if err := s.store.WriteMetrics(r.Context(), derived); err != nil {
+			s.logger.Error("write derived metrics", "err", err)
+		}
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -459,7 +469,29 @@ func (s *Server) handleMetricsCatalog(w http.ResponseWriter, _ *http.Request) {
 		{"name": "memory.usage", "label": "Memória (bytes)", "unit": "bytes"},
 		{"name": "memory.usage_pct", "label": "Memória %", "unit": "%"},
 		{"name": "memory.limit", "label": "Limite memória", "unit": "bytes"},
+		{"name": "http.duration_ms", "label": "Latência HTTP", "unit": "ms"},
+		{"name": "http.error_rate", "label": "Taxa de erro HTTP", "unit": "%"},
+		{"name": "http.requests", "label": "Requisições HTTP", "unit": "req"},
+		{"name": "http.status", "label": "Status HTTP", "unit": "code"},
 	})
+}
+
+func (s *Server) handleHTTPSummary(w http.ResponseWriter, r *http.Request) {
+	since := time.Now().UTC().Add(-1 * time.Hour)
+	if raw := r.URL.Query().Get("since"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			since = time.Now().UTC().Add(-d)
+		}
+	}
+	summary, err := s.store.QueryHTTPServiceSummary(r.Context(), since)
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	if summary == nil {
+		summary = []model.HTTPServiceSummary{}
+	}
+	writeJSON(w, http.StatusOK, summary)
 }
 
 func deriveMemoryPct(points []model.MetricPoint) []model.MetricPoint {

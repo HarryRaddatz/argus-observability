@@ -245,3 +245,18 @@ export function fetchFleetStatus() {
 export function fetchMetricCatalog() {
   return request<MetricCatalogEntry[]>(`/api/v1/metrics/catalog`).then(asArray)
 }
+
+export type HTTPServiceSummary = {
+  service: string
+  requests: number
+  errors: number
+  error_rate: number
+  avg_latency_ms: number
+  max_latency_ms: number
+}
+
+export function fetchHTTPSummary(since = "1h") {
+  return request<HTTPServiceSummary[]>(
+    `/api/v1/metrics/http/summary?since=${encodeURIComponent(since)}`,
+  ).then(asArray)
+}

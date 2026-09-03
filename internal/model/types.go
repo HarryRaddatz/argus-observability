@@ -197,3 +197,12 @@ type FleetStatusResponse struct {
 	Containers []ContainerFleetStatus `json:"containers"`
 	Events24h  FleetEventStats        `json:"events_24h"`
 }
+
+type HTTPServiceSummary struct {
+	Service      string  `json:"service"`
+	Requests     int     `json:"requests"`
+	Errors       int     `json:"errors"`
+	ErrorRate    float64 `json:"error_rate"`
+	AvgLatencyMs float64 `json:"avg_latency_ms"`
+	MaxLatencyMs float64 `json:"max_latency_ms"`
+}

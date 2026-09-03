@@ -31,7 +31,7 @@ export function ExplorerPage() {
   const [containers, setContainers] = useState<string[]>([])
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
   const [selectedContainers, setSelectedContainers] = useState<string[]>([])
-  const [metric, setMetric] = useState("memory.usage_pct")
+  const [metric, setMetric] = useState(() => searchParams.get("metric") ?? "memory.usage_pct")
   const [since, setSince] = useState("1h")
   const [chartType, setChartType] = useState<"area" | "line">("area")
   const [series, setSeries] = useState<ContainerSeries[]>([])
@@ -82,6 +82,12 @@ export function ExplorerPage() {
   const transform = useMemo(() => {
     if (metric === "memory.usage" || metric === "memory.limit") {
       return (v: number) => Math.round(v / 1024 / 1024)
+    }
+    if (metric === "http.error_rate") {
+      return (v: number) => Math.round(v * 1000) / 10
+    }
+    if (metric === "http.duration_ms") {
+      return (v: number) => Math.round(v)
     }
     return undefined
   }, [metric])

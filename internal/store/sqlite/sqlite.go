@@ -316,10 +316,15 @@ ORDER BY ts ASC
 		var labels model.Labels
 		_ = json.Unmarshal([]byte(labelsJSON), &labels)
 		name := labels["container"]
+		if strings.HasPrefix(metricName, "http.") {
+			if svc := labels["service"]; svc != "" {
+				name = svc
+			}
+		}
 		if name == "" {
 			name = entityUID
 		}
-		if container != "" && name != container {
+		if container != "" && name != container && labels["container"] != container && labels["service"] != container {
 			continue
 		}
 		ts, _ := time.Parse(time.RFC3339Nano, tsStr)

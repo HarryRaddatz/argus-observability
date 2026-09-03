@@ -21,6 +21,8 @@ export function MetricsPage() {
   const [memPoints, setMemPoints] = useState<{ ts: string; value: number }[]>([])
   const [memPctPoints, setMemPctPoints] = useState<{ ts: string; value: number }[]>([])
   const [memLimit, setMemLimit] = useState<number>(0)
+  const [httpLatency, setHttpLatency] = useState<{ ts: string; value: number }[]>([])
+  const [httpErrorRate, setHttpErrorRate] = useState<{ ts: string; value: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,14 +50,18 @@ export function MetricsPage() {
       fetchMetricSeries("memory.usage", since, selected),
       fetchMetricSeries("memory.usage_pct", since, selected),
       fetchMetricSeries("memory.limit", since, selected),
+      fetchMetricSeries("http.duration_ms", since, selected),
+      fetchMetricSeries("http.error_rate", since, selected),
     ])
-      .then(([cpu, mem, memPct, lim]) => {
+      .then(([cpu, mem, memPct, lim, httpLat, httpErr]) => {
         if (cancelled) return
         setCpuPoints(cpu.series?.[0]?.points ?? [])
         setMemPoints(mem.series?.[0]?.points ?? [])
         setMemPctPoints(memPct.series?.[0]?.points ?? [])
         const limits = lim.series?.[0]?.points ?? []
         setMemLimit(limits.length > 0 ? limits[limits.length - 1].value : 0)
+        setHttpLatency(httpLat.series?.[0]?.points ?? [])
+        setHttpErrorRate(httpErr.series?.[0]?.points ?? [])
         setError(null)
       })
       .catch((e) => {
@@ -205,6 +211,26 @@ export function MetricsPage() {
               unit=" MiB"
               transform={(v) => Math.round(v / 1024 / 1024)}
             />
+            {httpLatency.length > 0 || httpErrorRate.length > 0 ? (
+              <>
+                <TimeSeriesChart
+                  title="Latência HTTP"
+                  description="Derivada de logs event=exit e linhas response Venuz"
+                  points={httpLatency}
+                  loading={loading}
+                  unit=" ms"
+                  transform={(v) => Math.round(v)}
+                />
+                <TimeSeriesChart
+                  title="Taxa de erro HTTP"
+                  description="Ratio status ≥ 400 por requisição (média no período)"
+                  points={httpErrorRate}
+                  loading={loading}
+                  unit="%"
+                  transform={(v) => Math.round(v * 1000) / 10}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
       </div>
