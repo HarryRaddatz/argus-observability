@@ -34,7 +34,15 @@ func main() {
 	defer st.Close()
 
 	eventBus := bus.New()
-	srv := hub.New(hub.Config{Addr: addr, AgentToken: token}, st, eventBus, logger)
+	srv := hub.New(hub.Config{
+		Addr:             addr,
+		AgentToken:       token,
+		RetentionLogs:    durationEnv("ARGUS_RETENTION_LOGS", 7*24*time.Hour),
+		RetentionMetrics: durationEnv("ARGUS_RETENTION_METRICS", 30*24*time.Hour),
+		RetentionEvents:  durationEnv("ARGUS_RETENTION_EVENTS", 30*24*time.Hour),
+		PurgeInterval:    durationEnv("ARGUS_PURGE_INTERVAL", time.Hour),
+		PurgeTimeout:     durationEnv("ARGUS_PURGE_TIMEOUT", 5*time.Second),
+	}, st, eventBus, logger)
 
 	httpServer := &http.Server{
 		Addr:              addr,
@@ -63,6 +71,15 @@ func main() {
 func env(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func durationEnv(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
 	}
 	return fallback
 }

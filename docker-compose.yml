@@ -14,6 +14,11 @@ services:
     environment:
       ARGUS_HUB_ADDR: ":8080"
       ARGUS_STORE_PATH: /data/argus.db
+      ARGUS_RETENTION_LOGS: "168h"
+      ARGUS_RETENTION_METRICS: "720h"
+      ARGUS_RETENTION_EVENTS: "720h"
+      ARGUS_PURGE_INTERVAL: "1h"
+      ARGUS_PURGE_TIMEOUT: "5s"
     volumes:
       - argus_data:/data
     ports:

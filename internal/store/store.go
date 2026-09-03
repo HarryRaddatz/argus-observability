@@ -36,4 +36,6 @@ type Store interface {
 	CreateWorkloadGroup(ctx context.Context, in model.WorkloadGroupInput) (model.WorkloadGroup, error)
 	UpdateWorkloadGroup(ctx context.Context, id string, in model.WorkloadGroupInput) (model.WorkloadGroup, error)
 	DeleteWorkloadGroup(ctx context.Context, id string) error
+
+	Purge(ctx context.Context, logsBefore, metricsBefore, eventsBefore time.Time) (model.PurgeResult, error)
 }

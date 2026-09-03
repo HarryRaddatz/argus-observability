@@ -19,11 +19,16 @@ import (
 )
 
 type Config struct {
-	Addr        string
-	AgentToken  string
-	CORSOrigin  string
-	StaleAfter  time.Duration
-	Heartbeat   time.Duration
+	Addr              string
+	AgentToken        string
+	CORSOrigin        string
+	StaleAfter        time.Duration
+	Heartbeat         time.Duration
+	RetentionLogs     time.Duration
+	RetentionMetrics  time.Duration
+	RetentionEvents   time.Duration
+	PurgeInterval     time.Duration
+	PurgeTimeout      time.Duration
 }
 
 type Server struct {
@@ -57,6 +62,7 @@ func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Se
 	s.routes()
 	eventBus.Subscribe(s.onEvent)
 	go s.staleLoop()
+	go s.retentionLoop()
 	return s
 }
 

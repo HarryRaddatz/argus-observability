@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS log_entries (
   fields_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_log_entity_ts ON log_entries(entity_uid, ts);
+CREATE INDEX IF NOT EXISTS idx_log_ts ON log_entries(ts);
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS events (
   payload_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_events_entity_ts ON events(entity_uid, ts);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
 CREATE TABLE IF NOT EXISTS container_fleet (
   entity_uid TEXT PRIMARY KEY,
   container TEXT NOT NULL,

@@ -198,6 +198,14 @@ type FleetStatusResponse struct {
 	Events24h  FleetEventStats        `json:"events_24h"`
 }
 
+type PurgeResult struct {
+	LogsDeleted    int64         `json:"logs_deleted"`
+	MetricsDeleted int64         `json:"metrics_deleted"`
+	EventsDeleted  int64         `json:"events_deleted"`
+	Duration       time.Duration `json:"duration_ms"`
+	Truncated      bool          `json:"truncated,omitempty"`
+}
+
 type HTTPServiceSummary struct {
 	Service      string  `json:"service"`
 	Requests     int     `json:"requests"`
