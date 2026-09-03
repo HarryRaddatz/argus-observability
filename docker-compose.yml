@@ -36,5 +36,18 @@ services:
     depends_on:
       - argus-hub
 
+  argus-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: argus-web
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: "0.10"
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      - argus-hub
+
 volumes:
   argus_data:

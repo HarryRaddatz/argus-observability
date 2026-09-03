@@ -18,6 +18,7 @@ import (
 type Config struct {
 	Addr        string
 	AgentToken  string
+	CORSOrigin  string
 	StaleAfter  time.Duration
 	Heartbeat   time.Duration
 }
@@ -60,7 +61,23 @@ func (s *Server) routes() {
 }
 
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	return withCORS(s.cfg.CORSOrigin, s.mux)
+}
+
+func withCORS(origin string, next http.Handler) http.Handler {
+	if origin == "" {
+		origin = "*"
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {

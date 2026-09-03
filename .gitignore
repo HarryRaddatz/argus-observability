@@ -12,6 +12,10 @@
 # Go
 /vendor/
 
+# Web
+web/node_modules/
+web/dist/
+
 # IDE
 .idea/
 .vscode/
