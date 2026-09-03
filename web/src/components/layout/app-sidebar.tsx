@@ -1,4 +1,4 @@
-import { Activity, Compass, Layers, LayoutDashboard, Lightbulb, ScrollText, Server, Ship, Zap } from "lucide-react"
+import { Activity, Compass, GitBranch, LayoutDashboard, Layers, Lightbulb, Repeat, ScrollText, Server, Ship, Zap } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
 import {
@@ -23,6 +23,8 @@ const nav = [
   { to: "/metrics", label: "Métricas", icon: Activity, end: false },
   { to: "/explorer", label: "Explorer", icon: Compass, end: false },
   { to: "/insights", label: "Insights", icon: Lightbulb, end: false },
+  { to: "/patterns", label: "Patterns", icon: Repeat, end: false },
+  { to: "/topology", label: "Topologia", icon: GitBranch, end: false },
   { to: "/logs", label: "Logs", icon: ScrollText, end: false },
   { to: "/events", label: "Eventos", icon: Zap, end: false },
 ]

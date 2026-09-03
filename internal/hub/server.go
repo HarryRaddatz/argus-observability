@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/bus"
+	"github.com/HarryRaddatz/argus-observability/internal/groups"
 	"github.com/HarryRaddatz/argus-observability/internal/insights"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
+	"github.com/HarryRaddatz/argus-observability/internal/rules"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
 	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
 	"github.com/google/uuid"
@@ -42,6 +44,7 @@ type Server struct {
 	staleAgents map[string]bool
 	alertMu    sync.Mutex
 	lastAlert  map[string]time.Time
+	rules      *rules.Engine
 }
 
 func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Server {
@@ -58,11 +61,13 @@ func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Se
 		cfg: cfg, store: st, bus: eventBus, logger: logger, mux: http.NewServeMux(),
 		staleAgents: map[string]bool{},
 		lastAlert:   map[string]time.Time{},
+		rules:       rules.NewEngine(eventBus),
 	}
 	s.routes()
 	eventBus.Subscribe(s.onEvent)
 	go s.staleLoop()
 	go s.retentionLoop()
+	go s.rulesLoop()
 	return s
 }
 
@@ -83,6 +88,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/metrics/http/summary", s.handleHTTPSummary)
 	s.registerGroupRoutes()
 	s.registerFleetRoutes()
+	s.registerPatternRoutes()
+	s.registerTopologyRoutes()
 }
 
 func (s *Server) Handler() http.Handler {
@@ -254,6 +261,17 @@ func (s *Server) handleLogsBatch(w http.ResponseWriter, r *http.Request) {
 			s.logger.Error("write derived metrics", "err", err)
 		}
 	}
+	entriesCopy := append([]model.LogEntry(nil), entries...)
+	go func(batch []model.LogEntry) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.store.RecordLogPatterns(ctx, batch); err != nil {
+			s.logger.Warn("record log patterns", "err", err)
+		}
+		if err := s.store.RecordTopologyEdges(ctx, batch); err != nil {
+			s.logger.Warn("record topology", "err", err)
+		}
+	}(entriesCopy)
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -456,8 +474,33 @@ func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
-	ins := insights.Generate(wlMem, logStats)
-	ins = append(ins, insights.GenerateFleet(fleetRows)...)
+
+	var ins []model.Insight
+	if groupID := r.URL.Query().Get("group"); groupID != "" {
+		g, err := s.store.GetWorkloadGroup(r.Context(), groupID)
+		if err != nil {
+			if errors.Is(err, sqlite.ErrNotFound) {
+				http.Error(w, "group not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "store error", http.StatusInternalServerError)
+			return
+		}
+		members := groups.FilterWorkloads(workloads, g)
+		ins = insights.GenerateGroup(g, members, logStats, fleetRows)
+	} else {
+		ins = insights.Generate(wlMem, logStats)
+		ins = append(ins, insights.GenerateFleet(fleetRows)...)
+		if patterns, err := s.store.ListLogPatterns(r.Context(), since, 30); err == nil {
+			ins = append(ins, insights.GeneratePatternSpikes(patterns)...)
+		}
+		if graph, err := s.store.GetTopology(r.Context(), since); err == nil {
+			ins = append(ins, insights.GenerateTopologyChain(graph, logStats)...)
+		}
+	}
+	if s.rules != nil {
+		ins = append(ins, s.rules.ActiveInsights()...)
+	}
 	insights.SortBySeverity(ins)
 	result := model.InsightsResponse{
 		Since:    since.Format(time.RFC3339),

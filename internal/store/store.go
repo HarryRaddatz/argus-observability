@@ -38,4 +38,9 @@ type Store interface {
 	DeleteWorkloadGroup(ctx context.Context, id string) error
 
 	Purge(ctx context.Context, logsBefore, metricsBefore, eventsBefore time.Time) (model.PurgeResult, error)
+
+	RecordLogPatterns(ctx context.Context, entries []model.LogEntry) error
+	ListLogPatterns(ctx context.Context, since time.Time, limit int) ([]model.LogPattern, error)
+	RecordTopologyEdges(ctx context.Context, entries []model.LogEntry) error
+	GetTopology(ctx context.Context, since time.Time) (model.TopologyGraph, error)
 }

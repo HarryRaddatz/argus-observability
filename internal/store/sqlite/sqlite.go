@@ -102,6 +102,26 @@ CREATE TABLE IF NOT EXISTS workload_groups (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS log_patterns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pattern_key TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  container TEXT NOT NULL DEFAULT '',
+  service TEXT NOT NULL DEFAULT '',
+  count INTEGER NOT NULL DEFAULT 0,
+  last_seen TEXT NOT NULL,
+  sample TEXT NOT NULL DEFAULT '',
+  UNIQUE(pattern_key, container)
+);
+CREATE INDEX IF NOT EXISTS idx_log_patterns_seen ON log_patterns(last_seen);
+CREATE TABLE IF NOT EXISTS topology_edges (
+  source TEXT NOT NULL,
+  target TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'http',
+  count INTEGER NOT NULL DEFAULT 0,
+  last_seen TEXT NOT NULL,
+  PRIMARY KEY (source, target, kind)
+);
 `
 	_, err := s.db.Exec(schema)
 	if err != nil {

@@ -234,8 +234,10 @@ export function deleteWorkloadGroup(id: string) {
   )
 }
 
-export function fetchInsights(since = "1h") {
-  return request<InsightsResponse>(`/api/v1/insights?since=${encodeURIComponent(since)}`)
+export function fetchInsights(since = "1h", group?: string) {
+  const q = new URLSearchParams({ since })
+  if (group) q.set("group", group)
+  return request<InsightsResponse>(`/api/v1/insights?${q}`)
 }
 
 export function fetchFleetStatus() {
@@ -259,4 +261,42 @@ export function fetchHTTPSummary(since = "1h") {
   return request<HTTPServiceSummary[]>(
     `/api/v1/metrics/http/summary?since=${encodeURIComponent(since)}`,
   ).then(asArray)
+}
+
+export type LogPattern = {
+  pattern_key: string
+  pattern: string
+  container: string
+  service: string
+  count: number
+  last_seen: string
+  sample: string
+}
+
+export function fetchLogPatterns(since = "1h") {
+  return request<LogPattern[]>(`/api/v1/logs/patterns?since=${encodeURIComponent(since)}`).then(asArray)
+}
+
+export type TopologyGraph = {
+  nodes: { id: string; label: string }[]
+  edges: { source: string; target: string; kind: string; count: number }[]
+}
+
+export function fetchTopology(since = "24h") {
+  return request<TopologyGraph>(`/api/v1/topology?since=${encodeURIComponent(since)}`)
+}
+
+export type ActiveAlert = {
+  rule_id: string
+  entity_uid: string
+  container: string
+  title: string
+  severity: string
+  summary: string
+  fired_at: string
+  value: number
+}
+
+export function fetchActiveAlerts() {
+  return request<ActiveAlert[]>(`/api/v1/alerts/active`).then(asArray)
 }

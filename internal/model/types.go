@@ -206,6 +206,33 @@ type PurgeResult struct {
 	Truncated      bool          `json:"truncated,omitempty"`
 }
 
+type LogPattern struct {
+	PatternKey string    `json:"pattern_key"`
+	Pattern    string    `json:"pattern"`
+	Container  string    `json:"container"`
+	Service    string    `json:"service"`
+	Count      int       `json:"count"`
+	LastSeen   time.Time `json:"last_seen"`
+	Sample     string    `json:"sample"`
+}
+
+type TopologyNode struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+type TopologyEdge struct {
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Kind   string `json:"kind"`
+	Count  int    `json:"count"`
+}
+
+type TopologyGraph struct {
+	Nodes []TopologyNode `json:"nodes"`
+	Edges []TopologyEdge `json:"edges"`
+}
+
 type HTTPServiceSummary struct {
 	Service      string  `json:"service"`
 	Requests     int     `json:"requests"`
