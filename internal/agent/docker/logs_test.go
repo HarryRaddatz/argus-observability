@@ -41,6 +41,72 @@ func TestCoalesceSeparateEntries(t *testing.T) {
 	}
 }
 
+func TestCoalesceDoesNotMergeHTTPWithStructuredJSON(t *testing.T) {
+	httpLine := `260903/174902.099, (1788457742099:b670754c7016:1:mtlko8vi:11216) [response,api] http://b670754c7016:9002: post /agendamento/foo {} 200 (2026ms)`
+	jsonLine := `{"ts":"2026-09-03T17:49:08.416+00:00","level":"info","event":"entry","service":"agendamentoapi","traceId":"50e30959-f59e-487f-bbe0-89ae7d8e74e5","msg":"http.request"}`
+	raw := []parsedLine{
+		{message: httpLine},
+		{message: jsonLine},
+		{message: `{"ts":"2026-09-03T17:49:08.420+00:00","level":"info","event":"exit","service":"agendamentoapi"}`},
+	}
+	out := coalesceLogLines(raw)
+	if len(out) != 3 {
+		t.Fatalf("expected 3 entries, got %d: messages=%v", len(out), out)
+	}
+}
+
+func TestCoalesceDoesNotMergeMultipleStructuredJSON(t *testing.T) {
+	raw := []parsedLine{
+		{message: `{"ts":"2026-09-03T17:49:02.099+00:00","level":"info","event":"entry","service":"agendamentoapi"}`},
+		{message: `{"ts":"2026-09-03T17:49:02.106+00:00","level":"info","event":"info","service":"agendamentoapi"}`},
+		{message: `{"ts":"2026-09-03T17:49:02.516+00:00","level":"info","event":"exit","service":"agendamentoapi"}`},
+	}
+	out := coalesceLogLines(raw)
+	if len(out) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(out))
+	}
+}
+
+func TestCoalesceWinstonMultilineThenSeparate(t *testing.T) {
+	raw := []parsedLine{
+		{message: `2026-09-03T17:50:56.147Z warn: No handlers were registered for message. {`},
+		{message: `"name": "HandlerRegistry",`},
+		{message: `"receivedMessage": {`},
+		{message: `"$traceId": "a443c602-8746-43b0-b0e7-121c28b4ea88"`},
+		{message: `}`},
+		{message: `}`},
+		{message: `2026-09-03T17:50:56.147Z warn: No handlers registered for message. Message will be discarded {`},
+		{message: `"name": "ServiceBus",`},
+		{message: `"messageType": {`},
+		{message: `"$body": false,`},
+		{message: `"$traceId": "a443c602-8746-43b0-b0e7-121c28b4ea88"`},
+		{message: `}`},
+		{message: `}`},
+	}
+	out := coalesceLogLines(raw)
+	if len(out) != 2 {
+		t.Fatalf("expected 2 winston entries, got %d", len(out))
+	}
+}
+
+func TestCoalesceAgendamentoBurst(t *testing.T) {
+	var raw []parsedLine
+	msgs := []string{
+		`{"ts":"2026-09-03T17:49:32.647+00:00","level":"info","event":"exit","service":"agendamentoapi","traceId":"bbf65b54","status":200}`,
+		`260903/174932.161, (1788457772161:b670754c7016:1:mtlko8vi:11223) [response,api] post /agendamento/filtrar {"sortBy":"agendamentoInicio","orderBy":"desc"} 200 (486ms)`,
+		`{"ts":"2026-09-03T17:49:56.915+00:00","level":"info","event":"entry","service":"agendamentoapi"}`,
+		`{"ts":"2026-09-03T17:49:56.928+00:00","level":"info","event":"entry","service":"agendamentoapi"}`,
+		`{"ts":"2026-09-03T17:49:57.551+00:00","level":"info","event":"exit","service":"agendamentoapi","status":200}`,
+	}
+	for _, m := range msgs {
+		raw = append(raw, parsedLine{message: m})
+	}
+	out := coalesceLogLines(raw)
+	if len(out) != len(msgs) {
+		t.Fatalf("expected %d entries, got %d", len(msgs), len(out))
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub || len(sub) == 0 || indexOf(s, sub) >= 0)
 }

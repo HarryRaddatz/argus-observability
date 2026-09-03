@@ -194,13 +194,43 @@ func coalesceLogLines(lines []parsedLine) []parsedLine {
 }
 
 func shouldMergeLogLines(prev, next string) bool {
-	prevT := strings.TrimSpace(prev)
-	nextT := strings.TrimSpace(next)
+	if isStandaloneLogLine(next) {
+		return false
+	}
+	if !isIncompleteLog(prev) {
+		return false
+	}
+	return isContinuationLine(next)
+}
 
-	if bracketDepth(prev) > 0 {
+// isStandaloneLogLine detects a full log event that must not be appended to the previous line.
+func isStandaloneLogLine(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if strings.HasPrefix(s, "{") && isBalanced(s) {
 		return true
 	}
+	return hasLeadingTimestamp(s)
+}
 
+func isIncompleteLog(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if strings.HasSuffix(s, "{") || strings.HasSuffix(s, "[") || strings.HasSuffix(s, ",") {
+		return true
+	}
+	if strings.Contains(s, "{") || strings.Contains(s, "[") {
+		return !isBalanced(s)
+	}
+	return bracketDepth(s) > 0
+}
+
+func isContinuationLine(next string) bool {
+	nextT := strings.TrimSpace(next)
 	if nextT == "}" || nextT == "]" {
 		return true
 	}
@@ -210,19 +240,29 @@ func shouldMergeLogLines(prev, next string) bool {
 	if strings.HasPrefix(nextT, "'$") || (strings.HasPrefix(nextT, "'") && strings.Contains(nextT, ":")) {
 		return true
 	}
-	if !strings.HasPrefix(nextT, "{") && strings.Contains(nextT, `":`) {
+	// JSON / Winston object fragment (e.g. "name": "HandlerRegistry",)
+	if strings.HasPrefix(nextT, `"`) && strings.Contains(nextT, `":`) && !strings.HasPrefix(nextT, "{") {
 		return true
 	}
-	if strings.HasSuffix(prevT, "{") || strings.HasSuffix(prevT, "[") || strings.HasSuffix(prevT, ",") {
-		return true
-	}
-	if strings.Contains(prevT, "{") && !isBalanced(prevT) {
-		return true
-	}
-	if strings.HasPrefix(prevT, "[") && strings.Contains(prevT, "{") && !isBalanced(prevT) {
-		return true
-	}
+	return false
+}
 
+func hasLeadingTimestamp(s string) bool {
+	if len(s) >= 20 && s[4] == '-' && s[7] == '-' && s[10] == 'T' {
+		end := strings.IndexAny(s, " \t")
+		if end > 10 {
+			if _, err := time.Parse(time.RFC3339Nano, s[:end]); err == nil {
+				return true
+			}
+			if _, err := time.Parse(time.RFC3339, s[:end]); err == nil {
+				return true
+			}
+		}
+	}
+	// go-zero / micro access log: YYMMDD/HHMMSS.mmm,
+	if len(s) > 15 && s[6] == '/' && s[13] == '.' {
+		return true
+	}
 	return false
 }
 
