@@ -1,0 +1,40 @@
+name: argus
+
+services:
+  argus-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile.hub
+    container_name: argus-hub
+    restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.25"
+    env_file:
+      - .env
+    environment:
+      ARGUS_HUB_ADDR: ":8080"
+      ARGUS_STORE_PATH: /data/argus.db
+    volumes:
+      - argus_data:/data
+    ports:
+      - "127.0.0.1:8088:8080"
+
+  argus-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: argus-agent
+    restart: unless-stopped
+    mem_limit: 96m
+    cpus: "0.15"
+    env_file:
+      - .env
+    environment:
+      ARGUS_HUB_URL: http://argus-hub:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - argus-hub
+
+volumes:
+  argus_data:

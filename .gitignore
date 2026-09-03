@@ -1,0 +1,17 @@
+# Binários
+/argus-hub
+/argus-agent
+
+# Dados locais
+/data/
+*.db
+
+# Env
+.env
+
+# Go
+/vendor/
+
+# IDE
+.idea/
+.vscode/
