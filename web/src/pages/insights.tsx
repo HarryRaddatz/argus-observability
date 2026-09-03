@@ -20,6 +20,9 @@ const themeLabels: Record<string, string> = {
   oom_risk: "OOM",
   error_spike: "Erros",
   cpu_hot: "CPU",
+  restart_loop: "Restarts",
+  oom_killed: "OOM kill",
+  unhealthy: "Health",
 }
 
 export function InsightsPage() {

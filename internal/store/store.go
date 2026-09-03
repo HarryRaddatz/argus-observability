@@ -29,4 +29,10 @@ type Store interface {
 	UpsertFleetStatus(ctx context.Context, rows []model.ContainerFleetStatus) error
 	GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error)
 	CountFleetEvents(ctx context.Context, since time.Time) (model.FleetEventStats, error)
+
+	ListWorkloadGroups(ctx context.Context) ([]model.WorkloadGroup, error)
+	GetWorkloadGroup(ctx context.Context, id string) (model.WorkloadGroup, error)
+	CreateWorkloadGroup(ctx context.Context, in model.WorkloadGroupInput) (model.WorkloadGroup, error)
+	UpdateWorkloadGroup(ctx context.Context, id string, in model.WorkloadGroupInput) (model.WorkloadGroup, error)
+	DeleteWorkloadGroup(ctx context.Context, id string) error
 }

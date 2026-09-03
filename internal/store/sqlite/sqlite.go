@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HarryRaddatz/argus-observability/internal/insights"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
 
@@ -88,8 +89,39 @@ CREATE TABLE IF NOT EXISTS container_fleet (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fleet_service ON container_fleet(service);
+CREATE TABLE IF NOT EXISTS workload_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  label_key TEXT NOT NULL DEFAULT '',
+  label_value TEXT NOT NULL DEFAULT '',
+  containers_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 `
 	_, err := s.db.Exec(schema)
+	if err != nil {
+		return err
+	}
+	return s.seedDefaultGroups()
+}
+
+func (s *SQLite) seedDefaultGroups() error {
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM workload_groups`).Scan(&n); err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := s.db.Exec(`
+INSERT INTO workload_groups (id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?)`,
+		"stack-venuz", "Stack Venuz", "stack", "Todos os containers da stack venuz", "stack", "venuz", now, now,
+	)
 	return err
 }
 
@@ -344,7 +376,10 @@ ORDER BY ts DESC
 		seenMetric[k][metricName] = true
 		ts, _ := time.Parse(time.RFC3339Nano, tsStr)
 		if latest[k] == nil {
-			latest[k] = &model.WorkloadSnapshot{Container: name, EntityUID: entityUID, UpdatedAt: ts}
+			latest[k] = &model.WorkloadSnapshot{
+				Container: name, EntityUID: entityUID, UpdatedAt: ts,
+				Labels: labels, Stack: labels["stack"], Service: labels["service"],
+			}
 		}
 		switch metricName {
 		case "cpu.usage":
@@ -415,6 +450,31 @@ func (s *SQLite) SearchLogs(ctx context.Context, filter model.LogSearchFilter) (
 	if filter.Topic != "" && filter.Topic != "all" {
 		q += ` AND fields_json LIKE ?`
 		args = append(args, fmt.Sprintf(`%%"topics":%%"%s"%%`, filter.Topic))
+	}
+	if filter.TraceID != "" {
+		patterns := insights.TraceSearchPatterns(filter.TraceID)
+		if len(patterns) > 0 {
+			q += ` AND (`
+			for i, p := range patterns {
+				if i > 0 {
+					q += ` OR `
+				}
+				q += `(fields_json LIKE ? OR message LIKE ?)`
+				args = append(args, p, p)
+			}
+			q += `)`
+		}
+	}
+	if len(filter.Containers) > 0 {
+		q += ` AND (`
+		for i, c := range filter.Containers {
+			if i > 0 {
+				q += ` OR `
+			}
+			q += `entity_uid LIKE ?`
+			args = append(args, "%:"+c)
+		}
+		q += `)`
 	}
 
 	q += ` ORDER BY ts DESC LIMIT ?`

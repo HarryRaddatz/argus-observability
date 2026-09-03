@@ -36,6 +36,7 @@ export const LOG_TOPICS = [
   { id: "oom", label: "OOM" },
   { id: "error", label: "Erros" },
   { id: "performance", label: "Performance" },
+  { id: "trace", label: "Trace" },
 ] as const
 
 export const LOG_LEVELS = [

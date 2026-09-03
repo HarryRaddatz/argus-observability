@@ -1,4 +1,4 @@
-import { Activity, Compass, LayoutDashboard, Lightbulb, ScrollText, Server, Zap } from "lucide-react"
+import { Activity, Compass, Layers, LayoutDashboard, Lightbulb, ScrollText, Server, Ship, Zap } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
 import {
@@ -18,6 +18,8 @@ import {
 const nav = [
   { to: "/", label: "Visão geral", icon: LayoutDashboard, end: true },
   { to: "/workloads", label: "Workloads", icon: Server, end: false },
+  { to: "/fleet", label: "Fleet", icon: Ship, end: false },
+  { to: "/groups", label: "Grupos", icon: Layers, end: false },
   { to: "/metrics", label: "Métricas", icon: Activity, end: false },
   { to: "/explorer", label: "Explorer", icon: Compass, end: false },
   { to: "/insights", label: "Insights", icon: Lightbulb, end: false },

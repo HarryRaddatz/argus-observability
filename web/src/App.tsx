@@ -8,6 +8,8 @@ import { ExplorerPage } from "@/pages/explorer"
 import { InsightsPage } from "@/pages/insights"
 import { LogsPage } from "@/pages/logs"
 import { MetricsPage } from "@/pages/metrics"
+import { FleetPage } from "@/pages/fleet"
+import { GroupsPage } from "@/pages/groups"
 import { WorkloadsPage } from "@/pages/workloads"
 
 export default function App() {
@@ -18,6 +20,8 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<DashboardPage />} />
             <Route path="workloads" element={<WorkloadsPage />} />
+            <Route path="fleet" element={<FleetPage />} />
+            <Route path="groups" element={<GroupsPage />} />
             <Route path="metrics" element={<MetricsPage />} />
             <Route path="explorer" element={<ExplorerPage />} />
             <Route path="insights" element={<InsightsPage />} />

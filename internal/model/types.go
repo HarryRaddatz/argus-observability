@@ -69,21 +69,62 @@ type MetricSeriesResponse struct {
 type WorkloadSnapshot struct {
 	Container   string    `json:"container"`
 	EntityUID   string    `json:"entity_uid"`
+	Stack       string    `json:"stack,omitempty"`
+	Service     string    `json:"service,omitempty"`
+	Labels      Labels    `json:"labels,omitempty"`
 	CPUUsage    float64   `json:"cpu_usage"`
 	MemoryUsage float64   `json:"memory_usage"`
 	MemoryLimit float64   `json:"memory_limit"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+const (
+	GroupKindStack   = "stack"
+	GroupKindService = "service"
+	GroupKindCustom  = "custom"
+)
+
+type WorkloadGroup struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Kind        string    `json:"kind"`
+	Description string    `json:"description,omitempty"`
+	LabelKey    string    `json:"label_key,omitempty"`
+	LabelValue  string    `json:"label_value,omitempty"`
+	Containers  []string  `json:"containers,omitempty"`
+	MemberCount int       `json:"member_count,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type WorkloadGroupInput struct {
+	Name        string   `json:"name"`
+	Kind        string   `json:"kind"`
+	Description string   `json:"description,omitempty"`
+	LabelKey    string   `json:"label_key,omitempty"`
+	LabelValue  string   `json:"label_value,omitempty"`
+	Containers  []string `json:"containers,omitempty"`
+}
+
+type WorkloadGroupSummary struct {
+	Group         WorkloadGroup      `json:"group"`
+	MemberCount   int                `json:"member_count"`
+	AvgCPU        float64            `json:"avg_cpu"`
+	AvgMemoryPct  float64            `json:"avg_memory_pct"`
+	TotalMemory   float64            `json:"total_memory"`
+	Members       []WorkloadSnapshot `json:"members"`
+}
+
 type LogSearchFilter struct {
-	Query     string
-	EntityUID string
-	Container string
-	Level     string
-	Topic     string
-	TraceID   string
-	Since     time.Time
-	Limit     int
+	Query      string
+	EntityUID  string
+	Container  string
+	Containers []string
+	Level      string
+	Topic      string
+	TraceID    string
+	Since      time.Time
+	Limit      int
 }
 
 type LogTopicCount struct {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { MultiSeriesChart } from "@/components/metrics/multi-series-chart"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import {
   fetchMetricCatalog,
   fetchMetricSeries,
   listWorkloads,
+  listWorkloadGroups,
   type ContainerSeries,
   type MetricCatalogEntry,
 } from "@/lib/api"
@@ -22,8 +24,12 @@ import {
 } from "@/lib/observability"
 
 export function ExplorerPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const groupId = searchParams.get("group") ?? ""
+
   const [catalog, setCatalog] = useState<MetricCatalogEntry[]>([])
   const [containers, setContainers] = useState<string[]>([])
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>([])
   const [selectedContainers, setSelectedContainers] = useState<string[]>([])
   const [metric, setMetric] = useState("memory.usage_pct")
   const [since, setSince] = useState("1h")
@@ -35,30 +41,31 @@ export function ExplorerPage() {
 
   useEffect(() => {
     fetchMetricCatalog().then(setCatalog).catch(() => setCatalog([]))
-    listWorkloads("1h")
-      .then((wl) => {
+    Promise.all([listWorkloads("1h"), listWorkloadGroups()])
+      .then(([wl, g]) => {
         const names = wl.map((w) => w.container).sort()
         setContainers(names)
-        if (selectedContainers.length === 0 && names.length > 0) {
+        setGroups(g.map((x) => ({ id: x.id, name: x.name })))
+        if (selectedContainers.length === 0 && names.length > 0 && !groupId) {
           setSelectedContainers(names.slice(0, 3))
         }
       })
       .catch(() => setContainers([]))
-  }, [])
+  }, [groupId])
 
   const loadChart = useCallback(() => {
     setLoading(true)
-    fetchMetricSeries(metric, since)
+    fetchMetricSeries(metric, since, undefined, groupId || undefined)
       .then((resp) => {
         let s = resp.series ?? []
-        if (selectedContainers.length > 0) {
+        if (!groupId && selectedContainers.length > 0) {
           s = s.filter((x) => selectedContainers.includes(x.container))
         }
         setSeries(s)
       })
       .catch(() => setSeries([]))
       .finally(() => setLoading(false))
-  }, [metric, since, selectedContainers])
+  }, [metric, since, selectedContainers, groupId])
 
   useEffect(() => {
     loadChart()
@@ -168,6 +175,37 @@ export function ExplorerPage() {
 
           <Card>
             <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Grupo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <select
+                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+                value={groupId}
+                onChange={(e) => {
+                  const next = e.target.value
+                  const p = new URLSearchParams(searchParams)
+                  if (next) p.set("group", next)
+                  else p.delete("group")
+                  setSearchParams(p, { replace: true })
+                }}
+              >
+                <option value="">Nenhum (seleção manual)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              {groupId ? (
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Filtrando pelo grupo — containers abaixo desabilitados.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
               <CardTitle className="text-sm">Containers</CardTitle>
             </CardHeader>
             <CardContent>
@@ -177,8 +215,9 @@ export function ExplorerPage() {
                     <li key={name}>
                       <button
                         type="button"
+                        disabled={Boolean(groupId)}
                         className={cn(
-                          "hover:bg-muted w-full rounded px-2 py-1.5 text-left text-xs",
+                          "hover:bg-muted w-full rounded px-2 py-1.5 text-left text-xs disabled:opacity-40",
                           selectedContainers.includes(name) && "bg-muted font-medium",
                         )}
                         onClick={() => toggleContainer(name)}

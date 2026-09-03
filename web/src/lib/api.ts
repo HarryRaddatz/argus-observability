@@ -31,10 +31,44 @@ export type MetricSeriesResponse = {
 export type WorkloadSnapshot = {
   container: string
   entity_uid: string
+  stack?: string
+  service?: string
+  labels?: Record<string, string>
   cpu_usage: number
   memory_usage: number
   memory_limit: number
   updated_at: string
+}
+
+export type WorkloadGroup = {
+  id: string
+  name: string
+  kind: "stack" | "service" | "custom"
+  description?: string
+  label_key?: string
+  label_value?: string
+  containers?: string[]
+  member_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export type WorkloadGroupInput = {
+  name: string
+  kind: "stack" | "service" | "custom"
+  description?: string
+  label_key?: string
+  label_value?: string
+  containers?: string[]
+}
+
+export type WorkloadGroupSummary = {
+  group: WorkloadGroup
+  member_count: number
+  avg_cpu: number
+  avg_memory_pct: number
+  total_memory: number
+  members: WorkloadSnapshot[]
 }
 
 export type EventRow = {
@@ -63,6 +97,8 @@ export type LogSearchParams = {
   level?: string
   container?: string
   topic?: string
+  group?: string
+  trace_id?: string
 }
 
 export type MetricCatalogEntry = {
@@ -88,13 +124,61 @@ export type InsightsResponse = {
   insights: Insight[]
 }
 
+export type ContainerFleetStatus = {
+  container: string
+  entity_uid: string
+  service?: string
+  state: string
+  health?: string
+  restart_count: number
+  exit_code?: number
+  oom_killed?: boolean
+  status_text?: string
+  updated_at?: string
+}
+
+export type FleetSummary = {
+  running: number
+  exited: number
+  restarting: number
+  unhealthy: number
+  dead: number
+  total_restart_count: number
+  replicas_up: number
+  replicas_total: number
+}
+
+export type ServiceReplicaStatus = {
+  service: string
+  replicas_up: number
+  replicas_total: number
+  unhealthy: number
+  restarting: number
+}
+
+export type FleetEventStats = {
+  restarts_24h: number
+  failures_24h: number
+  oom_24h: number
+  disconnect_24h: number
+}
+
+export type FleetStatusResponse = {
+  updated_at: string
+  summary: FleetSummary
+  services: ServiceReplicaStatus[]
+  containers: ContainerFleetStatus[]
+  events_24h: FleetEventStats
+}
+
 export function getHealth() {
   return request<Health>("/health")
 }
 
-export function fetchMetricSeries(metric: string, since = "1h", container?: string) {
+export function fetchMetricSeries(metric: string, since = "1h", container?: string, group?: string) {
   const q = new URLSearchParams({ metric, since })
   if (container) q.set("container", container)
+  if (group) q.set("group", group)
   return request<MetricSeriesResponse>(`/api/v1/metrics/series?${q}`)
 }
 
@@ -115,11 +199,47 @@ export function searchLogs(params: LogSearchParams = {}) {
   if (params.level && params.level !== "all") p.set("level", params.level)
   if (params.container && params.container !== "all") p.set("container", params.container)
   if (params.topic && params.topic !== "all") p.set("topic", params.topic)
+  if (params.group) p.set("group", params.group)
+  if (params.trace_id) p.set("trace_id", params.trace_id)
   return request<LogRow[]>(`/api/v1/logs/search?${p}`).then(asArray)
+}
+
+export function listWorkloadGroups() {
+  return request<WorkloadGroup[]>(`/api/v1/workload-groups`).then(asArray)
+}
+
+export function discoverWorkloadGroups() {
+  return request<WorkloadGroup[]>(`/api/v1/workload-groups/discover`).then(asArray)
+}
+
+export function getWorkloadGroupSummary(id: string, since = "30m") {
+  return request<WorkloadGroupSummary>(
+    `/api/v1/workload-groups/${encodeURIComponent(id)}/summary?since=${encodeURIComponent(since)}`,
+  )
+}
+
+export function createWorkloadGroup(input: WorkloadGroupInput) {
+  return request<WorkloadGroup>(`/api/v1/workload-groups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+}
+
+export function deleteWorkloadGroup(id: string) {
+  return fetch(`${base}/api/v1/workload-groups/${encodeURIComponent(id)}`, { method: "DELETE" }).then(
+    (res) => {
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+    },
+  )
 }
 
 export function fetchInsights(since = "1h") {
   return request<InsightsResponse>(`/api/v1/insights?since=${encodeURIComponent(since)}`)
+}
+
+export function fetchFleetStatus() {
+  return request<FleetStatusResponse>(`/api/v1/fleet/status`)
 }
 
 export function fetchMetricCatalog() {

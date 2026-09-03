@@ -14,6 +14,7 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/insights"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
+	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -73,6 +74,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/logs/search", s.handleSearchLogs)
 	s.mux.HandleFunc("GET /api/v1/insights", s.handleInsights)
 	s.mux.HandleFunc("GET /api/v1/metrics/catalog", s.handleMetricsCatalog)
+	s.registerGroupRoutes()
+	s.registerFleetRoutes()
 }
 
 func (s *Server) Handler() http.Handler {
@@ -292,6 +295,28 @@ func (s *Server) handleMetricSeries(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
+	if groupID := r.URL.Query().Get("group"); groupID != "" {
+		names, err := s.resolveGroupContainers(r.Context(), groupID)
+		if err != nil {
+			if errors.Is(err, sqlite.ErrNotFound) {
+				http.Error(w, "group not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "store error", http.StatusInternalServerError)
+			return
+		}
+		allowed := map[string]struct{}{}
+		for _, n := range names {
+			allowed[n] = struct{}{}
+		}
+		filtered := make([]model.ContainerSeries, 0, len(series))
+		for _, item := range series {
+			if _, ok := allowed[item.Container]; ok {
+				filtered = append(filtered, item)
+			}
+		}
+		series = filtered
+	}
 	if series == nil {
 		series = []model.ContainerSeries{}
 	}
@@ -348,8 +373,21 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 		Container: r.URL.Query().Get("container"),
 		Level:     r.URL.Query().Get("level"),
 		Topic:     r.URL.Query().Get("topic"),
+		TraceID:   r.URL.Query().Get("trace_id"),
 		Since:     since,
 		Limit:     200,
+	}
+	if groupID := r.URL.Query().Get("group"); groupID != "" {
+		names, err := s.resolveGroupContainers(r.Context(), groupID)
+		if err != nil {
+			if errors.Is(err, sqlite.ErrNotFound) {
+				http.Error(w, "group not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "store error", http.StatusInternalServerError)
+			return
+		}
+		filter.Containers = names
 	}
 	logs, err := s.store.SearchLogs(r.Context(), filter)
 	if err != nil {
@@ -397,9 +435,17 @@ func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
 			Container: ls.Container, EntityUID: ls.EntityUID, Topic: ls.Topic, Count: ls.Count,
 		})
 	}
+	fleetRows, err := s.store.GetFleetStatus(r.Context())
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	ins := insights.Generate(wlMem, logStats)
+	ins = append(ins, insights.GenerateFleet(fleetRows)...)
+	insights.SortBySeverity(ins)
 	result := model.InsightsResponse{
 		Since:    since.Format(time.RFC3339),
-		Insights: insights.Generate(wlMem, logStats),
+		Insights: ins,
 	}
 	if result.Insights == nil {
 		result.Insights = []model.Insight{}
