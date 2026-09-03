@@ -177,6 +177,12 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 	}
 
 	// Sort by severity weight
+	SortBySeverity(out)
+	return out
+}
+
+// SortBySeverity orders insights critical first.
+func SortBySeverity(out []model.Insight) {
 	order := map[string]int{"critical": 0, "warning": 1, "info": 2}
 	for i := 0; i < len(out); i++ {
 		for j := i + 1; j < len(out); j++ {
@@ -185,7 +191,6 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 			}
 		}
 	}
-	return out
 }
 
 func ContainerFromEntity(entityUID string) string {

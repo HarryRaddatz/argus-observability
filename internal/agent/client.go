@@ -93,6 +93,17 @@ func (c *Client) SendEvent(ctx context.Context, evt model.Event) error {
 	return c.post(ctx, "/api/v1/events", body, nil)
 }
 
+func (c *Client) SendFleet(ctx context.Context, rows []model.ContainerFleetStatus) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	body, err := json.Marshal(rows)
+	if err != nil {
+		return err
+	}
+	return c.post(ctx, "/api/v1/fleet/batch", body, nil)
+}
+
 func (c *Client) post(ctx context.Context, path string, body []byte, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.HubURL+path, bytes.NewReader(body))
 	if err != nil {

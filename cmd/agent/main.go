@@ -22,6 +22,7 @@ func main() {
 	hostID := env("ARGUS_HOST_ID", hostname())
 	interval := durationEnv("ARGUS_COLLECT_INTERVAL", 15*time.Second)
 	logInterval := durationEnv("ARGUS_LOG_INTERVAL", 30*time.Second)
+	fleetInterval := durationEnv("ARGUS_FLEET_INTERVAL", 60*time.Second)
 
 	collector, err := docker.NewCollector(hostID)
 	if err != nil {
@@ -53,6 +54,7 @@ func main() {
 	logState := docker.NewLogState()
 
 	go runLogCollector(ctx, logger, collector, cli, logState, logInterval)
+	go runFleetCollector(ctx, logger, collector, cli, fleetInterval)
 	go runEventStream(ctx, logger, collector, cli)
 
 	ticker := time.NewTicker(interval)
@@ -123,6 +125,47 @@ func runLogCollector(
 			return
 		}
 		logger.Info("logs sent", "count", len(entries))
+	}
+
+	run()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
+}
+
+func runFleetCollector(
+	ctx context.Context,
+	logger *slog.Logger,
+	collector *docker.Collector,
+	cli *agent.Client,
+	interval time.Duration,
+) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	run := func() {
+		fctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+		rows, err := collector.CollectFleet(fctx)
+		cancel()
+		if err != nil {
+			logger.Warn("collect fleet", "err", err)
+			return
+		}
+		if len(rows) == 0 {
+			return
+		}
+		sctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		if err := cli.SendFleet(sctx, rows); err != nil {
+			logger.Warn("send fleet", "err", err)
+			return
+		}
+		logger.Info("fleet sent", "count", len(rows))
 	}
 
 	run()
