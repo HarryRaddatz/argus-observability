@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { listWorkloads, searchLogs, type LogRow } from "@/lib/api"
+import { listWorkloads, listWorkloadGroups, searchLogs, type LogRow, type WorkloadGroup } from "@/lib/api"
 import { LOG_LEVELS, LOG_TOPICS, TIME_RANGES } from "@/lib/observability"
 
 const levelVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -25,35 +25,70 @@ const levelVariant: Record<string, "default" | "secondary" | "destructive" | "ou
   info: "outline",
 }
 
+function getTraceId(row: LogRow): string | undefined {
+  const tid = row.fields?.trace_id
+  return typeof tid === "string" && tid.length > 0 ? tid : undefined
+}
+
+function formatTraceShort(id: string): string {
+  if (id.length <= 12) return id
+  return `${id.slice(0, 8)}…`
+}
+
 export function LogsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get("q") ?? "")
   const [level, setLevel] = useState(searchParams.get("level") ?? "all")
   const [topic, setTopic] = useState(searchParams.get("topic") ?? "all")
   const [container, setContainer] = useState(searchParams.get("container") ?? "all")
-  const [since, setSince] = useState(searchParams.get("since") ?? "1h")
+  const [group, setGroup] = useState(searchParams.get("group") ?? "")
+  const [traceId, setTraceId] = useState(searchParams.get("trace_id") ?? "")
+  const [since, setSince] = useState(() => {
+    const s = searchParams.get("since")
+    if (s) return s
+    if (searchParams.get("trace_id")) return "24h"
+    return "1h"
+  })
   const [containers, setContainers] = useState<string[]>([])
+  const [groups, setGroups] = useState<WorkloadGroup[]>([])
   const [rows, setRows] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const traceFilterActive = traceId.trim().length > 0
+
   useEffect(() => {
-    listWorkloads("1h")
-      .then((wl) => setContainers(wl.map((w) => w.container).sort()))
-      .catch(() => setContainers([]))
+    Promise.all([listWorkloads("1h"), listWorkloadGroups()])
+      .then(([wl, g]) => {
+        setContainers(wl.map((w) => w.container).sort())
+        setGroups(g)
+      })
+      .catch(() => {
+        setContainers([])
+        setGroups([])
+      })
   }, [])
 
   const runSearch = useCallback(() => {
     setLoading(true)
     setError(null)
-    searchLogs({ q: query, since, level, container, topic })
+    const tid = traceId.trim()
+    searchLogs({
+      q: query,
+      since,
+      level,
+      topic,
+      trace_id: tid || undefined,
+      container: tid || group ? undefined : container,
+      group: tid ? undefined : group || undefined,
+    })
       .then(setRows)
       .catch((e) => {
         setError(e instanceof Error ? e.message : "Erro")
         setRows([])
       })
       .finally(() => setLoading(false))
-  }, [query, since, level, container, topic])
+  }, [query, since, level, container, topic, group, traceId])
 
   useEffect(() => {
     runSearch()
@@ -66,19 +101,38 @@ export function LogsPage() {
     if (query) p.set("q", query)
     if (level !== "all") p.set("level", level)
     if (topic !== "all") p.set("topic", topic)
-    if (container !== "all") p.set("container", container)
+    if (container !== "all" && !traceFilterActive) p.set("container", container)
+    if (group && !traceFilterActive) p.set("group", group)
+    if (traceFilterActive) p.set("trace_id", traceId.trim())
     if (since !== "1h") p.set("since", since)
     setSearchParams(p, { replace: true })
-  }, [query, level, topic, container, since, setSearchParams])
+  }, [query, level, topic, container, group, traceId, traceFilterActive, since, setSearchParams])
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Logs</h1>
         <p className="text-muted-foreground text-sm">
-          Filtros inteligentes por tópico (GC, memória, OOM), level e container.
+          Filtros por tópico, level, container e traceId cross-container.
         </p>
       </div>
+
+      {traceFilterActive ? (
+        <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+          <span>
+            Trace <span className="font-mono">{traceId.trim()}</span> — todos os containers
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setTraceId("")
+            }}
+          >
+            Limpar trace
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-4">
         <form
@@ -94,9 +148,41 @@ export function LogsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </form>
+        <form
+          className="min-w-[220px] flex-1"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (traceId.trim() && since === "1h") setSince("24h")
+            runSearch()
+          }}
+        >
+          <Input
+            placeholder="Trace ID (UUID ou hex)..."
+            value={traceId}
+            onChange={(e) => setTraceId(e.target.value)}
+            className="font-mono text-xs"
+          />
+        </form>
         <select
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+          value={group}
+          disabled={traceFilterActive}
+          onChange={(e) => {
+            setGroup(e.target.value)
+            if (e.target.value) setContainer("all")
+          }}
+        >
+          <option value="">Todos grupos</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="border-input bg-background h-9 rounded-md border px-3 text-sm disabled:opacity-50"
           value={container}
+          disabled={Boolean(group) || traceFilterActive}
           onChange={(e) => setContainer(e.target.value)}
         >
           <option value="all">Todos containers</option>
@@ -160,6 +246,7 @@ export function LogsPage() {
               <TableHead>Hora</TableHead>
               <TableHead>Level</TableHead>
               <TableHead>Container</TableHead>
+              <TableHead>Trace</TableHead>
               <TableHead>Tópicos</TableHead>
               <TableHead>Mensagem</TableHead>
             </TableRow>
@@ -167,13 +254,13 @@ export function LogsPage() {
           <TableBody>
             {loading && rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-muted-foreground text-center">
+                <TableCell colSpan={6} className="text-muted-foreground text-center">
                   Nenhuma linha com os filtros atuais.
                 </TableCell>
               </TableRow>
@@ -191,6 +278,7 @@ export function LogsPage() {
 
 function LogRowView({ row }: { row: LogRow }) {
   const topics = (row.fields?.topics as string[] | undefined) ?? []
+  const tid = getTraceId(row)
   return (
     <TableRow>
       <TableCell className="whitespace-nowrap font-mono text-xs">
@@ -201,6 +289,19 @@ function LogRowView({ row }: { row: LogRow }) {
       </TableCell>
       <TableCell className="max-w-[140px] truncate font-mono text-xs">
         {row.entity_uid.split(":").pop()}
+      </TableCell>
+      <TableCell className="font-mono text-xs">
+        {tid ? (
+          <Link
+            to={`/logs?trace_id=${encodeURIComponent(tid)}&since=24h`}
+            className="text-primary hover:underline"
+            title={tid}
+          >
+            {formatTraceShort(tid)}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
