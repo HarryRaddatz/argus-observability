@@ -215,7 +215,7 @@ export function MetricsPage() {
               <>
                 <TimeSeriesChart
                   title="Latência HTTP"
-                  description="Derivada de logs event=exit e linhas response Venuz"
+                  description="Derivada de logs event=exit e linhas response HTTP"
                   points={httpLatency}
                   loading={loading}
                   unit=" ms"

@@ -42,10 +42,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if _, err := cli.Register(ctx, model.Labels{
-		"host":  hostID,
-		"stack": "venuz",
-	}); err != nil {
+	if _, err := cli.Register(ctx, model.Labels{"host": hostID}); err != nil {
 		logger.Error("register", "err", err)
 		os.Exit(1)
 	}

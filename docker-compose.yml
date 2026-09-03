@@ -19,24 +19,6 @@ services:
     ports:
       - "127.0.0.1:8088:8080"
 
-  argus-docker-filter:
-    image: python:3.12-alpine
-    container_name: argus-docker-filter
-    restart: unless-stopped
-    mem_limit: 64m
-    cpus: "0.10"
-    group_add:
-      - "989"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - argus_socket:/argus_socket
-      - ./docker-venuz-filter.py:/app/docker-venuz-filter.py:ro
-    environment:
-      DOCKER_SOCK: /var/run/docker.sock
-      LISTEN_SOCK: /argus_socket/docker-venuz.sock
-      NAME_PREFIX: venuz-
-    command: ["python", "-u", "/app/docker-venuz-filter.py"]
-
   argus-agent:
     build:
       context: .
@@ -49,16 +31,12 @@ services:
       - .env
     environment:
       ARGUS_HUB_URL: http://argus-hub:8080
-      DOCKER_HOST: unix:///argus_socket/docker-venuz.sock
-      ARGUS_NAME_PREFIX: venuz-
     volumes:
-      - argus_socket:/argus_socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     group_add:
       - "989"
     depends_on:
       argus-hub:
-        condition: service_started
-      argus-docker-filter:
         condition: service_started
 
   argus-web:
@@ -76,4 +54,3 @@ services:
 
 volumes:
   argus_data:
-  argus_socket:

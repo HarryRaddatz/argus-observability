@@ -116,12 +116,7 @@ func containerNameFromEvent(raw dockerEvent) string {
 
 func mapDockerEvent(hostID, name string, raw dockerEvent) (model.Event, bool) {
 	entityUID := fmt.Sprintf("docker:%s:%s", hostID, name)
-	labels := model.Labels{
-		"host": hostID, "runtime": "docker", "container": name, "stack": "venuz",
-	}
-	if svc := raw.Actor.Attributes["com.docker.compose.service"]; svc != "" {
-		labels["service"] = svc
-	}
+	labels := eventLabels(hostID, name, raw.Actor.Attributes)
 
 	ts := time.Unix(raw.Time, 0).UTC()
 	if raw.TimeNano > 0 {

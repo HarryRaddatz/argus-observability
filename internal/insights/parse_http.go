@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var venuzResponseRe = regexp.MustCompile(`(?i)(get|post|put|delete|patch|head|options)\s+(\S+)\s+.*?\s(\d{3})\s+\((\d+)ms\)\s*$`)
+var httpResponseRe = regexp.MustCompile(`(?i)(get|post|put|delete|patch|head|options)\s+(\S+)\s+.*?\s(\d{3})\s+\((\d+)ms\)\s*$`)
 
 // HTTPLogSignal holds structured HTTP data extracted from a Venuz log line.
 type HTTPLogSignal struct {
@@ -19,7 +19,7 @@ type HTTPLogSignal struct {
 	IsExit     bool
 }
 
-// ParseHTTPLog extracts HTTP request/response signals from JSON or Venuz response lines.
+// ParseHTTPLog extracts HTTP request/response signals from JSON or structured response lines.
 func ParseHTTPLog(message string) (HTTPLogSignal, bool) {
 	msg := strings.TrimSpace(message)
 	if msg == "" {
@@ -45,7 +45,7 @@ func ParseHTTPLog(message string) (HTTPLogSignal, bool) {
 		}
 	}
 
-	if m := venuzResponseRe.FindStringSubmatch(msg); len(m) >= 5 {
+	if m := httpResponseRe.FindStringSubmatch(msg); len(m) >= 5 {
 		status, _ := strconv.Atoi(m[3])
 		dur, _ := strconv.ParseFloat(m[4], 64)
 		return HTTPLogSignal{
@@ -110,13 +110,33 @@ func floatField(m map[string]any, keys ...string) float64 {
 	return 0
 }
 
-func inferServiceFromContainer(container string) string {
-	c := strings.TrimPrefix(container, "venuz-")
-	if idx := strings.LastIndex(c, "-"); idx > 0 {
-		suffix := c[idx+1:]
-		if _, err := strconv.Atoi(suffix); err == nil {
-			return c[:idx]
+// InferServiceFromContainer guesses compose service name from container name (project-service-N).
+func InferServiceFromContainer(container string) string {
+	for i := len(container) - 1; i > 0; i-- {
+		if container[i] != '-' {
+			continue
+		}
+		suffix := container[i+1:]
+		if !isNumericSuffix(suffix) {
+			continue
+		}
+		rest := container[:i]
+		if j := strings.LastIndex(rest, "-"); j >= 0 {
+			return rest[j+1:]
+		}
+		return rest
+	}
+	return container
+}
+
+func isNumericSuffix(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, ch := range s {
+		if ch < '0' || ch > '9' {
+			return false
 		}
 	}
-	return c
+	return true
 }

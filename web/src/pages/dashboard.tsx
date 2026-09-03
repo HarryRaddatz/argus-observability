@@ -70,7 +70,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Visão geral</h1>
-        <p className="text-muted-foreground text-sm">Stack Venuz — métricas em tempo quase real.</p>
+        <p className="text-muted-foreground text-sm">Todos os containers monitorados pelo agent.</p>
       </div>
 
       {error ? (
@@ -85,7 +85,7 @@ export function DashboardPage() {
             {health === "loading" ? "…" : health === "ok" ? "Online" : "Offline"}
           </Badge>
         </StatCard>
-        <StatCard title="Workloads" description="Containers venuz-*" loading={loading}>
+        <StatCard title="Workloads" description="Containers Docker" loading={loading}>
           <p className="text-3xl font-semibold tabular-nums">{workloads.length}</p>
         </StatCard>
         <StatCard title="CPU média" description="Última amostra" loading={loading}>

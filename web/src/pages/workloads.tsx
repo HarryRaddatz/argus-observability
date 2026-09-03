@@ -49,7 +49,7 @@ export function WorkloadsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Workloads</h1>
-        <p className="text-muted-foreground text-sm">Containers Venuz monitorados pelo agent.</p>
+        <p className="text-muted-foreground text-sm">Containers monitorados pelo agent.</p>
       </div>
 
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
@@ -75,7 +75,7 @@ export function WorkloadsPage() {
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-muted-foreground text-center">
-                  Nenhum container no escopo venuz-*.
+                  Nenhum container monitorado.
                 </TableCell>
               </TableRow>
             ) : (

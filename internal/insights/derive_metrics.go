@@ -20,7 +20,7 @@ func DeriveMetricsFromLog(entry model.LogEntry) []model.MetricPoint {
 		service = labels["service"]
 	}
 	if service == "" {
-		service = inferServiceFromContainer(labels["container"])
+		service = InferServiceFromContainer(labels["container"])
 	}
 	if service != "" {
 		labels["service"] = service

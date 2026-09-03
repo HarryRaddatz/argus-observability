@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/HarryRaddatz/argus-observability/internal/insights"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 )
 
@@ -37,7 +38,7 @@ WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts
 		_ = json.Unmarshal([]byte(labelsJSON), &labels)
 		svc := labels["service"]
 		if svc == "" {
-			svc = inferServiceFromContainer(labels["container"])
+			svc = insights.InferServiceFromContainer(labels["container"])
 		}
 		if svc == "" {
 			continue
@@ -83,27 +84,4 @@ WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts
 		return out[i].AvgLatencyMs > out[j].AvgLatencyMs
 	})
 	return out, nil
-}
-
-func inferServiceFromContainer(container string) string {
-	c := container
-	if len(c) > 6 && c[:6] == "venuz-" {
-		c = c[6:]
-	}
-	for i := len(c) - 1; i > 0; i-- {
-		if c[i] == '-' {
-			suffix := c[i+1:]
-			allDigits := len(suffix) > 0
-			for _, ch := range suffix {
-				if ch < '0' || ch > '9' {
-					allDigits = false
-					break
-				}
-			}
-			if allDigits {
-				return c[:i]
-			}
-		}
-	}
-	return c
 }

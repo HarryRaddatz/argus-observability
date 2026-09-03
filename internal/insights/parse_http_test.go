@@ -41,7 +41,14 @@ func TestParseHTTPLogErrorStatus(t *testing.T) {
 }
 
 func TestInferServiceFromContainer(t *testing.T) {
-	if got := inferServiceFromContainer("venuz-agendamentoapi-1"); got != "agendamentoapi" {
-		t.Fatalf("got %q", got)
+	cases := map[string]string{
+		"venuz-agendamentoapi-1": "agendamentoapi",
+		"village-postgres-1":     "postgres",
+		"argus-agent":            "argus-agent",
+	}
+	for in, want := range cases {
+		if got := InferServiceFromContainer(in); got != want {
+			t.Fatalf("%s: got %q want %q", in, got, want)
+		}
 	}
 }

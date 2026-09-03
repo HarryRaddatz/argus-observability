@@ -109,20 +109,7 @@ CREATE TABLE IF NOT EXISTS workload_groups (
 }
 
 func (s *SQLite) seedDefaultGroups() error {
-	var n int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM workload_groups`).Scan(&n); err != nil {
-		return err
-	}
-	if n > 0 {
-		return nil
-	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err := s.db.Exec(`
-INSERT INTO workload_groups (id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?)`,
-		"stack-venuz", "Stack Venuz", "stack", "Todos os containers da stack venuz", "stack", "venuz", now, now,
-	)
-	return err
+	return nil
 }
 
 func (s *SQLite) UpsertAgent(ctx context.Context, reg model.AgentRegistration) error {

@@ -50,11 +50,5 @@ func (c *Collector) listFilteredContainersAll(ctx context.Context, all bool) ([]
 
 func (c *Collector) entityFor(name string, labels map[string]string) (string, model.Labels) {
 	entityUID := fmt.Sprintf("docker:%s:%s", c.hostID, name)
-	lbl := model.Labels{
-		"host": c.hostID, "runtime": "docker", "container": name, "stack": "venuz",
-	}
-	if svc := labels["com.docker.compose.service"]; svc != "" {
-		lbl["service"] = svc
-	}
-	return entityUID, lbl
+	return entityUID, entityLabels(c.hostID, name, labels)
 }
