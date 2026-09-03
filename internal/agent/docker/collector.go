@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/model"
@@ -49,9 +50,22 @@ func (c *Collector) Close() error {
 }
 
 type containerSummary struct {
-	ID    string            `json:"Id"`
-	Names []string          `json:"Names"`
+	ID     string            `json:"Id"`
+	Names  []string          `json:"Names"`
 	Labels map[string]string `json:"Labels"`
+	State  string            `json:"State"`
+	Status string            `json:"Status"`
+}
+
+func (c containerSummary) primaryName() string {
+	if len(c.Names) == 0 {
+		return ""
+	}
+	name := c.Names[0]
+	if len(name) > 0 && name[0] == '/' {
+		name = name[1:]
+	}
+	return name
 }
 
 type statsResponse struct {
@@ -74,40 +88,55 @@ type memoryStats struct {
 	Limit uint64 `json:"limit"`
 }
 
+func (c *Collector) streamClient() *http.Client {
+	return &http.Client{Transport: c.client.Transport}
+}
+
 func (c *Collector) Collect(ctx context.Context) ([]model.MetricPoint, error) {
-	containers, err := c.listContainers(ctx)
+	items, err := c.listFilteredContainers(ctx)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC()
+
+	const workers = 8
+	sem := make(chan struct{}, workers)
+	var mu sync.Mutex
 	var points []model.MetricPoint
-	for _, ctr := range containers {
-		name := ctr.Names[0]
-		if len(name) > 0 && name[0] == '/' {
-			name = name[1:]
-		}
-		stats, err := c.containerStats(ctx, ctr.ID)
-		if err != nil {
-			continue
-		}
-		entityUID := fmt.Sprintf("docker:%s:%s", c.hostID, name)
-		labels := model.Labels{
-			"host": c.hostID, "runtime": "docker", "container": name,
-		}
-		if svc := ctr.Labels["com.docker.compose.service"]; svc != "" {
-			labels["service"] = svc
-		}
-		points = append(points,
-			model.MetricPoint{MetricName: "cpu.usage", TS: now, Value: cpuPercent(stats), EntityUID: entityUID, Labels: labels},
-			model.MetricPoint{MetricName: "memory.usage", TS: now, Value: float64(stats.MemoryStats.Usage), EntityUID: entityUID, Labels: labels},
-			model.MetricPoint{MetricName: "memory.limit", TS: now, Value: float64(stats.MemoryStats.Limit), EntityUID: entityUID, Labels: labels},
-		)
+	var wg sync.WaitGroup
+
+	for _, it := range items {
+		wg.Add(1)
+		go func(it containerInfo) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			stats, err := c.containerStats(ctx, it.ID)
+			if err != nil {
+				return
+			}
+			entityUID, labels := c.entityFor(it.Name, it.Labels)
+			batch := []model.MetricPoint{
+				{MetricName: "cpu.usage", TS: now, Value: cpuPercent(stats), EntityUID: entityUID, Labels: labels},
+				{MetricName: "memory.usage", TS: now, Value: float64(stats.MemoryStats.Usage), EntityUID: entityUID, Labels: labels},
+				{MetricName: "memory.limit", TS: now, Value: float64(stats.MemoryStats.Limit), EntityUID: entityUID, Labels: labels},
+			}
+			mu.Lock()
+			points = append(points, batch...)
+			mu.Unlock()
+		}(it)
 	}
+	wg.Wait()
 	return points, nil
 }
 
-func (c *Collector) listContainers(ctx context.Context) ([]containerSummary, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://docker/v1.44/containers/json", nil)
+func (c *Collector) listContainers(ctx context.Context, all bool) ([]containerSummary, error) {
+	url := "http://docker/v1.44/containers/json"
+	if all {
+		url += "?all=1"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

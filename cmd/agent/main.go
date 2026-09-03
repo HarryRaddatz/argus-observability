@@ -21,6 +21,7 @@ func main() {
 	agentID := env("ARGUS_AGENT_ID", hostname())
 	hostID := env("ARGUS_HOST_ID", hostname())
 	interval := durationEnv("ARGUS_COLLECT_INTERVAL", 15*time.Second)
+	logInterval := durationEnv("ARGUS_LOG_INTERVAL", 30*time.Second)
 
 	collector, err := docker.NewCollector(hostID)
 	if err != nil {
@@ -40,11 +41,19 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if _, err := cli.Register(ctx, model.Labels{"host": hostID}); err != nil {
+	if _, err := cli.Register(ctx, model.Labels{
+		"host":  hostID,
+		"stack": "venuz",
+	}); err != nil {
 		logger.Error("register", "err", err)
 		os.Exit(1)
 	}
 	logger.Info("agent registered", "agent_id", agentID, "hub", hubURL)
+
+	logState := docker.NewLogState()
+
+	go runLogCollector(ctx, logger, collector, cli, logState, logInterval)
+	go runEventStream(ctx, logger, collector, cli)
 
 	ticker := time.NewTicker(interval)
 	heartbeat := time.NewTicker(30 * time.Second)
@@ -52,7 +61,7 @@ func main() {
 	defer heartbeat.Stop()
 
 	runCollect := func() {
-		cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		cctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 		defer cancel()
 		points, err := collector.Collect(cctx)
 		if err != nil {
@@ -82,6 +91,63 @@ func main() {
 			}
 			cancel()
 		}
+	}
+}
+
+func runLogCollector(
+	ctx context.Context,
+	logger *slog.Logger,
+	collector *docker.Collector,
+	cli *agent.Client,
+	logState *docker.LogState,
+	interval time.Duration,
+) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	run := func() {
+		lctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+		entries, err := collector.CollectLogs(lctx, logState)
+		cancel()
+		if err != nil {
+			logger.Warn("collect logs", "err", err)
+			return
+		}
+		if len(entries) == 0 {
+			return
+		}
+		sctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		if err := cli.SendLogs(sctx, entries); err != nil {
+			logger.Warn("send logs", "err", err)
+			return
+		}
+		logger.Info("logs sent", "count", len(entries))
+	}
+
+	run()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
+}
+
+func runEventStream(ctx context.Context, logger *slog.Logger, collector *docker.Collector, cli *agent.Client) {
+	err := collector.StreamEvents(ctx, func(evt model.Event) error {
+		sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		if err := cli.SendEvent(sctx, evt); err != nil {
+			return err
+		}
+		logger.Info("event sent", "type", evt.Type, "entity", evt.EntityUID)
+		return nil
+	})
+	if err != nil && ctx.Err() == nil {
+		logger.Warn("event stream stopped", "err", err)
 	}
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -20,25 +20,44 @@ const severityVariant: Record<string, "default" | "secondary" | "destructive" | 
   debug: "outline",
 }
 
+function formatPayload(payload?: Record<string, unknown>) {
+  if (!payload || Object.keys(payload).length === 0) return "—"
+  return Object.entries(payload)
+    .slice(0, 3)
+    .map(([k, v]) => `${k}=${String(v)}`)
+    .join(", ")
+}
+
 export function EventsPage() {
   const [rows, setRows] = useState<EventRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     listEvents(undefined, "24h")
-      .then(setRows)
-      .catch(() => setRows([]))
+      .then((data) => {
+        setRows(data)
+        setError(null)
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Erro"))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 15_000)
+    return () => clearInterval(t)
+  }, [load])
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Eventos</h1>
         <p className="text-muted-foreground text-sm">
-          Timeline do barramento — alertas, desconexões e sinais de recurso.
+          Container lifecycle, agent e pressão de recursos — atualiza a cada 15s.
         </p>
       </div>
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
       <ScrollArea className="rounded-md border">
         <Table>
           <TableHeader>
@@ -48,18 +67,19 @@ export function EventsPage() {
               <TableHead>Severidade</TableHead>
               <TableHead>Entidade</TableHead>
               <TableHead>Origem</TableHead>
+              <TableHead>Detalhe</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading && rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-muted-foreground text-center">
+                <TableCell colSpan={6} className="text-muted-foreground text-center">
                   Nenhum evento no período.
                 </TableCell>
               </TableRow>
@@ -67,16 +87,19 @@ export function EventsPage() {
               rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="whitespace-nowrap font-mono text-xs">
-                    {new Date(e.ts).toLocaleString()}
+                    {new Date(e.ts).toLocaleString("pt-BR")}
                   </TableCell>
                   <TableCell className="font-medium">{e.type}</TableCell>
                   <TableCell>
                     <Badge variant={severityVariant[e.severity] ?? "outline"}>{e.severity}</Badge>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate font-mono text-xs">
-                    {e.entity_uid}
+                  <TableCell className="max-w-[180px] truncate font-mono text-xs">
+                    {e.entity_uid.split(":").pop()}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">{e.source}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-[240px] truncate text-xs">
+                    {formatPayload(e.payload)}
+                  </TableCell>
                 </TableRow>
               ))
             )}

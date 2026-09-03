@@ -54,3 +54,105 @@ type SeriesPoint struct {
 	TS    time.Time `json:"ts"`
 	Value float64   `json:"value"`
 }
+
+type ContainerSeries struct {
+	Container string        `json:"container"`
+	EntityUID string        `json:"entity_uid"`
+	Points    []SeriesPoint `json:"points"`
+}
+
+type MetricSeriesResponse struct {
+	MetricName string            `json:"metric_name"`
+	Series     []ContainerSeries `json:"series"`
+}
+
+type WorkloadSnapshot struct {
+	Container   string    `json:"container"`
+	EntityUID   string    `json:"entity_uid"`
+	CPUUsage    float64   `json:"cpu_usage"`
+	MemoryUsage float64   `json:"memory_usage"`
+	MemoryLimit float64   `json:"memory_limit"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type LogSearchFilter struct {
+	Query     string
+	EntityUID string
+	Container string
+	Level     string
+	Topic     string
+	TraceID   string
+	Since     time.Time
+	Limit     int
+}
+
+type LogTopicCount struct {
+	Container string `json:"container"`
+	EntityUID string `json:"entity_uid"`
+	Topic     string `json:"topic"`
+	Count     int    `json:"count"`
+}
+
+type InsightsResponse struct {
+	Since    string    `json:"since"`
+	Insights []Insight `json:"insights"`
+}
+
+type Insight struct {
+	ID              string         `json:"id"`
+	Theme           string         `json:"theme"`
+	Severity        string         `json:"severity"`
+	Title           string         `json:"title"`
+	Summary         string         `json:"summary"`
+	Container       string         `json:"container"`
+	EntityUID       string         `json:"entity_uid"`
+	Evidence        map[string]any `json:"evidence"`
+	Recommendations []string       `json:"recommendations"`
+}
+
+type ContainerFleetStatus struct {
+	Container    string    `json:"container"`
+	EntityUID    string    `json:"entity_uid"`
+	Service      string    `json:"service"`
+	State        string    `json:"state"`
+	Health       string    `json:"health,omitempty"`
+	RestartCount int       `json:"restart_count"`
+	ExitCode     int       `json:"exit_code,omitempty"`
+	OOMKilled    bool      `json:"oom_killed,omitempty"`
+	StatusText   string    `json:"status_text,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type ServiceReplicaStatus struct {
+	Service       string `json:"service"`
+	ReplicasUp    int    `json:"replicas_up"`
+	ReplicasTotal int    `json:"replicas_total"`
+	Unhealthy     int    `json:"unhealthy"`
+	Restarting    int    `json:"restarting"`
+}
+
+type FleetEventStats struct {
+	Restarts24h  int `json:"restarts_24h"`
+	Failures24h  int `json:"failures_24h"`
+	OOM24h       int `json:"oom_24h"`
+	Disconnect24h int `json:"disconnect_24h"`
+}
+
+type FleetSummary struct {
+	Running           int `json:"running"`
+	Exited            int `json:"exited"`
+	Restarting        int `json:"restarting"`
+	Unhealthy         int `json:"unhealthy"`
+	Dead              int `json:"dead"`
+	TotalRestartCount int `json:"total_restart_count"`
+	ReplicasUp        int `json:"replicas_up"`
+	ReplicasTotal     int `json:"replicas_total"`
+}
+
+type FleetStatusResponse struct {
+	UpdatedAt  time.Time              `json:"updated_at"`
+	Summary    FleetSummary           `json:"summary"`
+	Services   []ServiceReplicaStatus `json:"services"`
+	Containers []ContainerFleetStatus `json:"containers"`
+	Events24h  FleetEventStats        `json:"events_24h"`
+}

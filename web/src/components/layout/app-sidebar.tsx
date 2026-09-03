@@ -1,4 +1,4 @@
-import { Activity, LayoutDashboard, ScrollText, Server, Zap } from "lucide-react"
+import { Activity, Compass, LayoutDashboard, Lightbulb, ScrollText, Server, Zap } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
 import {
@@ -19,6 +19,8 @@ const nav = [
   { to: "/", label: "Visão geral", icon: LayoutDashboard, end: true },
   { to: "/workloads", label: "Workloads", icon: Server, end: false },
   { to: "/metrics", label: "Métricas", icon: Activity, end: false },
+  { to: "/explorer", label: "Explorer", icon: Compass, end: false },
+  { to: "/insights", label: "Insights", icon: Lightbulb, end: false },
   { to: "/logs", label: "Logs", icon: ScrollText, end: false },
   { to: "/events", label: "Eventos", icon: Zap, end: false },
 ]

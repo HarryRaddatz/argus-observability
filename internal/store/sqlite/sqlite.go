@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/model"
@@ -74,6 +75,19 @@ CREATE TABLE IF NOT EXISTS events (
   payload_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_events_entity_ts ON events(entity_uid, ts);
+CREATE TABLE IF NOT EXISTS container_fleet (
+  entity_uid TEXT PRIMARY KEY,
+  container TEXT NOT NULL,
+  service TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL,
+  health TEXT NOT NULL DEFAULT '',
+  restart_count INTEGER NOT NULL DEFAULT 0,
+  exit_code INTEGER NOT NULL DEFAULT 0,
+  oom_killed INTEGER NOT NULL DEFAULT 0,
+  status_text TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fleet_service ON container_fleet(service);
 `
 	_, err := s.db.Exec(schema)
 	return err
@@ -100,6 +114,20 @@ func (s *SQLite) TouchAgent(ctx context.Context, agentID string, at time.Time) e
 	_, err := s.db.ExecContext(ctx, `UPDATE agents SET last_seen=? WHERE agent_id=?`,
 		at.UTC().Format(time.RFC3339Nano), agentID)
 	return err
+}
+
+func (s *SQLite) GetAgent(ctx context.Context, agentID string) (model.AgentRegistration, error) {
+	row := s.db.QueryRowContext(ctx, `
+SELECT agent_id, host_id, runtime, labels_json, last_seen FROM agents WHERE agent_id=?
+`, agentID)
+	var reg model.AgentRegistration
+	var labelsJSON, lastSeen string
+	if err := row.Scan(&reg.AgentID, &reg.HostID, &reg.Runtime, &labelsJSON, &lastSeen); err != nil {
+		return model.AgentRegistration{}, err
+	}
+	_ = json.Unmarshal([]byte(labelsJSON), &reg.Labels)
+	reg.LastSeen, _ = time.Parse(time.RFC3339Nano, lastSeen)
+	return reg, nil
 }
 
 func (s *SQLite) StaleAgents(ctx context.Context, before time.Time) ([]model.AgentRegistration, error) {
@@ -217,7 +245,7 @@ ORDER BY ts ASC
 		return nil, err
 	}
 	defer rows.Close()
-	var out []model.SeriesPoint
+	out := make([]model.SeriesPoint, 0)
 	for rows.Next() {
 		var tsStr string
 		var p model.SeriesPoint
@@ -231,6 +259,113 @@ ORDER BY ts ASC
 		_ = labels // label filter in v2; v1 returns all for metric+since
 	}
 	return out, rows.Err()
+}
+
+func (s *SQLite) QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT ts, value, entity_uid, labels_json FROM metric_points
+WHERE metric_name=? AND ts >= ?
+ORDER BY ts ASC
+`, metricName, since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type key struct{ container, entity string }
+	series := map[key]*model.ContainerSeries{}
+
+	for rows.Next() {
+		var tsStr, labelsJSON, entityUID string
+		var value float64
+		if err := rows.Scan(&tsStr, &value, &entityUID, &labelsJSON); err != nil {
+			return nil, err
+		}
+		var labels model.Labels
+		_ = json.Unmarshal([]byte(labelsJSON), &labels)
+		name := labels["container"]
+		if name == "" {
+			name = entityUID
+		}
+		if container != "" && name != container {
+			continue
+		}
+		ts, _ := time.Parse(time.RFC3339Nano, tsStr)
+		k := key{container: name, entity: entityUID}
+		if series[k] == nil {
+			series[k] = &model.ContainerSeries{Container: name, EntityUID: entityUID, Points: make([]model.SeriesPoint, 0)}
+		}
+		series[k].Points = append(series[k].Points, model.SeriesPoint{TS: ts, Value: value})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]model.ContainerSeries, 0, len(series))
+	for _, v := range series {
+		out = append(out, *v)
+	}
+	return out, nil
+}
+
+func (s *SQLite) ListWorkloads(ctx context.Context, since time.Time) ([]model.WorkloadSnapshot, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT ts, metric_name, value, entity_uid, labels_json FROM metric_points
+WHERE ts >= ? AND metric_name IN ('cpu.usage', 'memory.usage', 'memory.limit')
+ORDER BY ts DESC
+`, since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type key string
+	latest := map[key]*model.WorkloadSnapshot{}
+	seenMetric := map[key]map[string]bool{}
+
+	for rows.Next() {
+		var tsStr, metricName, entityUID, labelsJSON string
+		var value float64
+		if err := rows.Scan(&tsStr, &metricName, &value, &entityUID, &labelsJSON); err != nil {
+			return nil, err
+		}
+		var labels model.Labels
+		_ = json.Unmarshal([]byte(labelsJSON), &labels)
+		name := labels["container"]
+		if name == "" {
+			continue
+		}
+		k := key(name)
+		if seenMetric[k] == nil {
+			seenMetric[k] = map[string]bool{}
+		}
+		if seenMetric[k][metricName] {
+			continue
+		}
+		seenMetric[k][metricName] = true
+		ts, _ := time.Parse(time.RFC3339Nano, tsStr)
+		if latest[k] == nil {
+			latest[k] = &model.WorkloadSnapshot{Container: name, EntityUID: entityUID, UpdatedAt: ts}
+		}
+		switch metricName {
+		case "cpu.usage":
+			latest[k].CPUUsage = value
+		case "memory.usage":
+			latest[k].MemoryUsage = value
+		case "memory.limit":
+			latest[k].MemoryLimit = value
+		}
+		if ts.After(latest[k].UpdatedAt) {
+			latest[k].UpdatedAt = ts
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]model.WorkloadSnapshot, 0, len(latest))
+	for _, w := range latest {
+		out = append(out, *w)
+	}
+	return out, nil
 }
 
 func (s *SQLite) ListEvents(ctx context.Context, entityUID string, since time.Time, limit int) ([]model.Event, error) {
@@ -253,16 +388,35 @@ func (s *SQLite) ListEvents(ctx context.Context, entityUID string, since time.Ti
 	return scanEvents(rows)
 }
 
-func (s *SQLite) SearchLogs(ctx context.Context, query string, entityUID string, since time.Time, limit int) ([]model.LogEntry, error) {
+func (s *SQLite) SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error) {
+	limit := filter.Limit
 	if limit <= 0 {
-		limit = 100
+		limit = 200
 	}
-	q := `SELECT ts, message, level, entity_uid, labels_json, fields_json FROM log_entries WHERE ts >= ? AND message LIKE ?`
-	args := []any{since.UTC().Format(time.RFC3339Nano), fmt.Sprintf("%%%s%%", query)}
-	if entityUID != "" {
+	q := `SELECT ts, message, level, entity_uid, labels_json, fields_json FROM log_entries WHERE ts >= ?`
+	args := []any{filter.Since.UTC().Format(time.RFC3339Nano)}
+
+	if filter.Query != "" {
+		q += ` AND message LIKE ?`
+		args = append(args, fmt.Sprintf("%%%s%%", filter.Query))
+	}
+	if filter.EntityUID != "" {
 		q += ` AND entity_uid=?`
-		args = append(args, entityUID)
+		args = append(args, filter.EntityUID)
 	}
+	if filter.Container != "" {
+		q += ` AND entity_uid LIKE ?`
+		args = append(args, "%:"+filter.Container)
+	}
+	if filter.Level != "" && filter.Level != "all" {
+		q += ` AND level=?`
+		args = append(args, filter.Level)
+	}
+	if filter.Topic != "" && filter.Topic != "all" {
+		q += ` AND fields_json LIKE ?`
+		args = append(args, fmt.Sprintf(`%%"topics":%%"%s"%%`, filter.Topic))
+	}
+
 	q += ` ORDER BY ts DESC LIMIT ?`
 	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx, q, args...)
@@ -271,6 +425,7 @@ func (s *SQLite) SearchLogs(ctx context.Context, query string, entityUID string,
 	}
 	defer rows.Close()
 	var out []model.LogEntry
+	out = make([]model.LogEntry, 0)
 	for rows.Next() {
 		var e model.LogEntry
 		var tsStr, labelsJSON, fieldsJSON string
@@ -285,8 +440,62 @@ func (s *SQLite) SearchLogs(ctx context.Context, query string, entityUID string,
 	return out, rows.Err()
 }
 
+func (s *SQLite) CountLogTopics(ctx context.Context, since time.Time) ([]model.LogTopicCount, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT entity_uid, fields_json FROM log_entries WHERE ts >= ?
+`, since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type key struct {
+		container string
+		entityUID string
+		topic     string
+	}
+	counts := map[key]int{}
+	for rows.Next() {
+		var entityUID, fieldsJSON string
+		if err := rows.Scan(&entityUID, &fieldsJSON); err != nil {
+			return nil, err
+		}
+		var fields map[string]any
+		_ = json.Unmarshal([]byte(fieldsJSON), &fields)
+		rawTopics, _ := fields["topics"].([]any)
+		container := entityUID
+		if parts := strings.Split(entityUID, ":"); len(parts) > 0 {
+			container = parts[len(parts)-1]
+		}
+		if len(rawTopics) == 0 {
+			continue
+		}
+		for _, t := range rawTopics {
+			topic, _ := t.(string)
+			if topic == "" || topic == "general" {
+				continue
+			}
+			k := key{container: container, entityUID: entityUID, topic: topic}
+			counts[k]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]model.LogTopicCount, 0, len(counts))
+	for k, n := range counts {
+		out = append(out, model.LogTopicCount{
+			Container: k.container,
+			EntityUID: k.entityUID,
+			Topic:     k.topic,
+			Count:     n,
+		})
+	}
+	return out, nil
+}
+
 func scanEvents(rows *sql.Rows) ([]model.Event, error) {
-	var out []model.Event
+	out := make([]model.Event, 0)
 	for rows.Next() {
 		var e model.Event
 		var tsStr, labelsJSON, payloadJSON string
