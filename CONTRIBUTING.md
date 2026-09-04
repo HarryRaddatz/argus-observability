@@ -14,9 +14,22 @@ Obrigado por contribuir. Este repositório é a biblioteca pública de observabi
 ```bash
 cp .env.example .env
 docker compose up -d --build   # stack completa
+go vet ./...
 go test ./...                  # backend (Go 1.22+)
 cd web && npm ci && npm run build
+bash .github/scripts/check-no-vps-leak.sh   # opcional, local
 ```
+
+## CI e branch protection
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (job `test`) roda em todo PR e push para `main`:
+
+1. Anti-leak — padrões de infra privada no diff
+2. `go vet ./...`
+3. `go test ./...`
+4. `npm ci && npm run build` (web)
+
+**Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
 
 ## Commits
 
@@ -25,7 +38,7 @@ Use mensagens convencionais curtas (`feat:`, `fix:`, `docs:`). Referencie issues
 ## Pull requests
 
 - Descreva o **porquê** e como validar.
-- CI deve passar (Go tests + build web).
+- CI deve passar (anti-leak, go vet, go test, build web).
 - Docs: se alterar rotas API, contratos ou UI, atualize `docs/api/` e `docs/map.md`.
 
 ## Código

@@ -1,5 +1,7 @@
 # Argus
 
+[![CI](https://github.com/HarryRaddatz/argus-observability/actions/workflows/ci.yml/badge.svg)](https://github.com/HarryRaddatz/argus-observability/actions/workflows/ci.yml)
+
 Observabilidade de hosts e workloads Docker: métricas, logs, eventos, traces e painel web.
 
 Hub central + agent leve por host. Persistência plugável (SQLite no default).
