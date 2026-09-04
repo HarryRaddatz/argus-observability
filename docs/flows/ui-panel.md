@@ -1,66 +1,70 @@
 # Fluxo: painel de gestão
 
-O painel é uma SPA React que consome a API do hub. Componentes visuais exclusivamente shadcn/ui.
+SPA React (`web/`) consumindo a API do hub. Componentes shadcn/ui.
 
-## Sequência — carregamento inicial
+## Arquitetura de informação
 
-```mermaid
-sequenceDiagram
-  participant Browser
-  participant Vite as Dev server / nginx
-  participant Hub
+Navegação agrupada por domínio (`web/src/lib/navigation.ts`):
 
-  Browser->>Vite: GET /
-  Vite-->>Browser: index.html + JS
-  Browser->>Vite: GET /health
-  Vite->>Hub: proxy /health
-  Hub-->>Browser: status ok
-  Browser->>Vite: GET /api/v1/events
-  Vite->>Hub: proxy API
-  Hub-->>Browser: timeline JSON
-```
+| Grupo | Rotas |
+|---|---|
+| Visão | Dashboard (`/`) |
+| Infraestrutura | Workloads, Fleet, Grupos |
+| Telemetria | Métricas, Explorer, Logs |
+| Análise | Insights, Patterns, Topologia, Traces, SLOs |
+| Alertas | Eventos |
 
-## Sequência — métricas no gráfico
-
-```mermaid
-sequenceDiagram
-  participant UI as Pagina Metricas
-  participant Hub
-  participant Store
-
-  UI->>Hub: GET /api/v1/query?metric=cpu.usage
-  Hub->>Store: aggregate series
-  Store-->>Hub: points
-  Hub-->>UI: QuerySeries JSON
-  UI->>UI: render Chart (shadcn)
-```
+Header global exibe grupo + título da rota ativa (`app-shell.tsx`).
 
 ## Mapa de rotas
 
 ```mermaid
-flowchart LR
-  Shell[AppShell + Sidebar]
-  Shell --> Dashboard[Visao geral]
-  Shell --> Workloads[Workloads]
-  Shell --> Metrics[Metricas]
-  Shell --> Logs[Logs]
+flowchart TB
+  Shell[AppShell + Sidebar agrupado]
+  Shell --> Dashboard
+  Shell --> Infra[Workloads / Fleet / Grupos]
+  Shell --> Tel[Métricas / Explorer / Logs]
+  Shell --> Ana[Insights / Patterns / Topologia / Traces / SLOs]
   Shell --> Events[Eventos]
 ```
 
-## Camadas da UI
+Todas as 13 rotas permanecem estáveis (URLs inalteradas).
+
+## Layout de página
+
+Componente `PageHeader`: título, descrição, breadcrumb opcional, slot de ações (período, toggles).
+
+Páginas principais:
+
+- **Dashboard** — hub com cards por domínio (infra, HTTP, análise)
+- **Workloads** — grid com meters/sparklines + tabela; chart CPU empilhado
+- **Métricas** — layout 2 colunas em desktop; meters CPU/mem
+- **Explorer** — multi-série com toggle média/máx
+
+## Sequência — carregamento
 
 ```mermaid
-flowchart TB
-  Pages[pages/]
-  Layout[components/layout]
-  UI[components/ui shadcn]
-  API[lib/api.ts]
-  Pages --> Layout
-  Pages --> UI
-  Pages --> API
-  API --> Hub[Hub REST]
+sequenceDiagram
+  participant Browser
+  participant Web as nginx / Vite
+  participant Hub
+
+  Browser->>Web: GET /
+  Web-->>Browser: SPA
+  Browser->>Hub: GET /health
+  Hub-->>Browser: ok
+  Browser->>Hub: GET /api/v1/workloads
+  Hub-->>Browser: snapshots
 ```
 
-## Tema claro / escuro
+## Dev
 
-Variáveis `:root` e `.dark` em `web/src/index.css`. Toggle de tema pode ser adicionado via `next-themes` ou classe no `documentElement` — padrão shadcn.
+Proxy Vite: `/api` e `/health` → hub (`web/vite.config.ts`).
+
+Build produção: `npm run build` — artefatos servidos pelo container `argus-web`.
+
+## Referências
+
+- Layout: `web/src/components/layout/`
+- Métricas UI: `web/src/components/metrics/`
+- Mapa produto: [../map.md](../map.md)

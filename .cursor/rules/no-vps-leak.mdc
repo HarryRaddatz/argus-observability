@@ -1,0 +1,38 @@
+---
+description: Proibir vazamento de VPS, infra interna e processos ops no Argus público
+alwaysApply: true
+---
+
+# Zero vazamento VPS / processo interno
+
+O Argus deve ser legível por qualquer usuário externo. **Nunca** gravar no repo (código, docs, rules, commits, issues, exemplos):
+
+## Proibido
+
+- Paths da VPS: `/root/services`, `/root/infrastructure`, `npmplus-shared`, `village-postgres`, runners internos
+- Host/provedor: Hostinger, domínios reais, IPs, portas fixas de produção (`127.0.0.1:8088` só em doc ops **fora** do repo público)
+- Stacks privadas como default: nomes de containers/serviços reais em seeds, README ou UI default
+- Ferramentas internas de referência ou comparativos com produtos que usamos na operação (ex.: outros monitores self-hosted)
+- Processo interno: Graph-RAG, `AGENTS.md` do workspace, git-vs-deploy da VPS, PAT/secrets paths, `docs/host-e-processos.md`
+- Credenciais, tokens, `.env` reais, cookies, compose de produção com secrets
+
+## Usar em vez disso
+
+| Interno | Público |
+|---|---|
+| `agendamentoapi` | `demo-api`, `checkout`, `example-service` |
+| VPS Hostinger | `your-host`, `docker host` |
+| `/root/services/argus` | clone path ou `.` |
+| Deploy na VPS | `docker compose up` / README quickstart |
+
+## Onde aplicar
+
+README, `docs/`, comentários, seeds SQLite, labels UI, `.env.example`, **issues e títulos do repo**, mensagens de commit **deste repositório**.
+
+Docs ops da VPS ficam **fora** do repo (`/root/services/docs/` no workspace operacional), nunca copiados para `argus/`.
+
+## Checklist antes de commitar
+
+1. Grep por `venuz`, `hostinger`, `/root/`, `npmplus`, `village`, `8088`, `5173` em arquivos versionados
+2. Seeds e exemplos usam nomes genéricos
+3. Config sensível só via env, nunca hardcoded

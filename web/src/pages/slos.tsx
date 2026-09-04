@@ -50,7 +50,7 @@ export function SLOsPage() {
       ) : rows.length === 0 ? (
         <Card>
           <CardContent className="text-muted-foreground pt-6 text-sm">
-            Nenhum SLO configurado. O seed padrão inclui agendamentoapi após migração do hub.
+            Nenhum SLO configurado. O seed padrão inclui demo-api após migração do hub.
           </CardContent>
         </Card>
       ) : (

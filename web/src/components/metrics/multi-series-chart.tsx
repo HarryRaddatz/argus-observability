@@ -6,13 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatTime } from "@/lib/format"
 import type { ContainerSeries } from "@/lib/api"
 
-const COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-]
+import { containerColor } from "@/lib/chart-colors"
 
 type Props = {
   title: string
@@ -22,6 +16,7 @@ type Props = {
   unit?: string
   transform?: (v: number) => number
   chartType?: "area" | "line"
+  statMode?: "avg" | "max"
 }
 
 export function MultiSeriesChart({
@@ -32,15 +27,18 @@ export function MultiSeriesChart({
   unit = "",
   transform,
   chartType = "area",
+  statMode,
 }: Props) {
   const data = mergeSeries(series, transform)
   const keys = series.map((s) => s.container)
+  const statLabel = statMode ? describeStat(series, statMode, transform) : null
+  const fullDescription = [description, statLabel].filter(Boolean).join(" · ")
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+        {fullDescription ? <CardDescription>{fullDescription}</CardDescription> : null}
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -63,7 +61,7 @@ export function MultiSeriesChart({
                   type="monotone"
                   dataKey={k}
                   name={k}
-                  stroke={COLORS[i % COLORS.length]}
+                  stroke={containerColor(i)}
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
@@ -85,8 +83,8 @@ export function MultiSeriesChart({
                   type="monotone"
                   dataKey={k}
                   name={k}
-                  stroke={COLORS[i % COLORS.length]}
-                  fill={COLORS[i % COLORS.length]}
+                  stroke={containerColor(i)}
+                  fill={containerColor(i)}
                   fillOpacity={0.12}
                   strokeWidth={2}
                   isAnimationActive={false}
@@ -111,4 +109,17 @@ function mergeSeries(series: ContainerSeries[], transform?: (v: number) => numbe
     }
   }
   return [...byTime.values()]
+}
+
+function describeStat(series: ContainerSeries[], mode: "avg" | "max", transform?: (v: number) => number) {
+  const values: number[] = []
+  for (const s of series) {
+    for (const p of s.points ?? []) {
+      values.push(transform ? transform(p.value) : p.value)
+    }
+  }
+  if (values.length === 0) return null
+  const agg = mode === "max" ? Math.max(...values) : values.reduce((a, b) => a + b, 0) / values.length
+  const label = mode === "max" ? "Máx" : "Média"
+  return `${label}: ${Math.round(agg * 10) / 10}`
 }

@@ -217,8 +217,8 @@ func (s *SQLite) seedDefaultSLOs() error {
 	_, err := s.db.Exec(`
 INSERT OR IGNORE INTO slos (id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at)
 VALUES
-  ('slo-agendamento-latency', 'Latência p95 agendamentoapi', 'agendamentoapi', '', 'latency_p95', 99.9, 720, 500, ?),
-  ('slo-agendamento-availability', 'Disponibilidade agendamentoapi', 'agendamentoapi', '', 'availability', 99.9, 720, 0, ?)
+  ('slo-demo-latency', 'Latência p95 demo-api', 'demo-api', '', 'latency_p95', 99.9, 720, 500, ?),
+  ('slo-demo-availability', 'Disponibilidade demo-api', 'demo-api', '', 'availability', 99.9, 720, 0, ?)
 `, now, now)
 	return err
 }

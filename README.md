@@ -1,10 +1,37 @@
 # Argus
 
-Observabilidade de hosts e workloads: métricas, logs, eventos e consultas em tempo real.
+Observabilidade de hosts e workloads Docker: métricas, logs, eventos, traces e painel web.
 
 Hub central + agent leve por host. Persistência plugável (SQLite no default).
 
+## Quickstart
+
+Requisitos: Docker Engine com Compose v2.
+
+```bash
+git clone https://github.com/HarryRaddatz/argus-observability.git
+cd argus-observability
+cp .env.example .env
+# Edite ARGUS_AGENT_TOKEN se quiser autenticar ingest
+docker compose up -d --build
+```
+
+| Serviço | URL |
+|---|---|
+| Painel | http://localhost:3000 |
+| Hub API | http://localhost:8080 |
+| Health | http://localhost:8080/health |
+
+O agent monta o Docker socket e passa a reportar containers em execução. Abra o painel e confira **Dashboard** e **Workloads**.
+
+Exemplo mínimo adicional: [examples/compose-minimal/](examples/compose-minimal/).
+
 ## Componentes
+
+| Binário | Função |
+|---|---|
+| `argus-hub` | API REST, WebSocket, bus de eventos, Store |
+| `argus-agent` | Coleta métricas e logs do runtime; envia ao hub |
 
 ```mermaid
 flowchart LR
@@ -13,29 +40,19 @@ flowchart LR
   Hub --> Bus[Event bus]
   Bus --> Rules[Regras]
   Rules --> Notify[Notificacoes]
-  UI[UI / MCP] --> Hub
-  Hub --> WS[WebSocket stream]
+  UI[UI] --> Hub
 ```
-
-| Binário | Função |
-|---|---|
-| `argus-hub` | API, WebSocket, bus de eventos, Store |
-| `argus-agent` | Coleta métricas e logs do runtime; envia ao hub |
 
 ## Documentação
 
-| Fluxo | Arquivo |
+| Recurso | Arquivo |
 |---|---|
+| Mapa do produto | [docs/map.md](docs/map.md) |
+| Roadmap biblioteca pública | [docs/public-library/roadmap.md](docs/public-library/roadmap.md) |
+| API reference | [docs/api/](docs/api/) |
 | Visão geral | [docs/overview.md](docs/overview.md) |
-| Conexão agent ↔ hub | [docs/flows/agent-connection.md](docs/flows/agent-connection.md) |
-| Ingestão de métricas | [docs/flows/metrics-ingestion.md](docs/flows/metrics-ingestion.md) |
-| Stream de logs | [docs/flows/log-streaming.md](docs/flows/log-streaming.md) |
-| Eventos e alertas | [docs/flows/events-and-alerts.md](docs/flows/events-and-alerts.md) |
-| Painel de gestão | [docs/flows/ui-panel.md](docs/flows/ui-panel.md) · código em [`web/`](web/) |
-
-## Painel (shadcn/ui)
-
-Interface em `web/` — componentes [shadcn/ui](https://ui.shadcn.com) alinhados ao [kit Figma](https://ui.shadcn.com/docs/figma). Ver [web/README.md](web/README.md).
+| Painel (rotas e IA) | [docs/flows/ui-panel.md](docs/flows/ui-panel.md) |
+| Fluxos | [docs/flows/](docs/flows/) |
 
 ## Desenvolvimento local
 
@@ -45,15 +62,16 @@ go run ./cmd/agent
 cd web && npm install && npm run dev
 ```
 
-Ou com Docker:
-
-```bash
-cp .env.example .env
-docker compose up -d --build
-```
+O dev server Vite faz proxy de `/api` e `/health` para `http://127.0.0.1:8080`.
 
 ## Configuração
 
-Variáveis principais — ver `.env.example`.
+Variáveis principais — ver `.env.example` e [docs/api/configuration.md](docs/api/configuration.md).
 
-Commit ≠ deploy nesta VPS até existir pipeline de produção documentado em ops.
+## Contribuir
+
+Leia [CONTRIBUTING.md](CONTRIBUTING.md) e [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Licença
+
+MIT — ver [LICENSE](LICENSE).

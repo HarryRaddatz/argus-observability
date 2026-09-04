@@ -8,7 +8,7 @@ import (
 
 func TestGenerateFleetOOM(t *testing.T) {
 	out := GenerateFleet([]model.ContainerFleetStatus{
-		{Container: "venuz-api", EntityUID: "docker:host:venuz-api", OOMKilled: true},
+		{Container: "stack-demo-api", EntityUID: "docker:host:stack-demo-api", OOMKilled: true},
 	})
 	if len(out) != 1 || out[0].Theme != "oom_killed" {
 		t.Fatalf("expected oom insight, got %+v", out)
@@ -17,7 +17,7 @@ func TestGenerateFleetOOM(t *testing.T) {
 
 func TestGenerateFleetRestartLoop(t *testing.T) {
 	out := GenerateFleet([]model.ContainerFleetStatus{
-		{Container: "venuz-api", EntityUID: "x", RestartCount: 5},
+		{Container: "stack-demo-api", EntityUID: "x", RestartCount: 5},
 	})
 	if len(out) != 1 || out[0].Theme != "restart_loop" {
 		t.Fatalf("expected restart insight, got %+v", out)

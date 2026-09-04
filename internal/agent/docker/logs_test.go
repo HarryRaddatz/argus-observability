@@ -42,12 +42,12 @@ func TestCoalesceSeparateEntries(t *testing.T) {
 }
 
 func TestCoalesceDoesNotMergeHTTPWithStructuredJSON(t *testing.T) {
-	httpLine := `260903/174902.099, (1788457742099:b670754c7016:1:mtlko8vi:11216) [response,api] http://b670754c7016:9002: post /agendamento/foo {} 200 (2026ms)`
-	jsonLine := `{"ts":"2026-09-03T17:49:08.416+00:00","level":"info","event":"entry","service":"agendamentoapi","traceId":"50e30959-f59e-487f-bbe0-89ae7d8e74e5","msg":"http.request"}`
+	httpLine := `260903/174902.099, (1788457742099:b670754c7016:1:mtlko8vi:11216) [response,api] http://b670754c7016:9002: post /api/orders/foo {} 200 (2026ms)`
+	jsonLine := `{"ts":"2026-09-03T17:49:08.416+00:00","level":"info","event":"entry","service":"demo-api","traceId":"50e30959-f59e-487f-bbe0-89ae7d8e74e5","msg":"http.request"}`
 	raw := []parsedLine{
 		{message: httpLine},
 		{message: jsonLine},
-		{message: `{"ts":"2026-09-03T17:49:08.420+00:00","level":"info","event":"exit","service":"agendamentoapi"}`},
+		{message: `{"ts":"2026-09-03T17:49:08.420+00:00","level":"info","event":"exit","service":"demo-api"}`},
 	}
 	out := coalesceLogLines(raw)
 	if len(out) != 3 {
@@ -57,9 +57,9 @@ func TestCoalesceDoesNotMergeHTTPWithStructuredJSON(t *testing.T) {
 
 func TestCoalesceDoesNotMergeMultipleStructuredJSON(t *testing.T) {
 	raw := []parsedLine{
-		{message: `{"ts":"2026-09-03T17:49:02.099+00:00","level":"info","event":"entry","service":"agendamentoapi"}`},
-		{message: `{"ts":"2026-09-03T17:49:02.106+00:00","level":"info","event":"info","service":"agendamentoapi"}`},
-		{message: `{"ts":"2026-09-03T17:49:02.516+00:00","level":"info","event":"exit","service":"agendamentoapi"}`},
+		{message: `{"ts":"2026-09-03T17:49:02.099+00:00","level":"info","event":"entry","service":"demo-api"}`},
+		{message: `{"ts":"2026-09-03T17:49:02.106+00:00","level":"info","event":"info","service":"demo-api"}`},
+		{message: `{"ts":"2026-09-03T17:49:02.516+00:00","level":"info","event":"exit","service":"demo-api"}`},
 	}
 	out := coalesceLogLines(raw)
 	if len(out) != 3 {
@@ -89,14 +89,14 @@ func TestCoalesceWinstonMultilineThenSeparate(t *testing.T) {
 	}
 }
 
-func TestCoalesceAgendamentoBurst(t *testing.T) {
+func TestCoalesceStructuredBurst(t *testing.T) {
 	var raw []parsedLine
 	msgs := []string{
-		`{"ts":"2026-09-03T17:49:32.647+00:00","level":"info","event":"exit","service":"agendamentoapi","traceId":"bbf65b54","status":200}`,
-		`260903/174932.161, (1788457772161:b670754c7016:1:mtlko8vi:11223) [response,api] post /agendamento/filtrar {"sortBy":"agendamentoInicio","orderBy":"desc"} 200 (486ms)`,
-		`{"ts":"2026-09-03T17:49:56.915+00:00","level":"info","event":"entry","service":"agendamentoapi"}`,
-		`{"ts":"2026-09-03T17:49:56.928+00:00","level":"info","event":"entry","service":"agendamentoapi"}`,
-		`{"ts":"2026-09-03T17:49:57.551+00:00","level":"info","event":"exit","service":"agendamentoapi","status":200}`,
+		`{"ts":"2026-09-03T17:49:32.647+00:00","level":"info","event":"exit","service":"demo-api","traceId":"bbf65b54","status":200}`,
+		`260903/174932.161, (1788457772161:b670754c7016:1:mtlko8vi:11223) [response,api] post /api/orders/filter {"sortBy":"createdAt","orderBy":"desc"} 200 (486ms)`,
+		`{"ts":"2026-09-03T17:49:56.915+00:00","level":"info","event":"entry","service":"demo-api"}`,
+		`{"ts":"2026-09-03T17:49:56.928+00:00","level":"info","event":"entry","service":"demo-api"}`,
+		`{"ts":"2026-09-03T17:49:57.551+00:00","level":"info","event":"exit","service":"demo-api","status":200}`,
 	}
 	for _, m := range msgs {
 		raw = append(raw, parsedLine{message: m})

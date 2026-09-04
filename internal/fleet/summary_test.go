@@ -24,8 +24,8 @@ func TestSummarize(t *testing.T) {
 
 func TestServiceReplicas(t *testing.T) {
 	containers := []model.ContainerFleetStatus{
-		{Container: "venuz-api-1", Service: "api", State: "running"},
-		{Container: "venuz-api-2", Service: "api", State: "restarting", Health: "unhealthy"},
+		{Container: "stack-demo-api-1", Service: "api", State: "running"},
+		{Container: "stack-demo-api-2", Service: "api", State: "restarting", Health: "unhealthy"},
 	}
 	services := ServiceReplicas(containers)
 	if len(services) != 1 {

@@ -20,6 +20,15 @@ const defaultSocket = "/var/run/docker.sock"
 type Collector struct {
 	client *http.Client
 	hostID string
+	lastIO sync.Map // container ID -> ioSample
+}
+
+type ioSample struct {
+	rxBytes   uint64
+	txBytes   uint64
+	readBytes uint64
+	writeBytes uint64
+	at        time.Time
 }
 
 func NewCollector(hostID string) (*Collector, error) {
@@ -72,6 +81,22 @@ type statsResponse struct {
 	CPUStats    cpuStats    `json:"cpu_stats"`
 	PreCPUStats cpuStats    `json:"precpu_stats"`
 	MemoryStats memoryStats `json:"memory_stats"`
+	Networks    map[string]networkStats `json:"networks"`
+	BlkioStats  blkioStats  `json:"blkio_stats"`
+}
+
+type networkStats struct {
+	RxBytes uint64 `json:"rx_bytes"`
+	TxBytes uint64 `json:"tx_bytes"`
+}
+
+type blkioStats struct {
+	IoServiceBytesRecursive []blkioEntry `json:"io_service_bytes_recursive"`
+}
+
+type blkioEntry struct {
+	Op    string `json:"op"`
+	Value uint64 `json:"value"`
 }
 
 type cpuStats struct {
@@ -121,6 +146,9 @@ func (c *Collector) Collect(ctx context.Context) ([]model.MetricPoint, error) {
 				{MetricName: "cpu.usage", TS: now, Value: cpuPercent(stats), EntityUID: entityUID, Labels: labels},
 				{MetricName: "memory.usage", TS: now, Value: float64(stats.MemoryStats.Usage), EntityUID: entityUID, Labels: labels},
 				{MetricName: "memory.limit", TS: now, Value: float64(stats.MemoryStats.Limit), EntityUID: entityUID, Labels: labels},
+			}
+			if ioPoints := c.networkAndBlockIO(it.ID, stats, now, entityUID, labels); len(ioPoints) > 0 {
+				batch = append(batch, ioPoints...)
 			}
 			mu.Lock()
 			points = append(points, batch...)
@@ -188,4 +216,37 @@ func cpuPercent(v *statsResponse) float64 {
 		online = 1
 	}
 	return (cpuDelta / sysDelta) * float64(online) * 100
+}
+
+func (c *Collector) networkAndBlockIO(id string, stats *statsResponse, now time.Time, entityUID string, labels model.Labels) []model.MetricPoint {
+	var rx, tx, read, write uint64
+	for _, n := range stats.Networks {
+		rx += n.RxBytes
+		tx += n.TxBytes
+	}
+	for _, e := range stats.BlkioStats.IoServiceBytesRecursive {
+		switch e.Op {
+		case "Read":
+			read += e.Value
+		case "Write":
+			write += e.Value
+		}
+	}
+	cur := ioSample{rxBytes: rx, txBytes: tx, readBytes: read, writeBytes: write, at: now}
+	prevAny, ok := c.lastIO.Load(id)
+	c.lastIO.Store(id, cur)
+	if !ok {
+		return nil
+	}
+	prev := prevAny.(ioSample)
+	secs := now.Sub(prev.at).Seconds()
+	if secs <= 0 {
+		return nil
+	}
+	return []model.MetricPoint{
+		{MetricName: "network.rx", TS: now, Value: float64(rx-prev.rxBytes) / secs, EntityUID: entityUID, Labels: labels},
+		{MetricName: "network.tx", TS: now, Value: float64(tx-prev.txBytes) / secs, EntityUID: entityUID, Labels: labels},
+		{MetricName: "block.read", TS: now, Value: float64(read-prev.readBytes) / secs, EntityUID: entityUID, Labels: labels},
+		{MetricName: "block.write", TS: now, Value: float64(write-prev.writeBytes) / secs, EntityUID: entityUID, Labels: labels},
+	}
 }

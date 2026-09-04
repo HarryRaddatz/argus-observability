@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { PageHeader } from "@/components/layout/page-header"
 import { MultiSeriesChart } from "@/components/metrics/multi-series-chart"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +38,7 @@ export function ExplorerPage() {
   const [series, setSeries] = useState<ContainerSeries[]>([])
   const [loading, setLoading] = useState(false)
   const [viewName, setViewName] = useState("")
+  const [statMode, setStatMode] = useState<"avg" | "max">("avg")
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadSavedViews)
 
   useEffect(() => {
@@ -123,12 +125,11 @@ export function ExplorerPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Explorer</h1>
-        <p className="text-muted-foreground text-sm">
-          Monte visualizações customizadas — métricas, containers e período à sua escolha.
-        </p>
-      </div>
+      <PageHeader
+        title="Explorer"
+        description="Compare séries entre containers — métricas, período e tipo de gráfico."
+        breadcrumb="Telemetria"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
@@ -159,6 +160,22 @@ export function ExplorerPage() {
                     {r.label}
                   </Button>
                 ))}
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant={statMode === "avg" ? "default" : "outline"}
+                  onClick={() => setStatMode("avg")}
+                >
+                  Média
+                </Button>
+                <Button
+                  size="sm"
+                  variant={statMode === "max" ? "default" : "outline"}
+                  onClick={() => setStatMode("max")}
+                >
+                  Máx
+                </Button>
               </div>
               <div className="flex gap-1">
                 <Button
@@ -290,6 +307,7 @@ export function ExplorerPage() {
           unit={unit}
           transform={transform}
           chartType={chartType}
+          statMode={statMode}
         />
       </div>
     </div>

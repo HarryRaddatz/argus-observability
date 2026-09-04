@@ -11,9 +11,9 @@ func TestDeriveMetricsFromLogExit(t *testing.T) {
 	ts := time.Now().UTC()
 	entry := model.LogEntry{
 		TS:        ts,
-		Message:   `{"event":"exit","service":"agendamentoapi","status":200,"durationMs":250}`,
-		EntityUID: "container:venuz-agendamentoapi-1",
-		Labels:    model.Labels{"container": "venuz-agendamentoapi-1"},
+		Message:   `{"event":"exit","service":"demo-api","status":200,"durationMs":250}`,
+		EntityUID: "container:stack-demo-api-1",
+		Labels:    model.Labels{"container": "stack-demo-api-1"},
 	}
 	points := DeriveMetricsFromLog(entry)
 	if len(points) < 4 {
@@ -22,7 +22,7 @@ func TestDeriveMetricsFromLogExit(t *testing.T) {
 	names := map[string]float64{}
 	for _, p := range points {
 		names[p.MetricName] = p.Value
-		if p.Labels["service"] != "agendamentoapi" {
+		if p.Labels["service"] != "demo-api" {
 			t.Fatalf("service label missing: %+v", p.Labels)
 		}
 	}
@@ -37,9 +37,9 @@ func TestDeriveMetricsFromLogExit(t *testing.T) {
 func TestDeriveMetricsFromLogError(t *testing.T) {
 	entry := model.LogEntry{
 		TS:        time.Now().UTC(),
-		Message:   `{"event":"exit","service":"pagamentosapi","status":503,"durationMs":50}`,
-		EntityUID: "container:venuz-pagamentosapi-1",
-		Labels:    model.Labels{"container": "venuz-pagamentosapi-1"},
+		Message:   `{"event":"exit","service":"checkout","status":503,"durationMs":50}`,
+		EntityUID: "container:stack-demo-checkout-1",
+		Labels:    model.Labels{"container": "stack-demo-checkout-1"},
 	}
 	points := DeriveMetricsFromLog(entry)
 	var errRate float64

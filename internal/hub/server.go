@@ -529,6 +529,10 @@ func (s *Server) handleMetricsCatalog(w http.ResponseWriter, _ *http.Request) {
 		{"name": "http.error_rate", "label": "Taxa de erro HTTP", "unit": "%"},
 		{"name": "http.requests", "label": "Requisições HTTP", "unit": "req"},
 		{"name": "http.status", "label": "Status HTTP", "unit": "code"},
+		{"name": "network.rx", "label": "Rede RX", "unit": "B/s"},
+		{"name": "network.tx", "label": "Rede TX", "unit": "B/s"},
+		{"name": "block.read", "label": "Disco leitura", "unit": "B/s"},
+		{"name": "block.write", "label": "Disco escrita", "unit": "B/s"},
 	})
 }
 

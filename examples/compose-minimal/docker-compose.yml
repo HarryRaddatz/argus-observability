@@ -1,0 +1,38 @@
+name: argus-minimal
+
+services:
+  argus-hub:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.hub
+    ports:
+      - "8080:8080"
+    environment:
+      ARGUS_HUB_ADDR: ":8080"
+      ARGUS_STORE_PATH: /data/argus.db
+    volumes:
+      - argus_data:/data
+
+  argus-agent:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.agent
+    environment:
+      ARGUS_HUB_URL: http://argus-hub:8080
+      ARGUS_HOST_ID: demo-host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - argus-hub
+
+  argus-web:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - argus-hub
+
+volumes:
+  argus_data:

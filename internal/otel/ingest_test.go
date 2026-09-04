@@ -14,7 +14,7 @@ func TestParseOTLPTracesJSON(t *testing.T) {
 			map[string]any{
 				"resource": map[string]any{
 					"attributes": []any{
-						map[string]any{"key": "service.name", "value": map[string]any{"stringValue": "agendamentoapi"}},
+						map[string]any{"key": "service.name", "value": map[string]any{"stringValue": "demo-api"}},
 					},
 				},
 				"scopeSpans": []any{
@@ -43,10 +43,10 @@ func TestParseOTLPTracesJSON(t *testing.T) {
 	if len(spans) != 1 {
 		t.Fatalf("expected 1 span, got %d", len(spans))
 	}
-	if spans[0].Service != "agendamentoapi" {
+	if spans[0].Service != "demo-api" {
 		t.Fatalf("service: %s", spans[0].Service)
 	}
-	if spans[0].DurationMs != 1 {
+	if spans[0].DurationMs != 1500 {
 		t.Fatalf("duration: %v", spans[0].DurationMs)
 	}
 	if spans[0].StartTS != time.Unix(0, 1000000000).UTC() {

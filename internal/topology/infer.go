@@ -62,8 +62,8 @@ func InferTopologyEdges(entry model.LogEntry) []TopologyEdge {
 		add(queueService(m[1]), "amqp")
 	}
 
-	if strings.Contains(strings.ToLower(msg), "barramento") {
-		add("barramento", "amqp")
+	if strings.Contains(strings.ToLower(msg), "rabbitmq") || strings.Contains(strings.ToLower(msg), "message-bus") {
+		add("message-bus", "amqp")
 	}
 
 	return out
@@ -81,15 +81,8 @@ func queueService(queue string) string {
 
 func sanitizeService(name string) string {
 	name = strings.TrimSpace(strings.ToLower(name))
-	name = strings.TrimPrefix(name, "venuz-")
 	if idx := strings.Index(name, ":"); idx >= 0 {
 		name = name[:idx]
-	}
-	if strings.HasSuffix(name, "api") || strings.Contains(name, "api") {
-		return name
-	}
-	if name == "barramento" || name == "rabbitmq" {
-		return "barramento"
 	}
 	return name
 }

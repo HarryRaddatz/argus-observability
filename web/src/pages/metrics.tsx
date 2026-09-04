@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { PageHeader } from "@/components/layout/page-header"
+import { MetricMeter } from "@/components/metrics/metric-meter"
 import { TimeSeriesChart } from "@/components/metrics/time-series-chart"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,7 +11,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { fetchMetricSeries, listWorkloads } from "@/lib/api"
 import { TIME_RANGES } from "@/lib/observability"
-import { formatBytes, formatPercent } from "@/lib/format"
 
 export function MetricsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -20,9 +21,13 @@ export function MetricsPage() {
   const [cpuPoints, setCpuPoints] = useState<{ ts: string; value: number }[]>([])
   const [memPoints, setMemPoints] = useState<{ ts: string; value: number }[]>([])
   const [memPctPoints, setMemPctPoints] = useState<{ ts: string; value: number }[]>([])
-  const [memLimit, setMemLimit] = useState<number>(0)
   const [httpLatency, setHttpLatency] = useState<{ ts: string; value: number }[]>([])
   const [httpErrorRate, setHttpErrorRate] = useState<{ ts: string; value: number }[]>([])
+  const [statMode, setStatMode] = useState<"avg" | "max">("avg")
+  const [netRx, setNetRx] = useState<{ ts: string; value: number }[]>([])
+  const [netTx, setNetTx] = useState<{ ts: string; value: number }[]>([])
+  const [blkRead, setBlkRead] = useState<{ ts: string; value: number }[]>([])
+  const [blkWrite, setBlkWrite] = useState<{ ts: string; value: number }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,16 +57,22 @@ export function MetricsPage() {
       fetchMetricSeries("memory.limit", since, selected),
       fetchMetricSeries("http.duration_ms", since, selected),
       fetchMetricSeries("http.error_rate", since, selected),
+      fetchMetricSeries("network.rx", since, selected),
+      fetchMetricSeries("network.tx", since, selected),
+      fetchMetricSeries("block.read", since, selected),
+      fetchMetricSeries("block.write", since, selected),
     ])
-      .then(([cpu, mem, memPct, lim, httpLat, httpErr]) => {
+      .then(([cpu, mem, memPct, _lim, httpLat, httpErr, rx, tx, bread, bwrite]) => {
         if (cancelled) return
         setCpuPoints(cpu.series?.[0]?.points ?? [])
         setMemPoints(mem.series?.[0]?.points ?? [])
         setMemPctPoints(memPct.series?.[0]?.points ?? [])
-        const limits = lim.series?.[0]?.points ?? []
-        setMemLimit(limits.length > 0 ? limits[limits.length - 1].value : 0)
         setHttpLatency(httpLat.series?.[0]?.points ?? [])
         setHttpErrorRate(httpErr.series?.[0]?.points ?? [])
+        setNetRx(rx.series?.[0]?.points ?? [])
+        setNetTx(tx.series?.[0]?.points ?? [])
+        setBlkRead(bread.series?.[0]?.points ?? [])
+        setBlkWrite(bwrite.series?.[0]?.points ?? [])
         setError(null)
       })
       .catch((e) => {
@@ -79,14 +90,20 @@ export function MetricsPage() {
     () => (cpuPoints.length ? cpuPoints[cpuPoints.length - 1].value : 0),
     [cpuPoints],
   )
-  const latestMem = useMemo(
-    () => (memPoints.length ? memPoints[memPoints.length - 1].value : 0),
-    [memPoints],
-  )
   const latestMemPct = useMemo(
     () => (memPctPoints.length ? memPctPoints[memPctPoints.length - 1].value : 0),
     [memPctPoints],
   )
+
+  const statSuffix = useMemo(() => {
+    const pick = (pts: { value: number }[]) => {
+      if (pts.length === 0) return null
+      const vals = pts.map((p) => p.value)
+      const v = statMode === "max" ? Math.max(...vals) : vals.reduce((a, b) => a + b, 0) / vals.length
+      return Math.round(v * 10) / 10
+    }
+    return { cpu: pick(cpuPoints), memPct: pick(memPctPoints) }
+  }, [cpuPoints, memPctPoints, statMode])
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -136,12 +153,21 @@ export function MetricsPage() {
       </aside>
 
       <div className="min-w-0 flex-1 space-y-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{selected || "Métricas"}</h1>
-          <p className="text-muted-foreground text-sm">
-            CPU, memória absoluta e percentual — útil para detectar pressão antes do OOM.
-          </p>
-        </div>
+        <PageHeader
+          title={selected || "Métricas"}
+          description="CPU, memória, rede e I/O — detalhe por container."
+          breadcrumb="Telemetria"
+          actions={
+            <div className="flex gap-1">
+              <Button size="sm" variant={statMode === "avg" ? "default" : "outline"} onClick={() => setStatMode("avg")}>
+                Média
+              </Button>
+              <Button size="sm" variant={statMode === "max" ? "default" : "outline"} onClick={() => setStatMode("max")}>
+                Máx
+              </Button>
+            </div>
+          }
+        />
 
         {error ? (
           <Card className="border-destructive/50">
@@ -153,64 +179,76 @@ export function MetricsPage() {
           <Skeleton className="h-64 w-full" />
         ) : selected ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-xs">CPU agora</p>
-                  <p className="text-2xl font-semibold tabular-nums">{formatPercent(latestCpu)}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-xs">Memória agora</p>
-                  <p className="text-2xl font-semibold tabular-nums">
-                    {formatBytes(latestMem)}
-                    {memLimit > 0 ? (
-                      <span className="text-muted-foreground text-base font-normal">
-                        {" "}
-                        / {formatBytes(memLimit)}
-                      </span>
-                    ) : null}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground text-xs">Memória %</p>
-                  <p
-                    className={cn(
-                      "text-2xl font-semibold tabular-nums",
-                      latestMemPct >= 90 && "text-destructive",
-                      latestMemPct >= 75 && latestMemPct < 90 && "text-amber-600",
-                    )}
-                  >
-                    {formatPercent(latestMemPct)}
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <MetricMeter label={`CPU (${statMode === "max" ? "máx" : "média"} período)`} value={statSuffix.cpu ?? latestCpu} />
+              <MetricMeter label={`Memória % (${statMode === "max" ? "máx" : "média"} período)`} value={statSuffix.memPct ?? latestMemPct} />
             </div>
-            <TimeSeriesChart
-              title="CPU"
-              description={`Uso percentual — ${since}`}
-              points={cpuPoints}
-              loading={loading}
-              unit="%"
-            />
-            <TimeSeriesChart
-              title="Memória %"
-              description="Pressão de heap/RSS vs limite do container"
-              points={memPctPoints}
-              loading={loading}
-              unit="%"
-            />
-            <TimeSeriesChart
-              title="Memória (MiB)"
-              description="Uso absoluto — correlacionar com logs GC"
-              points={memPoints}
-              loading={loading}
-              unit=" MiB"
-              transform={(v) => Math.round(v / 1024 / 1024)}
-            />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <TimeSeriesChart
+                title="CPU"
+                description={`Uso percentual — ${since}`}
+                points={cpuPoints}
+                loading={loading}
+                unit="%"
+              />
+              <TimeSeriesChart
+                title="Memória %"
+                description="Pressão de heap/RSS vs limite do container"
+                points={memPctPoints}
+                loading={loading}
+                unit="%"
+              />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <TimeSeriesChart
+                title="Memória (MiB)"
+                description="Uso absoluto"
+                points={memPoints}
+                loading={loading}
+                unit=" MiB"
+                transform={(v) => Math.round(v / 1024 / 1024)}
+              />
+              {netRx.length > 0 || netTx.length > 0 ? (
+                <>
+                  <TimeSeriesChart
+                    title="Rede RX"
+                    description="Bytes/s recebidos"
+                    points={netRx}
+                    loading={loading}
+                    unit=" B/s"
+                    transform={(v) => Math.round(v)}
+                  />
+                  <TimeSeriesChart
+                    title="Rede TX"
+                    description="Bytes/s enviados"
+                    points={netTx}
+                    loading={loading}
+                    unit=" B/s"
+                    transform={(v) => Math.round(v)}
+                  />
+                </>
+              ) : null}
+              {blkRead.length > 0 || blkWrite.length > 0 ? (
+                <>
+                  <TimeSeriesChart
+                    title="Disco leitura"
+                    description="Bytes/s"
+                    points={blkRead}
+                    loading={loading}
+                    unit=" B/s"
+                    transform={(v) => Math.round(v)}
+                  />
+                  <TimeSeriesChart
+                    title="Disco escrita"
+                    description="Bytes/s"
+                    points={blkWrite}
+                    loading={loading}
+                    unit=" B/s"
+                    transform={(v) => Math.round(v)}
+                  />
+                </>
+              ) : null}
+            </div>
             {httpLatency.length > 0 || httpErrorRate.length > 0 ? (
               <>
                 <TimeSeriesChart

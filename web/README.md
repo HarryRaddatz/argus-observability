@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Proxy Vite encaminha `/api` e `/health` para o hub (default `http://127.0.0.1:8088`).
+Proxy Vite encaminha `/api` e `/health` para o hub (default `http://127.0.0.1:8080`).
 
 ## Build
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 
+import { PageHeader } from "@/components/layout/page-header"
+import { StackedAreaChart } from "@/components/metrics/stacked-area-chart"
 import { Sparkline } from "@/components/metrics/time-series-chart"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +16,10 @@ export function DashboardPage() {
   const [events, setEvents] = useState<number | null>(null)
   const [workloads, setWorkloads] = useState<Awaited<ReturnType<typeof listWorkloads>>>([])
   const [cpuSeries, setCpuSeries] = useState<Record<string, { ts: string; value: number }[]>>({})
+  const [memSeries, setMemSeries] = useState<Record<string, { ts: string; value: number }[]>>({})
+  const [stackedCpu, setStackedCpu] = useState<Awaited<ReturnType<typeof fetchMetricSeries>>["series"]>([])
   const [httpServices, setHttpServices] = useState<HTTPServiceSummary[]>([])
+  const [topN, setTopN] = useState(8)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,21 +29,25 @@ export function DashboardPage() {
       try {
         await getHealth()
         if (!cancelled) setHealth("ok")
-        const [ev, wl, series, http] = await Promise.all([
+        const [ev, wl, cpu, memPct, http] = await Promise.all([
           listEvents(undefined, "24h"),
           listWorkloads("30m"),
           fetchMetricSeries("cpu.usage", "1h"),
+          fetchMetricSeries("memory.usage_pct", "1h"),
           fetchHTTPSummary("1h"),
         ])
         if (cancelled) return
         setEvents(ev.length)
         setWorkloads(wl)
         setHttpServices(http.filter((s) => s.requests > 0).slice(0, 8))
-        const map: Record<string, { ts: string; value: number }[]> = {}
-        for (const s of series.series ?? []) {
-          map[s.container] = s.points ?? []
-        }
-        setCpuSeries(map)
+        const cpuMap: Record<string, { ts: string; value: number }[]> = {}
+        for (const s of cpu.series ?? []) cpuMap[s.container] = s.points ?? []
+        setCpuSeries(cpuMap)
+        const memMap: Record<string, { ts: string; value: number }[]> = {}
+        for (const s of memPct.series ?? []) memMap[s.container] = s.points ?? []
+        setMemSeries(memMap)
+        const top = [...wl].sort((a, b) => b.cpu_usage - a.cpu_usage).slice(0, topN).map((w) => w.container)
+        setStackedCpu((cpu.series ?? []).filter((s) => top.includes(s.container)))
       } catch (e) {
         if (!cancelled) {
           setHealth("error")
@@ -54,11 +63,11 @@ export function DashboardPage() {
       cancelled = true
       clearInterval(t)
     }
-  }, [])
+  }, [topN])
 
   const topWorkloads = useMemo(
-    () => [...workloads].sort((a, b) => b.cpu_usage - a.cpu_usage).slice(0, 12),
-    [workloads],
+    () => [...workloads].sort((a, b) => b.cpu_usage - a.cpu_usage).slice(0, topN),
+    [workloads, topN],
   )
 
   const avgCpu = useMemo(() => {
@@ -67,11 +76,12 @@ export function DashboardPage() {
   }, [workloads])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Visão geral</h1>
-        <p className="text-muted-foreground text-sm">Todos os containers monitorados pelo agent.</p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Dashboard"
+        description="Visão consolidada de infraestrutura, telemetria HTTP e alertas."
+        breadcrumb="Visão"
+      />
 
       {error ? (
         <Card className="border-destructive/50">
@@ -79,31 +89,94 @@ export function DashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Hub" loading={loading}>
-          <Badge variant={health === "ok" ? "default" : "destructive"}>
-            {health === "loading" ? "…" : health === "ok" ? "Online" : "Offline"}
-          </Badge>
-        </StatCard>
-        <StatCard title="Workloads" description="Containers Docker" loading={loading}>
-          <p className="text-3xl font-semibold tabular-nums">{workloads.length}</p>
-        </StatCard>
-        <StatCard title="CPU média" description="Última amostra" loading={loading}>
-          <p className="text-3xl font-semibold tabular-nums">{formatPercent(avgCpu)}</p>
-        </StatCard>
-        <StatCard title="Eventos" description="24h" loading={loading}>
-          <p className="text-3xl font-semibold tabular-nums">{events ?? "—"}</p>
-        </StatCard>
-      </div>
+      <section className="space-y-3">
+        <SectionTitle title="Infraestrutura" href="/workloads" linkLabel="Workloads" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Hub" loading={loading}>
+            <Badge variant={health === "ok" ? "default" : "destructive"}>
+              {health === "loading" ? "…" : health === "ok" ? "Online" : "Offline"}
+            </Badge>
+          </StatCard>
+          <StatCard title="Workloads" description="Containers Docker" loading={loading}>
+            <p className="text-3xl font-semibold tabular-nums">{workloads.length}</p>
+          </StatCard>
+          <StatCard title="CPU média" description="Última amostra" loading={loading}>
+            <p className="text-3xl font-semibold tabular-nums">{formatPercent(avgCpu)}</p>
+          </StatCard>
+          <StatCard title="Eventos" description="24h" loading={loading}>
+            <p className="text-3xl font-semibold tabular-nums">{events ?? "—"}</p>
+          </StatCard>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SectionTitle title="Frota" href="/workloads" linkLabel="Ver grid" />
+          <div className="flex gap-1">
+            {[8, 12].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className={cn(
+                  "rounded-md border px-2 py-1 text-xs",
+                  topN === n ? "bg-muted font-medium" : "text-muted-foreground",
+                )}
+                onClick={() => setTopN(n)}
+              >
+                Top {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <StackedAreaChart
+          title="CPU por container"
+          description={`Top ${topN} workloads — 1h`}
+          series={stackedCpu}
+          loading={loading}
+          unit="%"
+        />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <Skeleton className="h-5 w-32" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-12 w-full" />
+                  </CardContent>
+                </Card>
+              ))
+            : topWorkloads.map((w) => (
+                <Card key={w.entity_uid}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="truncate text-sm font-medium">{w.container}</CardTitle>
+                    <CardDescription className="flex justify-between gap-2">
+                      <span>CPU {formatPercent(w.cpu_usage)}</span>
+                      <span>{formatBytes(w.memory_usage)}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-muted-foreground mb-1 text-[10px] uppercase">CPU</p>
+                        <Sparkline points={cpuSeries[w.container] ?? []} />
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1 text-[10px] uppercase">Mem</p>
+                        <Sparkline points={memSeries[w.container] ?? []} />
+                      </div>
+                    </div>
+                    <MemoryBar usage={w.memory_usage} limit={w.memory_limit} />
+                  </CardContent>
+                </Card>
+              ))}
+        </div>
+      </section>
 
       {httpServices.length > 0 ? (
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-medium">HTTP por serviço</h2>
-            <Link to="/explorer?metric=http.duration_ms" className="text-primary text-sm hover:underline">
-              Explorer
-            </Link>
-          </div>
+        <section className="space-y-3">
+          <SectionTitle title="HTTP" href="/explorer?metric=http.duration_ms" linkLabel="Explorer" />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {httpServices.map((s) => (
               <Card key={s.service}>
@@ -132,46 +205,43 @@ export function DashboardPage() {
               </Card>
             ))}
           </div>
-        </div>
+        </section>
       ) : null}
 
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium">Containers</h2>
-          <Link to="/metrics" className="text-primary text-sm hover:underline">
-            Ver detalhes
-          </Link>
+      <section className="space-y-3">
+        <SectionTitle title="Análise e alertas" href="/insights" linkLabel="Insights" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <HubLinkCard title="Logs" description="Busca e filtros" to="/logs" />
+          <HubLinkCard title="Insights" description="Achados automáticos" to="/insights" />
+          <HubLinkCard title="Traces" description="Detalhe por trace ID" to="/traces" />
+          <HubLinkCard title="Eventos" description="Timeline 24h" to="/events" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-5 w-32" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-12 w-full" />
-                  </CardContent>
-                </Card>
-              ))
-            : topWorkloads.map((w) => (
-                <Card key={w.entity_uid}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="truncate text-sm font-medium">{w.container}</CardTitle>
-                    <CardDescription className="flex justify-between gap-2">
-                      <span>CPU {formatPercent(w.cpu_usage)}</span>
-                      <span>{formatBytes(w.memory_usage)}</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Sparkline points={cpuSeries[w.container] ?? []} />
-                    <MemoryBar usage={w.memory_usage} limit={w.memory_limit} />
-                  </CardContent>
-                </Card>
-              ))}
-        </div>
-      </div>
+      </section>
     </div>
+  )
+}
+
+function SectionTitle({ title, href, linkLabel }: { title: string; href: string; linkLabel: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-lg font-medium">{title}</h2>
+      <Link to={href} className="text-primary text-sm hover:underline">
+        {linkLabel}
+      </Link>
+    </div>
+  )
+}
+
+function HubLinkCard({ title, description, to }: { title: string; description: string; to: string }) {
+  return (
+    <Link to={to} className="block">
+      <Card className="transition-colors hover:bg-muted/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+      </Card>
+    </Link>
   )
 }
 
@@ -209,10 +279,7 @@ function MemoryBar({ usage, limit }: { usage: number; limit: number }) {
         </span>
       </div>
       <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-primary h-full transition-all"
-          style={{ width: `${pct}%` }}
-        />
+        <div className="bg-primary h-full transition-all" style={{ width: `${pct}%` }} />
       </div>
     </div>
   )

@@ -9,7 +9,7 @@ import (
 
 var httpResponseRe = regexp.MustCompile(`(?i)(get|post|put|delete|patch|head|options)\s+(\S+)\s+.*?\s(\d{3})\s+\((\d+)ms\)\s*$`)
 
-// HTTPLogSignal holds structured HTTP data extracted from a Venuz log line.
+// HTTPLogSignal holds structured HTTP data extracted from JSON or response lines.
 type HTTPLogSignal struct {
 	Service    string
 	Method     string
