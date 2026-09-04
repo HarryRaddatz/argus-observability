@@ -122,12 +122,45 @@ CREATE TABLE IF NOT EXISTS topology_edges (
   last_seen TEXT NOT NULL,
   PRIMARY KEY (source, target, kind)
 );
+CREATE TABLE IF NOT EXISTS trace_spans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trace_id TEXT NOT NULL,
+  span_id TEXT NOT NULL,
+  parent_span_id TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  service TEXT NOT NULL DEFAULT '',
+  container TEXT NOT NULL DEFAULT '',
+  entity_uid TEXT NOT NULL DEFAULT '',
+  start_ts TEXT NOT NULL,
+  end_ts TEXT NOT NULL,
+  duration_ms REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'unset',
+  kind TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'otlp',
+  attributes_json TEXT NOT NULL DEFAULT '{}',
+  UNIQUE(trace_id, span_id)
+);
+CREATE INDEX IF NOT EXISTS idx_trace_spans_trace ON trace_spans(trace_id, start_ts);
+CREATE TABLE IF NOT EXISTS slos (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  service TEXT NOT NULL DEFAULT '',
+  group_id TEXT NOT NULL DEFAULT '',
+  sli_metric TEXT NOT NULL,
+  target REAL NOT NULL,
+  window_hours INTEGER NOT NULL DEFAULT 720,
+  latency_threshold_ms REAL NOT NULL DEFAULT 500,
+  created_at TEXT NOT NULL
+);
 `
 	_, err := s.db.Exec(schema)
 	if err != nil {
 		return err
 	}
-	return s.seedDefaultGroups()
+	if err := s.seedDefaultGroups(); err != nil {
+		return err
+	}
+	return s.seedDefaultSLOs()
 }
 
 func (s *SQLite) seedDefaultGroups() error {

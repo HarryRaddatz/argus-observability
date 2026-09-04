@@ -12,6 +12,8 @@ import { FleetPage } from "@/pages/fleet"
 import { GroupsPage } from "@/pages/groups"
 import { PatternsPage } from "@/pages/patterns"
 import { TopologyPage } from "@/pages/topology"
+import { TracesPage } from "@/pages/traces"
+import { SLOsPage } from "@/pages/slos"
 import { WorkloadsPage } from "@/pages/workloads"
 
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
             <Route path="insights" element={<InsightsPage />} />
             <Route path="patterns" element={<PatternsPage />} />
             <Route path="topology" element={<TopologyPage />} />
+            <Route path="traces" element={<TracesPage />} />
+            <Route path="slos" element={<SLOsPage />} />
             <Route path="logs" element={<LogsPage />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

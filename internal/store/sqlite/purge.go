@@ -27,6 +27,9 @@ func (s *SQLite) Purge(ctx context.Context, logsBefore, metricsBefore, eventsBef
 	if err != nil {
 		return out, err
 	}
+	if _, err = s.purgeBefore(ctx, "trace_spans", "end_ts", logsBefore); err != nil {
+		return out, err
+	}
 
 	out.Duration = time.Since(start)
 	if ctx.Err() != nil {

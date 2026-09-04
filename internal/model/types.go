@@ -241,3 +241,52 @@ type HTTPServiceSummary struct {
 	AvgLatencyMs float64 `json:"avg_latency_ms"`
 	MaxLatencyMs float64 `json:"max_latency_ms"`
 }
+
+type TraceSpan struct {
+	TraceID      string         `json:"trace_id"`
+	SpanID       string         `json:"span_id"`
+	ParentSpanID string         `json:"parent_span_id,omitempty"`
+	Name         string         `json:"name"`
+	Service      string         `json:"service"`
+	Container    string         `json:"container"`
+	EntityUID    string         `json:"entity_uid,omitempty"`
+	StartTS      time.Time      `json:"start_ts"`
+	EndTS        time.Time      `json:"end_ts"`
+	DurationMs   float64        `json:"duration_ms"`
+	Status       string         `json:"status"`
+	Kind         string         `json:"kind"`
+	Source       string         `json:"source"`
+	Attributes   map[string]any `json:"attributes,omitempty"`
+}
+
+type TraceDetail struct {
+	TraceID    string      `json:"trace_id"`
+	Source     string      `json:"source"`
+	StartTS    time.Time   `json:"start_ts,omitempty"`
+	EndTS      time.Time   `json:"end_ts,omitempty"`
+	DurationMs float64     `json:"duration_ms"`
+	Spans      []TraceSpan `json:"spans"`
+}
+
+type SLODefinition struct {
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	Service            string    `json:"service"`
+	GroupID            string    `json:"group_id,omitempty"`
+	SLIMetric          string    `json:"sli_metric"`
+	Target             float64   `json:"target"`
+	WindowHours        int       `json:"window_hours"`
+	LatencyThresholdMs float64   `json:"latency_threshold_ms"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+type SLOStatus struct {
+	SLO                  SLODefinition `json:"slo"`
+	Compliance           float64       `json:"compliance"`
+	ErrorBudgetRemaining float64       `json:"error_budget_remaining"`
+	GoodEvents           int           `json:"good_events"`
+	TotalEvents          int           `json:"total_events"`
+	P95LatencyMs         float64       `json:"p95_latency_ms"`
+	Breached             bool          `json:"breached"`
+	EvaluatedAt          time.Time     `json:"evaluated_at"`
+}

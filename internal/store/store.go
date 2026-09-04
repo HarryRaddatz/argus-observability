@@ -43,4 +43,11 @@ type Store interface {
 	ListLogPatterns(ctx context.Context, since time.Time, limit int) ([]model.LogPattern, error)
 	RecordTopologyEdges(ctx context.Context, entries []model.LogEntry) error
 	GetTopology(ctx context.Context, since time.Time) (model.TopologyGraph, error)
+
+	WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error
+	GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error)
+
+	ListSLOs(ctx context.Context) ([]model.SLODefinition, error)
+	GetSLO(ctx context.Context, id string) (model.SLODefinition, error)
+	EvaluateSLO(ctx context.Context, def model.SLODefinition, at time.Time) (model.SLOStatus, error)
 }

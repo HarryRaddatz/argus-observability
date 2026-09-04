@@ -293,7 +293,7 @@ function LogRowView({ row }: { row: LogRow }) {
       <TableCell className="font-mono text-xs">
         {tid ? (
           <Link
-            to={`/logs?trace_id=${encodeURIComponent(tid)}&since=24h`}
+            to={`/traces?trace_id=${encodeURIComponent(tid)}`}
             className="text-primary hover:underline"
             title={tid}
           >

@@ -300,3 +300,66 @@ export type ActiveAlert = {
 export function fetchActiveAlerts() {
   return request<ActiveAlert[]>(`/api/v1/alerts/active`).then(asArray)
 }
+
+export type TraceSpan = {
+  trace_id: string
+  span_id: string
+  parent_span_id?: string
+  name: string
+  service: string
+  container: string
+  entity_uid?: string
+  start_ts: string
+  end_ts: string
+  duration_ms: number
+  status: string
+  kind: string
+  source: string
+  attributes?: Record<string, unknown>
+}
+
+export type TraceDetail = {
+  trace_id: string
+  source: string
+  start_ts?: string
+  end_ts?: string
+  duration_ms: number
+  spans: TraceSpan[]
+}
+
+export function fetchTrace(traceId: string, since = "24h") {
+  return request<TraceDetail>(
+    `/api/v1/traces/${encodeURIComponent(traceId)}?since=${encodeURIComponent(since)}`,
+  )
+}
+
+export type SLODefinition = {
+  id: string
+  name: string
+  service: string
+  group_id?: string
+  sli_metric: string
+  target: number
+  window_hours: number
+  latency_threshold_ms: number
+  created_at?: string
+}
+
+export type SLOStatus = {
+  slo: SLODefinition
+  compliance: number
+  error_budget_remaining: number
+  good_events: number
+  total_events: number
+  p95_latency_ms: number
+  breached: boolean
+  evaluated_at: string
+}
+
+export function fetchSLOs() {
+  return request<SLODefinition[]>(`/api/v1/slos`).then(asArray)
+}
+
+export function fetchSLOStatuses() {
+  return request<SLOStatus[]>(`/api/v1/slos/status`).then(asArray)
+}

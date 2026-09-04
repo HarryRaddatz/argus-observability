@@ -15,6 +15,7 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/insights"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 	"github.com/HarryRaddatz/argus-observability/internal/rules"
+	"github.com/HarryRaddatz/argus-observability/internal/slo"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
 	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
 	"github.com/google/uuid"
@@ -45,6 +46,7 @@ type Server struct {
 	alertMu    sync.Mutex
 	lastAlert  map[string]time.Time
 	rules      *rules.Engine
+	sloEval    *slo.Evaluator
 }
 
 func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Server {
@@ -62,12 +64,14 @@ func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Se
 		staleAgents: map[string]bool{},
 		lastAlert:   map[string]time.Time{},
 		rules:       rules.NewEngine(eventBus),
+		sloEval:     slo.NewEvaluator(eventBus),
 	}
 	s.routes()
 	eventBus.Subscribe(s.onEvent)
 	go s.staleLoop()
 	go s.retentionLoop()
 	go s.rulesLoop()
+	go s.sloLoop()
 	return s
 }
 
@@ -90,6 +94,9 @@ func (s *Server) routes() {
 	s.registerFleetRoutes()
 	s.registerPatternRoutes()
 	s.registerTopologyRoutes()
+	s.registerOTLPRoutes()
+	s.registerTraceRoutes()
+	s.registerSLORoutes()
 }
 
 func (s *Server) Handler() http.Handler {
