@@ -2,6 +2,18 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- Workflow de release: imagens GHCR + GitHub Release a partir de tags semver
+- Compose `examples/compose-minimal/docker-compose.published.yml` (pull GHCR)
+
+### Fixed
+
+- CI: `InferServiceFromContainer` para serviços compose com hífen (`demo-api`)
+- Gate anti-leak no workflow (#25)
+
 ## [0.1.0] - 2026-09-04
 
 ### Added

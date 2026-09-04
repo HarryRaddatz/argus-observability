@@ -111,22 +111,21 @@ func floatField(m map[string]any, keys ...string) float64 {
 }
 
 // InferServiceFromContainer guesses compose service name from container name (project-service-N).
+// Example: compose-demo-api-1 → demo-api; names without numeric replica suffix are returned as-is.
 func InferServiceFromContainer(container string) string {
-	for i := len(container) - 1; i > 0; i-- {
-		if container[i] != '-' {
-			continue
-		}
-		suffix := container[i+1:]
-		if !isNumericSuffix(suffix) {
-			continue
-		}
-		rest := container[:i]
-		if j := strings.LastIndex(rest, "-"); j >= 0 {
-			return rest[j+1:]
-		}
-		return rest
+	name := container
+	hadReplica := false
+	if i := strings.LastIndex(name, "-"); i > 0 && isNumericSuffix(name[i+1:]) {
+		name = name[:i]
+		hadReplica = true
 	}
-	return container
+	if !hadReplica {
+		return container
+	}
+	if j := strings.Index(name, "-"); j > 0 {
+		return name[j+1:]
+	}
+	return name
 }
 
 func isNumericSuffix(s string) bool {

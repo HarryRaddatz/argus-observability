@@ -31,6 +31,30 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (job `test`) r
 
 **Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
 
+## Release (maintainers)
+
+1. Atualize `CHANGELOG.md` (seção `[Unreleased]` → `[X.Y.Z] - data`)
+2. Commit e push em `main`
+3. Tag semver e push:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) publica:
+
+- GitHub Release (notas do CHANGELOG)
+- Imagens `ghcr.io/harryraddatz/argus-{hub,agent,web}` com tag semver e `latest`
+
+Smoke test pós-release:
+
+```bash
+docker compose -f examples/compose-minimal/docker-compose.published.yml pull
+docker compose -f examples/compose-minimal/docker-compose.published.yml up -d
+curl -s http://localhost:8080/health
+```
+
 ## Commits
 
 Use mensagens convencionais curtas (`feat:`, `fix:`, `docs:`). Referencie issues no corpo quando aplicável (`Closes #123`).

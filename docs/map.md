@@ -113,7 +113,11 @@ Ver `.env.example` · tarefa [#16](https://github.com/HarryRaddatz/argus-observa
 | `argus-agent` | `Dockerfile.agent` · `cmd/agent` | `argus-agent` |
 | UI estática | `web/Dockerfile` | `argus-web` |
 
-Exemplo mínimo: tarefa [#19](https://github.com/HarryRaddatz/argus-observability/issues/19).
+CI: `.github/workflows/ci.yml` · Release (tag → GHCR): `.github/workflows/release.yml`
+
+Imagens: `ghcr.io/harryraddatz/argus-{hub,agent,web}` · Compose publicado: `examples/compose-minimal/docker-compose.published.yml`
+
+Exemplo mínimo: [#19](https://github.com/HarryRaddatz/argus-observability/issues/19) · Pipeline: épico [#24](https://github.com/HarryRaddatz/argus-observability/issues/24)
 
 ## Épico #13 — tarefas de biblioteca pública
 

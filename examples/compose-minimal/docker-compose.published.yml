@@ -1,0 +1,41 @@
+# Stack mínima usando imagens publicadas no GHCR (sem build local).
+# Requer release publicado: https://github.com/HarryRaddatz/argus-observability/pkgs
+
+name: argus-minimal-published
+
+services:
+  argus-hub:
+    image: ghcr.io/harryraddatz/argus-hub:${ARGUS_VERSION:-latest}
+    container_name: argus-hub
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ARGUS_HUB_ADDR: ":8080"
+      ARGUS_STORE_PATH: /data/argus.db
+    volumes:
+      - argus_data:/data
+
+  argus-agent:
+    image: ghcr.io/harryraddatz/argus-agent:${ARGUS_VERSION:-latest}
+    container_name: argus-agent
+    restart: unless-stopped
+    environment:
+      ARGUS_HUB_URL: http://argus-hub:8080
+      ARGUS_HOST_ID: demo-host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - argus-hub
+
+  argus-web:
+    image: ghcr.io/harryraddatz/argus-web:${ARGUS_VERSION:-latest}
+    container_name: argus-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - argus-hub
+
+volumes:
+  argus_data:

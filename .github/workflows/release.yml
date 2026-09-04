@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: go.sum
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (hub)
+        id: meta_hub
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-hub
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=raw,value=latest
+
+      - name: Build and push argus-hub
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.hub
+          push: true
+          tags: ${{ steps.meta_hub.outputs.tags }}
+          labels: ${{ steps.meta_hub.outputs.labels }}
+
+      - name: Docker metadata (agent)
+        id: meta_agent
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-agent
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=raw,value=latest
+
+      - name: Build and push argus-agent
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.agent
+          push: true
+          tags: ${{ steps.meta_agent.outputs.tags }}
+          labels: ${{ steps.meta_agent.outputs.labels }}
+
+      - name: Docker metadata (web)
+        id: meta_web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-web
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
+            type=raw,value=latest
+
+      - name: Build and push argus-web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta_web.outputs.tags }}
+          labels: ${{ steps.meta_web.outputs.labels }}
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          chmod +x .github/scripts/changelog-extract.sh
+          {
+            echo "notes<<EOF"
+            .github/scripts/changelog-extract.sh "${GITHUB_REF_NAME}" || true
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Argus ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          generate_release_notes: true

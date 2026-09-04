@@ -43,8 +43,9 @@ func TestParseHTTPLogErrorStatus(t *testing.T) {
 func TestInferServiceFromContainer(t *testing.T) {
 	cases := map[string]string{
 		"compose-demo-api-1": "demo-api",
+		"stack-demo-api-1":   "demo-api",
 		"app-postgres-1":     "postgres",
-		"argus-agent":            "argus-agent",
+		"argus-agent":        "argus-agent",
 	}
 	for in, want := range cases {
 		if got := InferServiceFromContainer(in); got != want {
