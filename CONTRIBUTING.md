@@ -22,12 +22,15 @@ bash .github/scripts/check-no-vps-leak.sh   # opcional, local
 
 ## CI e branch protection
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (job `test`) roda em todo PR e push para `main`:
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo PR e push para `main`. Os jobs rodam em paralelo; um PR novo cancela a execução anterior do mesmo PR.
 
-1. Anti-leak — padrões de infra privada no diff
-2. `go vet ./...`
-3. `go test ./...`
-4. `npm ci && npm run build` (web)
+| Job | O que valida |
+|---|---|
+| `anti-leak` | Padrões de infra privada no diff |
+| `go` | `go vet`, `go test`, `go build ./cmd/...` |
+| `web` | `npm ci`, `npm run lint`, `npm run build` |
+| `docker (hub/agent/web)` | Build dos três Dockerfiles, sem push, com cache compartilhado com o release |
+| `test` | Agregador: só passa se todos os anteriores passarem |
 
 **Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
 
@@ -56,10 +59,14 @@ git tag v0.1.1
 git push origin v0.1.1
 ```
 
-O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) publica:
+O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda em etapas:
 
-- GitHub Release (notas do CHANGELOG)
-- Imagens `ghcr.io/harryraddatz/argus-{hub,agent,web}` com tag semver e `latest`
+1. `verify tag` — tag semver, commit presente em `main` e seção `[X.Y.Z]` no CHANGELOG. Falha aqui não publica nada.
+2. `ci` — o mesmo CI de PR, reutilizado.
+3. `image (hub/agent/web)` — build e push em paralelo de `ghcr.io/harryraddatz/argus-{hub,agent,web}` com tags `X.Y.Z`, `vX.Y.Z` e `latest`.
+4. `github release` — notas extraídas do CHANGELOG.
+
+Tags com sufixo (`v0.2.0-rc.1`) viram pre-release e não movem `latest`.
 
 Smoke test pós-release:
 
@@ -79,6 +86,21 @@ curl -s http://localhost:8080/health
 - [ ] Smoke test acima com `ARGUS_VERSION=X.Y.Z`
 
 Atualizar uma instância existente: [docs/deploy.md](docs/deploy.md).
+
+## Site de documentação
+
+O site em [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/) é gerado pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) com MkDocs a partir de `docs/`, `README.md` (início), `CHANGELOG.md` (novidades) e `CONTRIBUTING.md`.
+
+- PR que toca esses arquivos roda `mkdocs build --strict`: link ou página quebrada falha o check.
+- Merge em `main` e cada release concluída publicam o site.
+- Página nova em `docs/` precisa entrar no `nav` do `mkdocs.yml`.
+
+Preview local:
+
+```bash
+pip install -r .github/pages/requirements.txt
+mkdocs serve
+```
 
 ## Commits
 

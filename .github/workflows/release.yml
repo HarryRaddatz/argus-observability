@@ -6,25 +6,82 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  release:
+  verify:
+    name: verify tag
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Parse tag
+        id: tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag $TAG is not semver (vX.Y.Z or vX.Y.Z-rc.N)"; exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tag commit is on main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "Tag must point to a commit on main"; exit 1; }
+
+      - name: CHANGELOG has section for version
+        run: |
+          NOTES="$(bash .github/scripts/changelog-extract.sh "${GITHUB_REF_NAME}")"
+          if [ -z "$NOTES" ]; then
+            echo "CHANGELOG.md has no section [${GITHUB_REF_NAME#v}]"; exit 1
+          fi
+
+  ci:
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+
+  images:
+    name: image (${{ matrix.component }})
+    needs: [verify, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - component: hub
+            context: .
+            file: Dockerfile.hub
+          - component: agent
+            context: .
+            file: Dockerfile.agent
+          - component: web
+            context: ./web
+            file: ./web/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-          cache-dependency-path: go.sum
-
-      - name: Go test
-        run: go test ./...
+      - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -33,77 +90,44 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker metadata (hub)
-        id: meta_hub
+      - name: Docker metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-hub
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-${{ matrix.component }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern=v{{version}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ needs.verify.outputs.prerelease == 'false' }}
 
-      - name: Build and push argus-hub
+      - name: Build and push argus-${{ matrix.component }}
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile.hub
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           push: true
-          tags: ${{ steps.meta_hub.outputs.tags }}
-          labels: ${{ steps.meta_hub.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=argus-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
 
-      - name: Docker metadata (agent)
-        id: meta_agent
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-agent
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern=v{{version}}
-            type=raw,value=latest
-
-      - name: Build and push argus-agent
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.agent
-          push: true
-          tags: ${{ steps.meta_agent.outputs.tags }}
-          labels: ${{ steps.meta_agent.outputs.labels }}
-
-      - name: Docker metadata (web)
-        id: meta_web
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-web
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern=v{{version}}
-            type=raw,value=latest
-
-      - name: Build and push argus-web
-        uses: docker/build-push-action@v6
-        with:
-          context: ./web
-          file: Dockerfile
-          push: true
-          tags: ${{ steps.meta_web.outputs.tags }}
-          labels: ${{ steps.meta_web.outputs.labels }}
+  release:
+    name: github release
+    needs: [verify, images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Extract release notes
-        id: notes
-        run: |
-          chmod +x .github/scripts/changelog-extract.sh
-          {
-            echo "notes<<EOF"
-            .github/scripts/changelog-extract.sh "${GITHUB_REF_NAME}" || true
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: bash .github/scripts/changelog-extract.sh "${GITHUB_REF_NAME}" > release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Argus ${{ github.ref_name }}
-          body: ${{ steps.notes.outputs.notes }}
+          body_path: release-notes.md
+          prerelease: ${{ needs.verify.outputs.prerelease == 'true' }}
           generate_release_notes: true

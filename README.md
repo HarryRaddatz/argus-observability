@@ -53,6 +53,8 @@ flowchart LR
 
 ## Documentação
 
+Site: [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/)
+
 | Recurso | Arquivo |
 |---|---|
 | Mapa do produto | [docs/map.md](docs/map.md) |

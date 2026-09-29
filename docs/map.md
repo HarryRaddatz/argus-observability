@@ -119,12 +119,16 @@ Imagens: `ghcr.io/harryraddatz/argus-{hub,agent,web}` · Compose publicado: `exa
 
 ```mermaid
 flowchart LR
-  PR[PR para main] --> CI[ci.yml: anti-leak, vet, test, build web]
+  PR[PR para main] --> CI[ci.yml: anti-leak, go, web, docker]
   CI --> Main[merge em main]
+  Main --> Pages[pages.yml: site MkDocs]
   Main --> Tag[tag vX.Y.Z]
-  Tag --> Rel[release.yml: test, build e push GHCR]
-  Rel --> GHR[GitHub Release com notas do CHANGELOG]
-  Rel --> Deploy[operador: pull + up --force-recreate]
+  Tag --> Verify[release.yml: verify tag]
+  Verify --> RelCI[ci.yml reutilizado]
+  RelCI --> Img[images GHCR em paralelo]
+  Img --> GHR[GitHub Release com notas do CHANGELOG]
+  GHR --> Pages
+  GHR --> Deploy[operador: pull + up --force-recreate]
 ```
 
 | Etapa | Arquivo | Doc |
@@ -132,6 +136,7 @@ flowchart LR
 | Checks de PR | `.github/workflows/ci.yml` | `CONTRIBUTING.md` (CI e branch protection) |
 | Versionamento | `CHANGELOG.md` · `.github/scripts/changelog-extract.sh` | `CONTRIBUTING.md` (Release) |
 | Publicação | `.github/workflows/release.yml` | `CONTRIBUTING.md` (Release) |
+| Site de documentação | `.github/workflows/pages.yml` · `mkdocs.yml` · `.github/pages/` | `CONTRIBUTING.md` (Site de documentação) |
 | Atualização de instância | `examples/compose-minimal/docker-compose.published.yml` | `docs/deploy.md` |
 
 Exemplo mínimo: [#19](https://github.com/HarryRaddatz/argus-observability/issues/19) · Pipeline: épico [#24](https://github.com/HarryRaddatz/argus-observability/issues/24)
