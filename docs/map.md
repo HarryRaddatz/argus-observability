@@ -34,22 +34,23 @@ Coleta: `internal/agent/docker/` · envio: `internal/agent/client.go`
 | Funcionalidade | API | Handler | Store / lógica | UI | Doc |
 |---|---|---|---|---|---|
 | Health | GET `/health` | `server.go` | — | — | gap |
-| Workloads | GET `/api/v1/workloads` | `server.go` | `ListWorkloads` | `/workloads` | gap |
-| Métricas (série) | GET `/api/v1/metrics/series` | `server.go` | `QueryMetricSeries` | `/metrics`, `/explorer` | ok |
-| Catálogo métricas | GET `/api/v1/metrics/catalog` | `server.go` | estático | `/explorer` | gap |
-| HTTP summary | GET `/api/v1/metrics/http/summary` | `server.go` | `http_summary.go` | `/dashboard` | gap |
+| Workloads | GET `/api/v1/workloads` | `server.go` | `ListWorkloads` | `/containers` | gap |
+| Métricas (série) | GET `/api/v1/metrics/series` | `server.go` | `QueryMetricSeries` | `/metrics` (por container e comparar) | ok |
+| Catálogo métricas | GET `/api/v1/metrics/catalog` | `server.go` | estático | `/metrics?mode=compare` | gap |
+| HTTP summary | GET `/api/v1/metrics/http/summary` | `server.go` | `http_summary.go` | `/` (Visão geral) | gap |
 | Query genérica | GET `/api/v1/query` | `server.go` | `QueryMetrics` | — | gap |
 | Logs search | GET `/api/v1/logs/search` | `server.go` | `SearchLogs` + `trace_query.go` | `/logs` | ok |
-| Log patterns | GET `/api/v1/logs/patterns` | `patterns.go` | `patterns.go` | `/patterns` | gap |
-| Eventos | GET `/api/v1/events` | `server.go` | `ListEvents` | `/events` | ok |
-| Alertas ativos | GET `/api/v1/alerts/active` | `topology.go` | `rules/engine.go` | `/events` | gap |
-| Insights | GET `/api/v1/insights` | `server.go` | `internal/insights/*` | `/insights` | gap |
-| Fleet status | GET `/api/v1/fleet/status` | `fleet.go` | `fleet.go` | `/fleet` | gap |
-| Grupos CRUD | `/api/v1/workload-groups*` | `groups.go` | `groups.go` | `/groups` | gap |
+| Log patterns | GET `/api/v1/logs/patterns` | `patterns.go` | `patterns.go` | `/logs?mode=patterns` | [observability.md](api/observability.md) |
+| Eventos | GET `/api/v1/events` | `server.go` | `ListEvents` | `/problems?tab=history` | ok |
+| Alertas ativos | GET `/api/v1/alerts/active` | `topology.go` | `rules/engine.go` | `/problems`, `/` | gap |
+| Insights | GET `/api/v1/insights` | `server.go` | `internal/insights/*` | `/problems` | gap |
+| Fleet status | GET `/api/v1/fleet/status` | `fleet.go` | `fleet.go` | `/containers`, `/` | gap |
+| Grupos CRUD | `/api/v1/workload-groups*` | `groups.go` | `groups.go` | `/containers?panel=groups` | gap |
 | Topologia | GET `/api/v1/topology` | `topology.go` | `topology_edges` | `/topology` | gap |
 | Traces (OTLP) | POST `/v1/traces` | `otlp.go` | `trace_spans` | — | gap |
-| Trace detail | GET `/api/v1/traces/{id}` | `traces.go` | `traces.go` + `traces/from_logs.go` | `/traces` | gap |
-| SLOs | GET `/api/v1/slos`, `/status` | `slos.go` | `traces.go` (slos table) | `/slos` | gap |
+| Traces recentes | GET `/api/v1/traces` | `traces.go` | `ListTraces` (`trace_spans` + `log_entries`) | `/traces` | [observability.md](api/observability.md) |
+| Trace detail | GET `/api/v1/traces/{id}` | `traces.go` | `traces.go` + `traces/from_logs.go` | `/traces?trace_id=` | gap |
+| SLOs | GET `/api/v1/slos`, `/status` | `slos.go` | `traces.go` (slos table) | `/problems?tab=slos` | gap |
 
 ## Pipeline de enriquecimento (logs → derivados)
 

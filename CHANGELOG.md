@@ -4,8 +4,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- `GET /api/v1/traces`: traces recentes de spans OTLP e de logs com `trace_id`, com filtro por serviço e período (#48)
+- `GET /api/v1/logs/patterns` aceita `container`, `group` e `q` (#48)
+- Painel: lista de traces por serviço e período, link "Pular para o conteúdo" e menu num landmark `nav` (#48)
+
 ### Changed
 
+- Painel com 7 destinos em vez de 13: Visão geral, Problemas, Containers, Métricas, Logs, Traces e Topologia. Workloads, Fleet e Grupos viram Containers; Explorer vira o modo Comparar de Métricas; Patterns vira o modo Padrões de Logs; Eventos, Insights e SLOs viram abas de Problemas. As rotas antigas redirecionam mantendo os parâmetros (#48)
+- Visão geral mostra só o que pede ação: alertas ativos, SLOs em risco, containers com problema e serviços HTTP com erro (#48)
+- Modo, aba, grade ou tabela, tipo de gráfico e containers comparados ficam na URL (#48)
+- Um único título por tela, igual ao nome no menu; sem rótulos em caixa alta nem metadados unidos por `·` (#48)
 - CI roda `go`, `web` e o build de cada imagem só quando hub, agent ou web mudam no diff; tags e mudanças no próprio CI rodam tudo (#45)
 - `CONTRIBUTING.md`: comandos locais do painel iguais aos do CI (`npm run lint`) e versão do Node
 - READMEs das imagens no Docker Hub: tags `vX.Y.Z` e `X`, imagem base, espelho no GHCR e variáveis de purge (hub) e de intervalo/filtro (agent)
@@ -13,6 +23,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 
 - Docs de configuração: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL` e `ARGUS_NAME_PREFIX` do agent não estavam documentadas
+- Link de SLO para Métricas enviava `service`, que a tela ignorava; agora abre a comparação dos containers do serviço (#48)
+- Comparação de métricas HTTP não encontrava as séries, que chegam com o nome do serviço no lugar do container (#48)
 
 ## [0.2.1] - 2026-09-29
 

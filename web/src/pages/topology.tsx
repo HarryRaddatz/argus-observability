@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 
+import { TimeRangePicker } from "@/components/filters/time-range-picker"
+import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useQueryState } from "@/hooks/use-query-state"
 import { fetchTopology, type TopologyGraph } from "@/lib/api"
-import { TIME_RANGES } from "@/lib/observability"
+
+const kindLabel: Record<string, string> = { http: "HTTP", amqp: "Fila AMQP" }
+
+function eventsLabel(n: number) {
+  return n === 1 ? "1 chamada" : `${n} chamadas`
+}
 
 export function TopologyPage() {
-  const [since, setSince] = useState("24h")
+  const [since, setSince] = useQueryState("since", "24h")
   const [graph, setGraph] = useState<TopologyGraph>({ nodes: [], edges: [] })
   const [loading, setLoading] = useState(true)
 
@@ -25,67 +32,66 @@ export function TopologyPage() {
     load()
   }, [load])
 
+  const edges = [...graph.edges].sort((a, b) => b.count - a.count)
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Service map</h1>
-          <p className="text-muted-foreground text-sm">
-            Topologia inferida de logs HTTP e AMQP entre serviços.
-          </p>
-        </div>
-        <div className="flex gap-1">
-          {TIME_RANGES.map((r) => (
-            <Button
-              key={r.id}
-              size="sm"
-              variant={since === r.id ? "default" : "outline"}
-              onClick={() => setSince(r.id)}
-            >
-              {r.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title="Topologia"
+        description="Chamadas entre serviços encontradas nos logs."
+        actions={<TimeRangePicker value={since} onChange={setSince} />}
+      />
 
       {loading ? (
         <Skeleton className="h-48 w-full" />
-      ) : graph.edges.length === 0 ? (
-        <Card>
-          <CardContent className="text-muted-foreground pt-6 text-sm">
-            Nenhuma aresta inferida ainda — aguarde ingestão de logs com HTTP/AMQP.
-          </CardContent>
-        </Card>
+      ) : edges.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Nenhuma dependência encontrada no período. Ela aparece quando os logs registram chamadas HTTP ou AMQP entre serviços.
+        </p>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {graph.nodes.map((n) => (
-              <Link key={n.id} to={`/logs?container=${encodeURIComponent(n.id)}`}>
-                <Badge variant="outline">{n.label}</Badge>
-              </Link>
-            ))}
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {graph.edges.map((e) => (
-              <Card key={`${e.source}-${e.target}-${e.kind}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {e.source} → {e.target}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-muted-foreground flex justify-between text-xs">
-                  <span>{e.kind}</span>
-                  <span>{e.count} eventos</span>
-                  <Link
-                    to={`/logs?container=${encodeURIComponent(e.target)}&topic=error`}
-                    className="text-primary hover:underline"
-                  >
-                    Logs destino
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium">Serviços</h2>
+            <div className="flex flex-wrap gap-2">
+              {graph.nodes.map((n) => (
+                <Link key={n.id} to={`/logs?container=${encodeURIComponent(n.id)}&since=${since}`}>
+                  <Badge variant="outline">{n.label}</Badge>
+                </Link>
+              ))}
+            </div>
+          </section>
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium">Dependências</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              {edges.map((e) => (
+                <Card key={`${e.source}-${e.target}-${e.kind}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {e.source} → {e.target}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-xs">
+                    <p className="text-sm font-medium tabular-nums">{eventsLabel(e.count)}</p>
+                    <p className="text-muted-foreground">{kindLabel[e.kind] ?? e.kind}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        to={`/logs?container=${encodeURIComponent(e.target)}&topic=error&since=${since}`}
+                        className="text-primary hover:underline"
+                      >
+                        Erros em {e.target}
+                      </Link>
+                      <Link
+                        to={`/traces?service=${encodeURIComponent(e.target)}&since=${since}`}
+                        className="text-primary hover:underline"
+                      >
+                        Traces de {e.target}
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </div>

@@ -1,20 +1,15 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/app-shell"
+import { RedirectWithParams } from "@/components/layout/redirect"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { DashboardPage } from "@/pages/dashboard"
-import { EventsPage } from "@/pages/events"
-import { ExplorerPage } from "@/pages/explorer"
-import { InsightsPage } from "@/pages/insights"
+import { ContainersPage } from "@/pages/containers"
 import { LogsPage } from "@/pages/logs"
 import { MetricsPage } from "@/pages/metrics"
-import { FleetPage } from "@/pages/fleet"
-import { GroupsPage } from "@/pages/groups"
-import { PatternsPage } from "@/pages/patterns"
+import { OverviewPage } from "@/pages/overview"
+import { ProblemsPage } from "@/pages/problems"
 import { TopologyPage } from "@/pages/topology"
 import { TracesPage } from "@/pages/traces"
-import { SLOsPage } from "@/pages/slos"
-import { WorkloadsPage } from "@/pages/workloads"
 
 export default function App() {
   return (
@@ -22,19 +17,23 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="workloads" element={<WorkloadsPage />} />
-            <Route path="fleet" element={<FleetPage />} />
-            <Route path="groups" element={<GroupsPage />} />
+            <Route index element={<OverviewPage />} />
+            <Route path="problems" element={<ProblemsPage />} />
+            <Route path="containers" element={<ContainersPage />} />
             <Route path="metrics" element={<MetricsPage />} />
-            <Route path="explorer" element={<ExplorerPage />} />
-            <Route path="insights" element={<InsightsPage />} />
-            <Route path="patterns" element={<PatternsPage />} />
-            <Route path="topology" element={<TopologyPage />} />
-            <Route path="traces" element={<TracesPage />} />
-            <Route path="slos" element={<SLOsPage />} />
             <Route path="logs" element={<LogsPage />} />
-            <Route path="events" element={<EventsPage />} />
+            <Route path="traces" element={<TracesPage />} />
+            <Route path="topology" element={<TopologyPage />} />
+
+            <Route path="workloads" element={<RedirectWithParams to="/containers" />} />
+            <Route path="fleet" element={<RedirectWithParams to="/containers" params={{ view: "table" }} />} />
+            <Route path="groups" element={<RedirectWithParams to="/containers" params={{ panel: "groups" }} />} />
+            <Route path="explorer" element={<RedirectWithParams to="/metrics" params={{ mode: "compare" }} />} />
+            <Route path="patterns" element={<RedirectWithParams to="/logs" params={{ mode: "patterns" }} />} />
+            <Route path="insights" element={<RedirectWithParams to="/problems" />} />
+            <Route path="slos" element={<RedirectWithParams to="/problems" params={{ tab: "slos" }} />} />
+            <Route path="events" element={<RedirectWithParams to="/problems" params={{ tab: "history" }} />} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

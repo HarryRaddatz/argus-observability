@@ -1,0 +1,369 @@
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
+
+import { GroupSelect } from "@/components/filters/group-select"
+import { PageHeader } from "@/components/layout/page-header"
+import { ContainerMetricCard } from "@/components/metrics/container-metric-card"
+import { StatCard } from "@/components/metrics/stat-card"
+import { StackedAreaChart } from "@/components/metrics/stacked-area-chart"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { usePolling } from "@/hooks/use-polling"
+import { useQueryState } from "@/hooks/use-query-state"
+import {
+  fetchFleetStatus,
+  fetchMetricSeries,
+  getWorkloadGroupSummary,
+  listWorkloadGroups,
+  listWorkloads,
+  type ContainerFleetStatus,
+  type ContainerSeries,
+  type FleetStatusResponse,
+  type SeriesPoint,
+  type WorkloadGroup,
+  type WorkloadSnapshot,
+} from "@/lib/api"
+import { instabilityReason, isUnstable, stateLabel, stateVariant } from "@/lib/container-state"
+import { formatBytes, formatPercent } from "@/lib/format"
+import { GroupsPanel } from "@/views/groups-panel"
+
+const GRID_LIMIT = 40
+
+type Row = {
+  container: string
+  workload?: WorkloadSnapshot
+  status?: ContainerFleetStatus
+}
+
+export function ContainersPage() {
+  const [view, setView] = useQueryState("view", "grid")
+  const [group, setGroup] = useQueryState("group", "")
+  const [panel, setPanel] = useQueryState("panel", "")
+  const [filter, setFilter] = useQueryState("filter", "")
+
+  const [workloads, setWorkloads] = useState<WorkloadSnapshot[]>([])
+  const [fleet, setFleet] = useState<FleetStatusResponse | null>(null)
+  const [cpuSeries, setCpuSeries] = useState<ContainerSeries[]>([])
+  const [memSeries, setMemSeries] = useState<ContainerSeries[]>([])
+  const [groups, setGroups] = useState<WorkloadGroup[]>([])
+  const [members, setMembers] = useState<Set<string> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(() => {
+    Promise.all([
+      listWorkloads("30m"),
+      fetchFleetStatus(),
+      fetchMetricSeries("cpu.usage", "1h"),
+      fetchMetricSeries("memory.usage_pct", "1h"),
+    ])
+      .then(([wl, fl, cpu, mem]) => {
+        setWorkloads(wl)
+        setFleet(fl)
+        setCpuSeries(cpu.series ?? [])
+        setMemSeries(mem.series ?? [])
+        setError(null)
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar os containers"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  usePolling(load)
+
+  const loadGroups = useCallback(() => {
+    listWorkloadGroups().then(setGroups).catch(() => setGroups([]))
+  }, [])
+
+  useEffect(() => {
+    loadGroups()
+  }, [loadGroups])
+
+  useEffect(() => {
+    if (!group) {
+      setMembers(null)
+      return
+    }
+    getWorkloadGroupSummary(group, "30m")
+      .then((s) => setMembers(new Set(s.members.map((m) => m.container))))
+      .catch(() => setMembers(new Set()))
+  }, [group])
+
+  const rows = useMemo(() => {
+    const byName = new Map<string, Row>()
+    for (const w of workloads) byName.set(w.container, { container: w.container, workload: w })
+    for (const s of fleet?.containers ?? []) {
+      const row = byName.get(s.container) ?? { container: s.container }
+      row.status = s
+      byName.set(s.container, row)
+    }
+    let list = [...byName.values()]
+    if (members) list = list.filter((r) => members.has(r.container))
+    if (filter === "unstable") list = list.filter((r) => r.status && isUnstable(r.status))
+    return list.sort((a, b) => {
+      const ua = a.status && isUnstable(a.status) ? 1 : 0
+      const ub = b.status && isUnstable(b.status) ? 1 : 0
+      if (ua !== ub) return ub - ua
+      return (b.workload?.cpu_usage ?? 0) - (a.workload?.cpu_usage ?? 0)
+    })
+  }, [workloads, fleet, members, filter])
+
+  const counts = useMemo(() => {
+    let running = 0
+    let unstable = 0
+    let stopped = 0
+    let restarts = 0
+    for (const r of rows) {
+      const state = r.status?.state?.toLowerCase()
+      if (state === "running") running++
+      if (state === "exited" || state === "dead") stopped++
+      if (r.status && isUnstable(r.status)) unstable++
+      restarts += r.status?.restart_count ?? 0
+    }
+    return { running, unstable, stopped, restarts }
+  }, [rows])
+
+  const seriesByName = useMemo(() => {
+    const toMap = (series: ContainerSeries[]) => {
+      const m: Record<string, SeriesPoint[]> = {}
+      for (const s of series) m[s.container] = s.points ?? []
+      return m
+    }
+    return { cpu: toMap(cpuSeries), mem: toMap(memSeries) }
+  }, [cpuSeries, memSeries])
+
+  const stackedCpu = useMemo(() => {
+    const top = rows
+      .filter((r) => r.workload)
+      .sort((a, b) => (b.workload?.cpu_usage ?? 0) - (a.workload?.cpu_usage ?? 0))
+      .slice(0, 8)
+      .map((r) => r.container)
+    return cpuSeries.filter((s) => top.includes(s.container))
+  }, [rows, cpuSeries])
+
+  const gridRows = rows.filter((r) => r.workload).slice(0, GRID_LIMIT)
+  const allContainers = useMemo(() => workloads.map((w) => w.container).sort(), [workloads])
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Containers"
+        actions={
+          <>
+            <GroupSelect value={group} onChange={setGroup} groups={groups} />
+            <Button size="sm" variant="outline" onClick={() => setPanel("groups")}>
+              Gerenciar grupos
+            </Button>
+            <Tabs value={view} onValueChange={(v) => setView(String(v))}>
+              <TabsList aria-label="Visualização">
+                <TabsTrigger value="grid">Grade</TabsTrigger>
+                <TabsTrigger value="table">Tabela</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </>
+        }
+      />
+
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Rodando" value={counts.running} loading={loading} />
+        <StatCard
+          label="Com problema"
+          value={counts.unstable}
+          tone={counts.unstable > 0 ? "critical" : "default"}
+          hint={counts.unstable > 0 && filter !== "unstable" ? "Ver só esses" : undefined}
+          to={
+            counts.unstable > 0 && filter !== "unstable"
+              ? `/containers?${new URLSearchParams({ ...(group ? { group } : {}), filter: "unstable", view: "table" })}`
+              : undefined
+          }
+          loading={loading}
+        />
+        <StatCard label="Parados" value={counts.stopped} loading={loading} />
+        <StatCard
+          label="Reinícios"
+          value={counts.restarts}
+          tone={counts.restarts > 10 ? "warning" : "default"}
+          loading={loading}
+        />
+      </div>
+
+      {filter === "unstable" ? (
+        <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+          <span>Mostrando só containers com problema.</span>
+          <Button size="sm" variant="ghost" onClick={() => setFilter("")}>
+            Mostrar todos
+          </Button>
+        </div>
+      ) : null}
+
+      {view === "grid" ? (
+        <div className="space-y-4">
+          <StackedAreaChart
+            title="CPU dos oito containers que mais consomem"
+            description="Última hora, empilhado"
+            series={stackedCpu}
+            loading={loading}
+            unit="%"
+          />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+              : gridRows.map((r) => (
+                  <ContainerMetricCard
+                    key={r.container}
+                    workload={r.workload!}
+                    status={r.status}
+                    cpuPoints={seriesByName.cpu[r.container]}
+                    memPoints={seriesByName.mem[r.container]}
+                  />
+                ))}
+          </div>
+          {!loading && gridRows.length === 0 ? <EmptyRows filtered={Boolean(group || filter)} /> : null}
+          {rows.length > gridRows.length ? (
+            <p className="text-muted-foreground text-sm">
+              A grade mostra {gridRows.length} de {rows.length} containers.{" "}
+              <button type="button" className="text-primary hover:underline" onClick={() => setView("table")}>
+                Ver todos na tabela
+              </button>
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <ScrollArea className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Container</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>CPU</TableHead>
+                  <TableHead>Memória</TableHead>
+                  <TableHead>Reinícios</TableHead>
+                  <TableHead>Atenção</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <EmptyRows filtered={Boolean(group || filter)} />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((r) => <ContainerRow key={r.container} row={r} />)
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+
+          {fleet && fleet.services.length > 0 && !group ? (
+            <section className="space-y-2">
+              <h2 className="text-sm font-medium">Réplicas por serviço</h2>
+              <ScrollArea className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Serviço</TableHead>
+                      <TableHead>Réplicas no ar</TableHead>
+                      <TableHead>Reiniciando</TableHead>
+                      <TableHead>Healthcheck falhando</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fleet.services.map((s) => (
+                      <TableRow key={s.service}>
+                        <TableCell className="font-medium">{s.service}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {s.replicas_up} de {s.replicas_total}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{s.restarting || "—"}</TableCell>
+                        <TableCell className="tabular-nums">{s.unhealthy || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </section>
+          ) : null}
+        </div>
+      )}
+
+      <GroupsPanel
+        open={panel === "groups"}
+        onOpenChange={(open) => setPanel(open ? "groups" : "")}
+        groups={groups}
+        containers={allContainers}
+        activeGroup={group}
+        onSelectGroup={setGroup}
+        onChanged={loadGroups}
+      />
+    </div>
+  )
+}
+
+function EmptyRows({ filtered }: { filtered: boolean }) {
+  return (
+    <p className="text-muted-foreground py-6 text-center text-sm">
+      {filtered
+        ? "Nenhum container com estes filtros."
+        : "Nenhum container monitorado. Suba o agent com acesso ao socket do Docker."}
+    </p>
+  )
+}
+
+function ContainerRow({ row }: { row: Row }) {
+  const { workload: w, status } = row
+  const state = status?.state?.toLowerCase()
+  const unstable = status ? isUnstable(status) : false
+  return (
+    <TableRow className={unstable ? "bg-destructive/5" : undefined}>
+      <TableCell className="font-medium">{row.container}</TableCell>
+      <TableCell>{state ? <Badge variant={stateVariant(state)}>{stateLabel(state)}</Badge> : "—"}</TableCell>
+      <TableCell className="tabular-nums">
+        {w ? (
+          <Badge variant={w.cpu_usage > 80 ? "destructive" : "secondary"}>{formatPercent(w.cpu_usage)}</Badge>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className="text-sm tabular-nums">
+        {w ? (
+          <>
+            {formatBytes(w.memory_usage)}
+            {w.memory_limit > 0 ? <span className="text-muted-foreground"> de {formatBytes(w.memory_limit)}</span> : null}
+          </>
+        ) : (
+          "—"
+        )}
+      </TableCell>
+      <TableCell className={status && status.restart_count > 3 ? "font-medium text-amber-600 tabular-nums" : "tabular-nums"}>
+        {status?.restart_count ?? "—"}
+      </TableCell>
+      <TableCell className="text-sm">{unstable && status ? instabilityReason(status) : "—"}</TableCell>
+      <TableCell>
+        <div className="flex gap-3 text-xs">
+          <Link to={`/metrics?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
+            Métricas
+          </Link>
+          <Link to={`/logs?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
+            Logs
+          </Link>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
