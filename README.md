@@ -30,7 +30,12 @@ Exemplo mínimo adicional: [examples/compose-minimal/](examples/compose-minimal/
 
 ## Releases e imagens
 
-Versões em [GitHub Releases](https://github.com/HarryRaddatz/argus-observability/releases). Cada tag `vX.Y.Z` publica `ghcr.io/harryraddatz/argus-hub`, `argus-agent` e `argus-web` com a tag `X.Y.Z` e `latest`.
+Versões em [GitHub Releases](https://github.com/HarryRaddatz/argus-observability/releases). Cada tag `vX.Y.Z` publica `argus-hub`, `argus-agent` e `argus-web` para `linux/amd64` e `linux/arm64`, com tags `X.Y.Z`, `X.Y` e `latest`:
+
+| Registry | Imagens |
+|---|---|
+| Docker Hub | [`pseudohuery/argus-hub`](https://hub.docker.com/r/pseudohuery/argus-hub) · [`argus-agent`](https://hub.docker.com/r/pseudohuery/argus-agent) · [`argus-web`](https://hub.docker.com/r/pseudohuery/argus-web) |
+| GHCR | `ghcr.io/harryraddatz/argus-{hub,agent,web}` |
 
 Para atualizar uma instância em execução, siga [docs/deploy.md](docs/deploy.md).
 

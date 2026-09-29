@@ -65,6 +65,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      DOCKERHUB_NAMESPACE: ${{ vars.DOCKERHUB_NAMESPACE }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
     strategy:
       fail-fast: true
       matrix:
@@ -72,14 +76,19 @@ jobs:
           - component: hub
             context: .
             file: Dockerfile.hub
+            description: Argus hub - API, ingest, rules e SLOs
           - component: agent
             context: .
             file: Dockerfile.agent
+            description: Argus agent - coleta de metricas e logs de containers Docker
           - component: web
             context: ./web
             file: ./web/Dockerfile
+            description: Argus web - painel de observabilidade
     steps:
       - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
 
@@ -90,26 +99,75 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_NAMESPACE != '' && env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-${{ matrix.component }}
+          images: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-${{ matrix.component }}
+            name=docker.io/${{ env.DOCKERHUB_NAMESPACE }}/argus-${{ matrix.component }},enable=${{ env.DOCKERHUB_NAMESPACE != '' && env.DOCKERHUB_USERNAME != '' }}
           tags: |
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
             type=semver,pattern=v{{version}}
             type=raw,value=latest,enable=${{ needs.verify.outputs.prerelease == 'false' }}
+          labels: |
+            org.opencontainers.image.title=argus-${{ matrix.component }}
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.documentation=https://harryraddatz.github.io/argus-observability/
+          annotations: |
+            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push argus-${{ matrix.component }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha,scope=argus-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
+
+  dockerhub-description:
+    name: docker hub description (${{ matrix.component }})
+    needs: images
+    if: vars.DOCKERHUB_NAMESPACE != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - component: hub
+            description: Argus hub - API, ingest, rules e SLOs
+          - component: agent
+            description: Argus agent - coleta de metricas e logs de containers Docker
+          - component: web
+            description: Argus web - painel de observabilidade
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync README and description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_NAMESPACE }}/argus-${{ matrix.component }}
+          short-description: ${{ matrix.description }}
+          readme-filepath: .github/dockerhub/${{ matrix.component }}.md
 
   release:
     name: github release

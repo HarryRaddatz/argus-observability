@@ -7,7 +7,7 @@ Copie `.env.example` para `.env`.
 | Variável | Default | Descrição |
 |---|---|---|
 | `ARGUS_HUB_ADDR` | `:8080` | Endereço de bind |
-| `ARGUS_STORE_PATH` | `/data/argus.db` | Caminho SQLite |
+| `ARGUS_STORE_PATH` | `./data/argus.db` | Caminho SQLite (compose e `.env.example` usam `/data/argus.db`) |
 | `ARGUS_AGENT_TOKEN` | — | Token Bearer para ingest (opcional em dev) |
 | `ARGUS_RETENTION_LOGS` | `168h` | Retenção de logs |
 | `ARGUS_RETENTION_METRICS` | `720h` | Retenção de métricas |
@@ -19,9 +19,9 @@ Copie `.env.example` para `.env`.
 
 | Variável | Default | Descrição |
 |---|---|---|
-| `ARGUS_HUB_URL` | — | URL base do hub (ex.: `http://argus-hub:8080`) |
-| `ARGUS_AGENT_ID` | `argus-agent` | Identificador do agent |
-| `ARGUS_HOST_ID` | `docker-host` | Identificador lógico do host |
+| `ARGUS_HUB_URL` | `http://127.0.0.1:8080` | URL base do hub (ex.: `http://argus-hub:8080`) |
+| `ARGUS_AGENT_ID` | hostname | Identificador do agent |
+| `ARGUS_HOST_ID` | hostname | Identificador lógico do host |
 | `ARGUS_COLLECT_INTERVAL` | `15s` | Intervalo entre coletas Docker |
 
 ## Web (dev)

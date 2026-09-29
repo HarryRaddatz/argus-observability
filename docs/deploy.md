@@ -2,7 +2,7 @@
 
 Runbook para promover uma versão do Argus em um docker host. Vale para quem usa as imagens publicadas no GHCR ou faz build local a partir do clone.
 
-Versões disponíveis: [GitHub Releases](https://github.com/HarryRaddatz/argus-observability/releases) · imagens `ghcr.io/harryraddatz/argus-{hub,agent,web}`.
+Versões disponíveis: [GitHub Releases](https://github.com/HarryRaddatz/argus-observability/releases) · imagens `ghcr.io/harryraddatz/argus-{hub,agent,web}` e `docker.io/pseudohuery/argus-{hub,agent,web}` (mesmo conteúdo, `linux/amd64` e `linux/arm64`).
 
 ## Antes de atualizar
 
@@ -23,10 +23,11 @@ O nome do volume segue `<projeto>_argus_data`; confirme com `docker volume ls`.
 
 ## Opção A — imagens publicadas (GHCR)
 
-Fixe a versão com `ARGUS_VERSION` (sem o prefixo `v`). Sem ela, o compose usa `latest`.
+Fixe a versão com `ARGUS_VERSION` (sem o prefixo `v`). Sem ela, o compose usa `latest`. Para puxar do Docker Hub em vez do GHCR, defina `ARGUS_REGISTRY=docker.io/pseudohuery`.
 
 ```bash
 export ARGUS_VERSION=0.1.1
+# export ARGUS_REGISTRY=docker.io/pseudohuery
 docker compose -f examples/compose-minimal/docker-compose.published.yml pull
 docker compose -f examples/compose-minimal/docker-compose.published.yml up -d --force-recreate
 ```

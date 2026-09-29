@@ -115,7 +115,7 @@ Ver `.env.example` · tarefa [#16](https://github.com/HarryRaddatz/argus-observa
 
 CI: `.github/workflows/ci.yml` · Release (tag → GHCR): `.github/workflows/release.yml`
 
-Imagens: `ghcr.io/harryraddatz/argus-{hub,agent,web}` · Compose publicado: `examples/compose-minimal/docker-compose.published.yml`
+Imagens (`linux/amd64`, `linux/arm64`): `ghcr.io/harryraddatz/argus-{hub,agent,web}` e `docker.io/pseudohuery/argus-{hub,agent,web}` · README do Docker Hub: `.github/dockerhub/` · Compose publicado: `examples/compose-minimal/docker-compose.published.yml` (`ARGUS_REGISTRY`)
 
 ```mermaid
 flowchart LR

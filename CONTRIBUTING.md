@@ -63,10 +63,13 @@ O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda
 
 1. `verify tag` — tag semver, commit presente em `main` e seção `[X.Y.Z]` no CHANGELOG. Falha aqui não publica nada.
 2. `ci` — o mesmo CI de PR, reutilizado.
-3. `image (hub/agent/web)` — build e push em paralelo de `ghcr.io/harryraddatz/argus-{hub,agent,web}` com tags `X.Y.Z`, `vX.Y.Z` e `latest`.
-4. `github release` — notas extraídas do CHANGELOG.
+3. `image (hub/agent/web)` — build multi-arch (`linux/amd64`, `linux/arm64`) e push em paralelo para GHCR e Docker Hub, com SBOM e provenance. Tags `X.Y.Z`, `X.Y`, `X` (a partir de `1.0`), `vX.Y.Z` e `latest`.
+4. `docker hub description` — sincroniza README e descrição curta de cada repositório a partir de `.github/dockerhub/`.
+5. `github release` — notas extraídas do CHANGELOG.
 
 Tags com sufixo (`v0.2.0-rc.1`) viram pre-release e não movem `latest`.
+
+O Docker Hub usa os secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` (token com permissão Read, Write, Delete) e a variável de repositório `DOCKERHUB_NAMESPACE`. Sem a variável (por exemplo, em forks), o release publica só no GHCR.
 
 Smoke test pós-release:
 
@@ -82,7 +85,7 @@ curl -s http://localhost:8080/health
 - [ ] Seção `[X.Y.Z]` no CHANGELOG com data e itens de `[Unreleased]` movidos
 - [ ] `### Breaking` preenchido quando houver mudança incompatível
 - [ ] Novas variáveis em `.env.example` e `docs/api/configuration.md`
-- [ ] Workflow Release concluído e as três imagens com a tag `X.Y.Z` no GHCR
+- [ ] Workflow Release concluído e as três imagens com a tag `X.Y.Z` no GHCR e no Docker Hub
 - [ ] Smoke test acima com `ARGUS_VERSION=X.Y.Z`
 
 Atualizar uma instância existente: [docs/deploy.md](docs/deploy.md).
