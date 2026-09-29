@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- CI roda `go`, `web` e o build de cada imagem só quando hub, agent ou web mudam no diff; tags e mudanças no próprio CI rodam tudo (#45)
+
 ## [0.2.1] - 2026-09-29
 
 ### Changed
