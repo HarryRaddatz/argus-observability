@@ -4,6 +4,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- Go 1.27, Node 24 (LTS), Alpine 3.24, nginx 1.30 (stable) e Python 3.14 nos Dockerfiles e workflows (#41)
+- Runners fixados em `ubuntu-26.04` (LTS) e actions atualizadas para as majors atuais (#41)
+
 ## [0.2.0] - 2026-09-29
 
 ### Added
