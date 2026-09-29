@@ -18,12 +18,12 @@ env:
 jobs:
   verify:
     name: verify tag
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       version: ${{ steps.tag.outputs.version }}
       prerelease: ${{ steps.tag.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -61,7 +61,7 @@ jobs:
   images:
     name: image (${{ matrix.component }})
     needs: [verify, ci]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: write
@@ -86,14 +86,14 @@ jobs:
             file: ./web/Dockerfile
             description: Argus web - painel de observabilidade
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -101,14 +101,14 @@ jobs:
 
       - name: Log in to Docker Hub
         if: env.DOCKERHUB_NAMESPACE != '' && env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/argus-${{ matrix.component }}
@@ -129,7 +129,7 @@ jobs:
             org.opencontainers.image.licenses=MIT
 
       - name: Build and push argus-${{ matrix.component }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -147,7 +147,7 @@ jobs:
     name: docker hub description (${{ matrix.component }})
     needs: images
     if: vars.DOCKERHUB_NAMESPACE != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         include:
@@ -158,10 +158,10 @@ jobs:
           - component: web
             description: Argus web - painel de observabilidade
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Sync README and description
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -172,17 +172,17 @@ jobs:
   release:
     name: github release
     needs: [verify, images]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Extract release notes
         run: bash .github/scripts/changelog-extract.sh "${GITHUB_REF_NAME}" > release-notes.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Argus ${{ github.ref_name }}

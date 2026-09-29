@@ -15,7 +15,7 @@ Obrigado por contribuir. Este repositório é a biblioteca pública de observabi
 cp .env.example .env
 docker compose up -d --build   # stack completa
 go vet ./...
-go test ./...                  # backend (Go 1.22+)
+go test ./...                  # backend (Go 1.27+)
 cd web && npm ci && npm run build
 bash .github/scripts/check-no-vps-leak.sh   # opcional, local
 ```
