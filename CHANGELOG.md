@@ -8,6 +8,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 - CI roda `go`, `web` e o build de cada imagem só quando hub, agent ou web mudam no diff; tags e mudanças no próprio CI rodam tudo (#45)
 - `CONTRIBUTING.md`: comandos locais do painel iguais aos do CI (`npm run lint`) e versão do Node
+- READMEs das imagens no Docker Hub: tags `vX.Y.Z` e `X`, imagem base, espelho no GHCR e variáveis de purge (hub) e de intervalo/filtro (agent)
+
+### Fixed
+
+- Docs de configuração: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL` e `ARGUS_NAME_PREFIX` do agent não estavam documentadas
 
 ## [0.2.1] - 2026-09-29
 

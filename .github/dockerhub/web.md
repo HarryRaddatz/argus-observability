@@ -2,7 +2,9 @@
 
 Painel web do [Argus](https://github.com/HarryRaddatz/argus-observability): dashboard, workloads, métricas, logs, traces, SLOs, topologia e eventos. Build estático servido por nginx.
 
-Imagens: `linux/amd64`, `linux/arm64` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+Imagens: `linux/amd64`, `linux/arm64` · Base `nginx:1.30-alpine` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+
+Também publicada no GHCR: `ghcr.io/harryraddatz/argus-web`.
 
 ## Uso rápido
 
@@ -23,8 +25,9 @@ Painel em `http://localhost:3000`.
 
 | Tag | Conteúdo |
 |---|---|
-| `X.Y.Z` | Release exata (recomendado em produção) |
+| `X.Y.Z`, `vX.Y.Z` | Release exata (recomendado em produção) |
 | `X.Y` | Último patch da linha `X.Y` |
+| `X` | Última release da major `X` (a partir de `1.0`) |
 | `latest` | Última release estável |
 
 Use a mesma versão no hub e no painel.

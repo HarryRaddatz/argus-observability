@@ -2,7 +2,9 @@
 
 Hub central do [Argus](https://github.com/HarryRaddatz/argus-observability): API REST, ingest de métricas, logs, eventos e traces OTLP, regras e SLOs. Persistência em SQLite.
 
-Imagens: `linux/amd64`, `linux/arm64` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+Imagens: `linux/amd64`, `linux/arm64` · Base `alpine:3.24` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+
+Também publicada no GHCR: `ghcr.io/harryraddatz/argus-hub`.
 
 ## Uso rápido
 
@@ -28,8 +30,9 @@ curl -s http://localhost:8080/health
 
 | Tag | Conteúdo |
 |---|---|
-| `X.Y.Z` | Release exata (recomendado em produção) |
+| `X.Y.Z`, `vX.Y.Z` | Release exata (recomendado em produção) |
 | `X.Y` | Último patch da linha `X.Y` |
+| `X` | Última release da major `X` (a partir de `1.0`) |
 | `latest` | Última release estável |
 
 Pre-releases (`X.Y.Z-rc.N`) não movem `latest`.
@@ -44,6 +47,8 @@ Pre-releases (`X.Y.Z-rc.N`) não movem `latest`.
 | `ARGUS_RETENTION_LOGS` | `168h` | Retenção de logs |
 | `ARGUS_RETENTION_METRICS` | `720h` | Retenção de métricas |
 | `ARGUS_RETENTION_EVENTS` | `720h` | Retenção de eventos |
+| `ARGUS_PURGE_INTERVAL` | `1h` | Intervalo do job de purge |
+| `ARGUS_PURGE_TIMEOUT` | `5s` | Timeout por execução de purge |
 
 Referência completa: [configuração](https://harryraddatz.github.io/argus-observability/api/configuration/).
 
