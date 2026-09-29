@@ -28,6 +28,12 @@ O agent monta o Docker socket e passa a reportar containers em execução. Abra 
 
 Exemplo mínimo adicional: [examples/compose-minimal/](examples/compose-minimal/).
 
+## Releases e imagens
+
+Versões em [GitHub Releases](https://github.com/HarryRaddatz/argus-observability/releases). Cada tag `vX.Y.Z` publica `ghcr.io/harryraddatz/argus-hub`, `argus-agent` e `argus-web` com a tag `X.Y.Z` e `latest`.
+
+Para atualizar uma instância em execução, siga [docs/deploy.md](docs/deploy.md).
+
 ## Componentes
 
 | Binário | Função |
@@ -55,6 +61,7 @@ flowchart LR
 | Visão geral | [docs/overview.md](docs/overview.md) |
 | Painel (rotas e IA) | [docs/flows/ui-panel.md](docs/flows/ui-panel.md) |
 | Fluxos | [docs/flows/](docs/flows/) |
+| Deploy e atualização | [docs/deploy.md](docs/deploy.md) |
 
 ## Desenvolvimento local
 

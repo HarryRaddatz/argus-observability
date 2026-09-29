@@ -117,6 +117,23 @@ CI: `.github/workflows/ci.yml` · Release (tag → GHCR): `.github/workflows/rel
 
 Imagens: `ghcr.io/harryraddatz/argus-{hub,agent,web}` · Compose publicado: `examples/compose-minimal/docker-compose.published.yml`
 
+```mermaid
+flowchart LR
+  PR[PR para main] --> CI[ci.yml: anti-leak, vet, test, build web]
+  CI --> Main[merge em main]
+  Main --> Tag[tag vX.Y.Z]
+  Tag --> Rel[release.yml: test, build e push GHCR]
+  Rel --> GHR[GitHub Release com notas do CHANGELOG]
+  Rel --> Deploy[operador: pull + up --force-recreate]
+```
+
+| Etapa | Arquivo | Doc |
+|---|---|---|
+| Checks de PR | `.github/workflows/ci.yml` | `CONTRIBUTING.md` (CI e branch protection) |
+| Versionamento | `CHANGELOG.md` · `.github/scripts/changelog-extract.sh` | `CONTRIBUTING.md` (Release) |
+| Publicação | `.github/workflows/release.yml` | `CONTRIBUTING.md` (Release) |
+| Atualização de instância | `examples/compose-minimal/docker-compose.published.yml` | `docs/deploy.md` |
+
 Exemplo mínimo: [#19](https://github.com/HarryRaddatz/argus-observability/issues/19) · Pipeline: épico [#24](https://github.com/HarryRaddatz/argus-observability/issues/24)
 
 ## Épico #13 — tarefas de biblioteca pública
