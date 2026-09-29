@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 
@@ -94,6 +95,195 @@ func scanTraceSpans(rows interface {
 		out = append(out, sp)
 	}
 	return out, rows.Err()
+}
+
+// traceListScanLimit caps the rows read per source so a wide window stays cheap on large databases.
+const traceListScanLimit = 5000
+
+// ListTraces returns recent traces from OTLP spans and from log lines that carry a trace id.
+// A trace present in both sources is reported once, from its OTLP spans.
+func (s *SQLite) ListTraces(ctx context.Context, filter model.TraceListFilter) ([]model.TraceSummary, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	since := filter.Since.UTC().Format(time.RFC3339Nano)
+
+	byKey := map[string]*model.TraceSummary{}
+	services := map[string]map[string]struct{}{}
+	hasRoot := map[string]bool{}
+	addService := func(key, svc string) {
+		if svc == "" {
+			return
+		}
+		if services[key] == nil {
+			services[key] = map[string]struct{}{}
+		}
+		services[key][svc] = struct{}{}
+	}
+
+	spanRows, err := s.db.QueryContext(ctx, `
+SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, status
+FROM trace_spans WHERE start_ts >= ?
+ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
+	if err != nil {
+		return nil, err
+	}
+	for spanRows.Next() {
+		var traceID, parent, name, service, container, startStr, endStr, status string
+		if err := spanRows.Scan(&traceID, &parent, &name, &service, &container, &startStr, &endStr, &status); err != nil {
+			spanRows.Close()
+			return nil, err
+		}
+		start, _ := time.Parse(time.RFC3339Nano, startStr)
+		end, _ := time.Parse(time.RFC3339Nano, endStr)
+		key := traceKey(traceID)
+		sum := byKey[key]
+		if sum == nil {
+			sum = &model.TraceSummary{TraceID: traceID, Source: "otlp", StartTS: start, EndTS: end}
+			byKey[key] = sum
+		}
+		sum.SpanCount++
+		if start.Before(sum.StartTS) {
+			sum.StartTS = start
+		}
+		if end.After(sum.EndTS) {
+			sum.EndTS = end
+		}
+		if status == "error" {
+			sum.Error = true
+		}
+		if parent == "" && !hasRoot[key] {
+			sum.Name, sum.Service, sum.Container = name, service, container
+			hasRoot[key] = true
+		} else if !hasRoot[key] {
+			sum.Name, sum.Service, sum.Container = name, service, container
+		}
+		addService(key, service)
+		addService(key, insights.InferServiceFromContainer(container))
+	}
+	if err := spanRows.Err(); err != nil {
+		spanRows.Close()
+		return nil, err
+	}
+	spanRows.Close()
+
+	logRows, err := s.db.QueryContext(ctx, `
+SELECT ts, message, level, entity_uid, labels_json,
+  COALESCE(json_extract(fields_json, '$.trace_id'), json_extract(fields_json, '$.traceId'), '')
+FROM log_entries
+WHERE ts >= ? AND (fields_json LIKE '%"trace_id"%' OR fields_json LIKE '%"traceId"%')
+ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer logRows.Close()
+	for logRows.Next() {
+		var tsStr, message, level, entityUID, labelsJSON, traceID string
+		if err := logRows.Scan(&tsStr, &message, &level, &entityUID, &labelsJSON, &traceID); err != nil {
+			return nil, err
+		}
+		key := traceKey(traceID)
+		if key == "" {
+			continue
+		}
+		sum := byKey[key]
+		if sum != nil && sum.Source == "otlp" {
+			continue
+		}
+		ts, _ := time.Parse(time.RFC3339Nano, tsStr)
+		if sum == nil {
+			sum = &model.TraceSummary{TraceID: traceID, Source: "logs", StartTS: ts, EndTS: ts}
+			byKey[key] = sum
+		}
+		var labels model.Labels
+		_ = json.Unmarshal([]byte(labelsJSON), &labels)
+		container := containerFromEntityUID(entityUID)
+		service := labels["service"]
+		if service == "" {
+			service = insights.InferServiceFromContainer(container)
+		}
+		sum.SpanCount++
+		if ts.Before(sum.StartTS) {
+			sum.StartTS = ts
+		}
+		if ts.After(sum.EndTS) {
+			sum.EndTS = ts
+		}
+		switch strings.ToLower(level) {
+		case "error", "fatal", "critical":
+			sum.Error = true
+		}
+		// Rows arrive newest first, so the last write keeps the earliest line as the trace name.
+		sum.Name = logTraceName(message)
+		sum.Service, sum.Container = service, container
+		addService(key, service)
+	}
+	if err := logRows.Err(); err != nil {
+		return nil, err
+	}
+
+	out := make([]model.TraceSummary, 0, len(byKey))
+	for key, sum := range byKey {
+		if filter.Service != "" {
+			if _, ok := services[key][filter.Service]; !ok {
+				continue
+			}
+		}
+		if sum.EndTS.After(sum.StartTS) {
+			sum.DurationMs = float64(sum.EndTS.Sub(sum.StartTS).Microseconds()) / 1000
+		}
+		out = append(out, *sum)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].StartTS.After(out[j].StartTS) })
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func traceKey(traceID string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(traceID), "-", ""))
+}
+
+func containerFromEntityUID(entityUID string) string {
+	if i := strings.LastIndex(entityUID, ":"); i >= 0 {
+		return entityUID[i+1:]
+	}
+	return entityUID
+}
+
+// logTraceName picks a readable operation name from a log line, preferring the route of structured JSON logs.
+func logTraceName(message string) string {
+	msg := strings.TrimSpace(message)
+	if strings.HasPrefix(msg, "{") {
+		var obj map[string]any
+		if json.Unmarshal([]byte(msg), &obj) == nil {
+			method, _ := obj["method"].(string)
+			for _, k := range []string{"route", "path", "url", "name", "msg", "message", "event"} {
+				v, ok := obj[k].(string)
+				if !ok || v == "" {
+					continue
+				}
+				if method != "" && (k == "route" || k == "path" || k == "url") {
+					v = method + " " + v
+				}
+				return truncateRunes(v, 80)
+			}
+		}
+	}
+	return truncateRunes(msg, 80)
+}
+
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
 }
 
 func (s *SQLite) ListSLOs(ctx context.Context) ([]model.SLODefinition, error) {

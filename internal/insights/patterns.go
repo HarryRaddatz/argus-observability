@@ -32,7 +32,7 @@ func GeneratePatternSpikes(patterns []model.LogPattern) []model.Insight {
 			},
 			Recommendations: []string{
 				"Investigar causa raiz do padrão repetido",
-				"Usar drill-down em /logs/patterns",
+				"Abrir Logs no modo Padrões repetidos para ver as linhas",
 			},
 		})
 	}

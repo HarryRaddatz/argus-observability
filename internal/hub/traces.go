@@ -2,6 +2,7 @@ package hub
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,7 +11,34 @@ import (
 )
 
 func (s *Server) registerTraceRoutes() {
+	s.mux.HandleFunc("GET /api/v1/traces", s.handleListTraces)
 	s.mux.HandleFunc("GET /api/v1/traces/{trace_id}", s.handleGetTrace)
+}
+
+func (s *Server) handleListTraces(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	since := time.Now().UTC().Add(-1 * time.Hour)
+	if raw := q.Get("since"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			since = time.Now().UTC().Add(-d)
+		}
+	}
+	limit := 50
+	if raw := q.Get("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			limit = n
+		}
+	}
+	list, err := s.store.ListTraces(r.Context(), model.TraceListFilter{
+		Since:   since,
+		Service: strings.TrimSpace(q.Get("service")),
+		Limit:   limit,
+	})
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
 }
 
 func (s *Server) handleGetTrace(w http.ResponseWriter, r *http.Request) {
