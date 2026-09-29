@@ -8,6 +8,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 - Go 1.27, Node 24 (LTS), Alpine 3.24, nginx 1.30 (stable) e Python 3.14 nos Dockerfiles e workflows (#41)
 - Runners fixados em `ubuntu-26.04` (LTS) e actions atualizadas para as majors atuais (#41)
+- `modernc.org/sqlite` 1.60 e demais dependencias Go; dependencias do web nas versoes minor/patch atuais (#43)
+
+### Security
+
+- `undici` atualizado no web, corrigindo vulnerabilidade moderada apontada pelo `npm audit` (#43)
 
 ## [0.2.0] - 2026-09-29
 
