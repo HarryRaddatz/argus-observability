@@ -23,6 +23,9 @@ Copie `.env.example` para `.env`.
 | `ARGUS_AGENT_ID` | hostname | Identificador do agent |
 | `ARGUS_HOST_ID` | hostname | Identificador lógico do host |
 | `ARGUS_COLLECT_INTERVAL` | `15s` | Intervalo entre coletas Docker |
+| `ARGUS_LOG_INTERVAL` | `30s` | Intervalo de coleta de logs dos containers |
+| `ARGUS_FLEET_INTERVAL` | `60s` | Intervalo de envio do inventário do host (fleet) |
+| `ARGUS_NAME_PREFIX` | — | Coleta só containers cujo nome começa com o prefixo (vazio = todos) |
 
 ## Web (dev)
 
