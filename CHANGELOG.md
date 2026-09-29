@@ -4,6 +4,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-29
+
 ### Added
 
 - `GET /api/v1/traces`: traces recentes de spans OTLP e de logs com `trace_id`, com filtro por serviço e período (#48)
@@ -84,6 +86,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
+[0.3.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.3.0
 [0.2.1]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.1
 [0.2.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.1.0
