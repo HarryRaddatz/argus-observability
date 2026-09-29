@@ -4,6 +4,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-29
+
 ### Added
 
 - Workflow de release: imagens GHCR + GitHub Release a partir de tags semver
@@ -47,4 +49,5 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
+[0.2.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.1.0
