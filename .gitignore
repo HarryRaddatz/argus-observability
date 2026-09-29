@@ -16,6 +16,10 @@
 web/node_modules/
 web/dist/
 
+# Site MkDocs
+/site/
+__pycache__/
+
 # IDE
 .idea/
 .vscode/

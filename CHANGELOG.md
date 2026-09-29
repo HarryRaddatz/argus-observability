@@ -10,11 +10,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Compose `examples/compose-minimal/docker-compose.published.yml` (pull GHCR)
 - Runbook de atualização de stack em `docs/deploy.md` (pull GHCR ou build local, checklist pós-deploy, rollback)
 - Checklist semver e de publicação no `CONTRIBUTING.md`
+- Site de documentação no GitHub Pages (MkDocs), publicado a cada merge em `main` e a cada release
+- CI com job de lint do web e build dos três Dockerfiles
+- Imagens no Docker Hub (`pseudohuery/argus-{hub,agent,web}`) além do GHCR, com README e descrição sincronizados
+- Imagens multi-arch `linux/amd64` e `linux/arm64`, com SBOM, provenance e labels OCI; tags `X.Y` e `X` (a partir de `1.0`)
+- `ARGUS_REGISTRY` no compose publicado para escolher entre GHCR e Docker Hub
+
+### Changed
+
+- CI em jobs paralelos (`anti-leak`, `go`, `web`, `docker`) com agregador `test` e cancelamento de execuções antigas do mesmo PR
+- Release valida tag, commit em `main` e seção do CHANGELOG antes de publicar; reutiliza o CI; imagens em paralelo com cache; tags `-rc` viram pre-release sem mover `latest`
+- CI usa Node 22, a mesma versão do `web/Dockerfile`
 
 ### Fixed
 
 - CI: `InferServiceFromContainer` para serviços compose com hífen (`demo-api`)
 - Gate anti-leak no workflow (#25)
+- Release: caminho do Dockerfile do web (`./web/Dockerfile`) no build da imagem
+- Docs de configuração: defaults reais de `ARGUS_STORE_PATH`, `ARGUS_HUB_URL`, `ARGUS_AGENT_ID` e `ARGUS_HOST_ID`
 
 ## [0.1.0] - 2026-09-04
 

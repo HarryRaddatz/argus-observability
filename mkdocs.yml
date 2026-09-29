@@ -1,0 +1,69 @@
+site_name: Argus
+site_description: Observabilidade de hosts e workloads Docker
+site_url: https://harryraddatz.github.io/argus-observability/
+repo_url: https://github.com/HarryRaddatz/argus-observability
+repo_name: HarryRaddatz/argus-observability
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: pt-BR
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Modo escuro
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Modo claro
+
+hooks:
+  - .github/pages/hooks.py
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
+
+nav:
+  - Início: index.md
+  - Novidades: changelog.md
+  - Começar:
+      - Visão geral: overview.md
+      - Deploy e atualização: deploy.md
+      - Mapa do produto: map.md
+  - API:
+      - api/README.md
+      - Configuração: api/configuration.md
+      - Ingest: api/ingest.md
+      - Consulta: api/query.md
+      - Observabilidade: api/observability.md
+  - Fluxos:
+      - Conexão do agent: flows/agent-connection.md
+      - Ingestão de métricas: flows/metrics-ingestion.md
+      - Streaming de logs: flows/log-streaming.md
+      - Eventos e alertas: flows/events-and-alerts.md
+      - Painel: flows/ui-panel.md
+  - Projeto:
+      - Roadmap: public-library/roadmap.md
+      - Contribuir: contributing.md
