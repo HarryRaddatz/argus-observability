@@ -12,6 +12,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Referência da API e fluxos alinhados aos handlers: variáveis de `.env.example`, esquemas de topologia, alertas e SLO, e ingest de fleet, eventos e OTLP (#50)
 - Painel com 7 destinos em vez de 13: Visão geral, Problemas, Containers, Métricas, Logs, Traces e Topologia. Workloads, Fleet e Grupos viram Containers; Explorer vira o modo Comparar de Métricas; Patterns vira o modo Padrões de Logs; Eventos, Insights e SLOs viram abas de Problemas. As rotas antigas redirecionam mantendo os parâmetros (#48)
 - Visão geral mostra só o que pede ação: alertas ativos, SLOs em risco, containers com problema e serviços HTTP com erro (#48)
 - Modo, aba, grade ou tabela, tipo de gráfico e containers comparados ficam na URL (#48)

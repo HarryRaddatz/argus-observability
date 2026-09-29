@@ -37,18 +37,9 @@ sequenceDiagram
 }
 ```
 
-## Downsample
+O hub grava os pontos como chegam e deriva `memory.usage_pct` quando o lote traz uso e limite. Não há rollup.
 
-```mermaid
-flowchart LR
-  Raw[Pontos raw 15s] --> Rollup[Rollup 1m no hub]
-  Rollup --> Store[(Store)]
-  Raw --> Store
-```
-
-Retenção configurável: raw curto, rollup longo.
-
-## Consulta (UI / MCP)
+## Consulta
 
 ```mermaid
 sequenceDiagram
@@ -56,27 +47,21 @@ sequenceDiagram
   participant Hub
   participant Store
 
-  Client->>Hub: GET /api/v1/query?metric=cpu.usage&host=host-01
-  Hub->>Store: aggregate by interval
-  Store-->>Hub: series
-  Hub-->>Client: JSON timeseries
+  Client->>Hub: GET /api/v1/metrics/series?metric=cpu.usage&since=1h
+  Hub->>Store: QueryMetricSeries
+  Store-->>Hub: series por container
+  Hub-->>Client: metric_name, series
 ```
 
-## Métricas host (v1)
+`GET /api/v1/query?metric=cpu.usage&since=1h` devolve a série achatada (`metric_name`, `points`). Não há filtro `host`.
+
+## Métricas do agent
 
 | metric_name | Descrição |
 |---|---|
-| `cpu.usage` | % uso CPU |
-| `memory.usage` | bytes ou % |
-| `memory.limit` | limite cgroup |
-| `disk.usage` | bytes usados |
-| `network.rx` / `network.tx` | bytes/s |
-| `load.1m` | load average |
-
-## Métricas workload
-
-| metric_name | Descrição |
-|---|---|
-| `cpu.usage` | % do container/pod |
+| `cpu.usage` | % de CPU do container |
 | `memory.usage` | bytes |
-| `memory.limit` | bytes |
+| `memory.limit` | bytes do cgroup |
+| `memory.usage_pct` | derivada no hub |
+| `network.rx` / `network.tx` | bytes/s |
+| `block.read` / `block.write` | bytes/s |
