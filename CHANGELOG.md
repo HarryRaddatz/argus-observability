@@ -8,6 +8,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 - Workflow de release: imagens GHCR + GitHub Release a partir de tags semver
 - Compose `examples/compose-minimal/docker-compose.published.yml` (pull GHCR)
+- Runbook de atualização de stack em `docs/deploy.md` (pull GHCR ou build local, checklist pós-deploy, rollback)
+- Checklist semver e de publicação no `CONTRIBUTING.md`
 
 ### Fixed
 

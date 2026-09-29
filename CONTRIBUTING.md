@@ -33,7 +33,21 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (job `test`) r
 
 ## Release (maintainers)
 
-1. Atualize `CHANGELOG.md` (seção `[Unreleased]` → `[X.Y.Z] - data`)
+### Escolher a versão
+
+Siga [semver](https://semver.org/). Enquanto a versão for `0.x`, mudanças incompatíveis sobem o **minor**.
+
+| Mudança | Bump | Exemplo |
+|---|---|---|
+| Correção sem alterar contrato | patch | `0.1.0` → `0.1.1` |
+| Funcionalidade nova, rota ou env opcional | minor | `0.1.1` → `0.2.0` |
+| Rota removida/renomeada, payload incompatível, env obrigatória nova, schema SQLite incompatível | major (minor em `0.x`) | `1.4.2` → `2.0.0` |
+
+Mudanças incompatíveis entram no CHANGELOG sob `### Breaking`, com o passo de migração para quem atualiza.
+
+### Publicar
+
+1. Atualize `CHANGELOG.md` (seção `[Unreleased]` → `[X.Y.Z] - data`) e o link da versão no rodapé
 2. Commit e push em `main`
 3. Tag semver e push:
 
@@ -54,6 +68,17 @@ docker compose -f examples/compose-minimal/docker-compose.published.yml pull
 docker compose -f examples/compose-minimal/docker-compose.published.yml up -d
 curl -s http://localhost:8080/health
 ```
+
+### Checklist
+
+- [ ] CI verde em `main` no commit da tag
+- [ ] Seção `[X.Y.Z]` no CHANGELOG com data e itens de `[Unreleased]` movidos
+- [ ] `### Breaking` preenchido quando houver mudança incompatível
+- [ ] Novas variáveis em `.env.example` e `docs/api/configuration.md`
+- [ ] Workflow Release concluído e as três imagens com a tag `X.Y.Z` no GHCR
+- [ ] Smoke test acima com `ARGUS_VERSION=X.Y.Z`
+
+Atualizar uma instância existente: [docs/deploy.md](docs/deploy.md).
 
 ## Commits
 
