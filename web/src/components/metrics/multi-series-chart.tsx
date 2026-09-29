@@ -31,14 +31,14 @@ export function MultiSeriesChart({
 }: Props) {
   const data = mergeSeries(series, transform)
   const keys = series.map((s) => s.container)
-  const statLabel = statMode ? describeStat(series, statMode, transform) : null
-  const fullDescription = [description, statLabel].filter(Boolean).join(" · ")
+  const statLabel = statMode ? describeStat(series, statMode, unit, transform) : null
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
-        {fullDescription ? <CardDescription>{fullDescription}</CardDescription> : null}
+        {description ? <CardDescription>{description}</CardDescription> : null}
+        {statLabel ? <p className="text-sm font-medium tabular-nums">{statLabel}</p> : null}
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -111,7 +111,7 @@ function mergeSeries(series: ContainerSeries[], transform?: (v: number) => numbe
   return [...byTime.values()]
 }
 
-function describeStat(series: ContainerSeries[], mode: "avg" | "max", transform?: (v: number) => number) {
+function describeStat(series: ContainerSeries[], mode: "avg" | "max", unit: string, transform?: (v: number) => number) {
   const values: number[] = []
   for (const s of series) {
     for (const p of s.points ?? []) {
@@ -120,6 +120,6 @@ function describeStat(series: ContainerSeries[], mode: "avg" | "max", transform?
   }
   if (values.length === 0) return null
   const agg = mode === "max" ? Math.max(...values) : values.reduce((a, b) => a + b, 0) / values.length
-  const label = mode === "max" ? "Máx" : "Média"
-  return `${label}: ${Math.round(agg * 10) / 10}`
+  const label = mode === "max" ? "Pico" : "Média"
+  return `${label}: ${Math.round(agg * 10) / 10}${unit}`
 }

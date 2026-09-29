@@ -1,34 +1,3 @@
-export type LogSearchParams = {
-  q?: string
-  since?: string
-  level?: string
-  container?: string
-  topic?: string
-}
-
-export type MetricCatalogEntry = {
-  name: string
-  label: string
-  unit: string
-}
-
-export type Insight = {
-  id: string
-  theme: string
-  severity: string
-  title: string
-  summary: string
-  container: string
-  entity_uid: string
-  evidence: Record<string, unknown>
-  recommendations: string[]
-}
-
-export type InsightsResponse = {
-  since: string
-  insights: Insight[]
-}
-
 export const LOG_TOPICS = [
   { id: "all", label: "Todos" },
   { id: "gc", label: "GC / JVM" },
@@ -85,4 +54,9 @@ export function saveView(view: SavedView) {
 export function deleteView(id: string) {
   const views = loadSavedViews().filter((v) => v.id !== id)
   localStorage.setItem(VIEWS_KEY, JSON.stringify(views))
+}
+
+export function matchesService(container: string, service: string | undefined, target: string) {
+  if (!target) return true
+  return service === target || container === target || container.includes(`-${target}-`) || container.startsWith(`${target}-`)
 }

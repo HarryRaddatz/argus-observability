@@ -268,6 +268,25 @@ type TraceDetail struct {
 	Spans      []TraceSpan `json:"spans"`
 }
 
+type TraceSummary struct {
+	TraceID    string    `json:"trace_id"`
+	Source     string    `json:"source"`
+	Service    string    `json:"service"`
+	Container  string    `json:"container"`
+	Name       string    `json:"name"`
+	StartTS    time.Time `json:"start_ts"`
+	EndTS      time.Time `json:"end_ts"`
+	DurationMs float64   `json:"duration_ms"`
+	SpanCount  int       `json:"span_count"`
+	Error      bool      `json:"error"`
+}
+
+type TraceListFilter struct {
+	Since   time.Time
+	Service string
+	Limit   int
+}
+
 type SLODefinition struct {
 	ID                 string    `json:"id"`
 	Name               string    `json:"name"`

@@ -29,11 +29,53 @@ Insights automáticos (CPU, memória, HTTP, fleet, patterns, topologia).
 
 ## GET `/api/v1/logs/patterns`
 
-Padrões normalizados de mensagens de log.
+Padrões normalizados de mensagens de log, do mais frequente para o menos (até 50).
+
+| Parâmetro | Default | Descrição |
+|---|---|---|
+| `since` | `1h` | Janela (`time.ParseDuration`) |
+| `container` | — | Só padrões deste container |
+| `group` | — | Só containers do grupo; `404` se o grupo não existir |
+| `q` | — | Texto contido no padrão ou na amostra (sem diferenciar maiúsculas) |
+
+**Exemplo:** `GET /api/v1/logs/patterns?since=6h&group=stack-shop&q=timeout`
 
 ## GET `/api/v1/topology`
 
 Grafo de dependências inferido a partir de logs.
+
+## GET `/api/v1/traces`
+
+Traces recentes, do mais novo para o mais antigo. Junta spans OTLP e linhas de log com `trace_id`; um trace presente nas duas fontes aparece uma vez, pelos spans OTLP.
+
+| Parâmetro | Default | Descrição |
+|---|---|---|
+| `since` | `1h` | Janela (`time.ParseDuration`) |
+| `service` | — | Traces com pelo menos um span ou linha deste serviço |
+| `limit` | `50` | Máximo `200` |
+
+Cada fonte lê no máximo 5000 linhas da janela.
+
+**Exemplo:** `GET /api/v1/traces?since=1h&service=demo-api`
+
+```json
+[
+  {
+    "trace_id": "5b8efff798038103d269b633813fc60c",
+    "source": "otlp",
+    "service": "checkout",
+    "container": "shop-api-1",
+    "name": "POST /checkout",
+    "start_ts": "2026-09-29T18:16:38.309Z",
+    "end_ts": "2026-09-29T18:16:38.949Z",
+    "duration_ms": 640,
+    "span_count": 2,
+    "error": true
+  }
+]
+```
+
+`source` é `otlp` ou `logs`. Em traces de logs, `name` vem de `route`, `path`, `msg` ou `event` quando a linha é JSON, e `span_count` conta as linhas.
 
 ## GET `/api/v1/traces/{trace_id}`
 

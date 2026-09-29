@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS trace_spans (
   UNIQUE(trace_id, span_id)
 );
 CREATE INDEX IF NOT EXISTS idx_trace_spans_trace ON trace_spans(trace_id, start_ts);
+CREATE INDEX IF NOT EXISTS idx_trace_spans_start ON trace_spans(start_ts);
 CREATE TABLE IF NOT EXISTS slos (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

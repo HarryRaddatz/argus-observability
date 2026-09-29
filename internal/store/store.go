@@ -46,6 +46,7 @@ type Store interface {
 
 	WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error
 	GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error)
+	ListTraces(ctx context.Context, filter model.TraceListFilter) ([]model.TraceSummary, error)
 
 	ListSLOs(ctx context.Context) ([]model.SLODefinition, error)
 	GetSLO(ctx context.Context, id string) (model.SLODefinition, error)

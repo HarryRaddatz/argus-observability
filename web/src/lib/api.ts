@@ -273,8 +273,19 @@ export type LogPattern = {
   sample: string
 }
 
-export function fetchLogPatterns(since = "1h") {
-  return request<LogPattern[]>(`/api/v1/logs/patterns?since=${encodeURIComponent(since)}`).then(asArray)
+export type LogPatternParams = {
+  since?: string
+  q?: string
+  container?: string
+  group?: string
+}
+
+export function fetchLogPatterns(params: LogPatternParams = {}) {
+  const p = new URLSearchParams({ since: params.since ?? "1h" })
+  if (params.q) p.set("q", params.q)
+  if (params.container && params.container !== "all") p.set("container", params.container)
+  if (params.group) p.set("group", params.group)
+  return request<LogPattern[]>(`/api/v1/logs/patterns?${p}`).then(asArray)
 }
 
 export type TopologyGraph = {
@@ -325,6 +336,25 @@ export type TraceDetail = {
   end_ts?: string
   duration_ms: number
   spans: TraceSpan[]
+}
+
+export type TraceSummary = {
+  trace_id: string
+  source: string
+  service: string
+  container: string
+  name: string
+  start_ts: string
+  end_ts: string
+  duration_ms: number
+  span_count: number
+  error: boolean
+}
+
+export function fetchTraces(since = "1h", service?: string) {
+  const q = new URLSearchParams({ since })
+  if (service) q.set("service", service)
+  return request<TraceSummary[]>(`/api/v1/traces?${q}`).then(asArray)
 }
 
 export function fetchTrace(traceId: string, since = "24h") {
