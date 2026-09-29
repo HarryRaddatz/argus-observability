@@ -26,11 +26,22 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo P
 
 | Job | O que valida |
 |---|---|
+| `changes` | Quais componentes mudaram no diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
 | `anti-leak` | Padrões de infra privada no diff |
-| `go` | `go vet`, `go test`, `go build ./cmd/...` |
-| `web` | `npm ci`, `npm run lint`, `npm run build` |
-| `docker (hub/agent/web)` | Build dos três Dockerfiles, sem push, com cache compartilhado com o release |
-| `test` | Agregador: só passa se todos os anteriores passarem |
+| `go` | `go vet`, `go test`, `go build ./cmd/...` — só se hub ou agent mudou |
+| `web` | `npm ci`, `npm run lint`, `npm run build` — só se web mudou |
+| `docker (hub/agent/web)` | Build do Dockerfile do componente que mudou, sem push, com cache compartilhado com o release |
+| `test` | Agregador: passa se nenhum job falhou (jobs pulados contam como ok) |
+
+Componentes por path:
+
+| Componente | Paths |
+|---|---|
+| hub | `cmd/hub/`, `internal/` (exceto `internal/agent/`), `go.mod`, `go.sum`, `Dockerfile.hub` |
+| agent | `cmd/agent/`, `internal/agent/`, `internal/model/`, `go.mod`, `go.sum`, `Dockerfile.agent` |
+| web | `web/` |
+
+Mudança em `ci.yml` ou `ci-changes.sh`, tag, `workflow_dispatch` ou branch nova sem base roda tudo.
 
 **Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
 

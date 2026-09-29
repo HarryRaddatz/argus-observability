@@ -20,6 +20,27 @@ env:
   NODE_VERSION: "24"
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-26.04
+    outputs:
+      hub: ${{ steps.filter.outputs.hub }}
+      agent: ${{ steps.filter.outputs.agent }}
+      web: ${{ steps.filter.outputs.web }}
+      go: ${{ steps.filter.outputs.go }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed components
+        id: filter
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FORCE_ALL: ${{ github.ref_type == 'tag' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
+        run: bash .github/scripts/ci-changes.sh
+
   leak:
     name: anti-leak
     runs-on: ubuntu-26.04
@@ -35,6 +56,8 @@ jobs:
 
   go:
     name: go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -55,6 +78,8 @@ jobs:
 
   web:
     name: web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-26.04
     defaults:
       run:
@@ -78,7 +103,11 @@ jobs:
 
   docker:
     name: docker (${{ matrix.component }})
-    needs: [go, web]
+    needs: [changes, go, web]
+    if: >-
+      !cancelled()
+      && needs.changes.outputs.docker == 'true'
+      && !contains(needs.*.result, 'failure')
     runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
@@ -95,10 +124,13 @@ jobs:
             file: ./web/Dockerfile
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs[matrix.component] == 'true'
 
       - uses: docker/setup-buildx-action@v4
+        if: needs.changes.outputs[matrix.component] == 'true'
 
       - name: Build argus-${{ matrix.component }}
+        if: needs.changes.outputs[matrix.component] == 'true'
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
@@ -110,14 +142,19 @@ jobs:
   test:
     name: test
     if: always()
-    needs: [leak, go, web, docker]
+    needs: [changes, leak, go, web, docker]
     runs-on: ubuntu-26.04
     steps:
       - name: Require all jobs
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          CHANGES: ${{ needs.changes.result }}
         run: |
           echo "Results: $RESULTS"
+          [ "$CHANGES" = "success" ] || { echo "CI failed: changes"; exit 1; }
           for r in $RESULTS; do
-            [ "$r" = "success" ] || { echo "CI failed"; exit 1; }
+            case "$r" in
+              success|skipped) ;;
+              *) echo "CI failed"; exit 1 ;;
+            esac
           done
