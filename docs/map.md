@@ -24,8 +24,8 @@ Legenda doc: **ok** = existe · **stub** = esboço · **gap** = falta escrever �
 | Heartbeat | POST | `/api/v1/agents/heartbeat` | `internal/hub/server.go` | ok |
 | Métricas | POST | `/api/v1/metrics/batch` | `handleMetricsBatch` | `flows/metrics-ingestion.md` ok |
 | Logs | POST | `/api/v1/logs/batch` | `handleLogsBatch` | `flows/log-streaming.md` ok |
-| Fleet | POST | `/api/v1/fleet/batch` | `internal/hub/fleet.go` | gap |
-| Eventos | POST | `/api/v1/events` | `handleEventIngest` | `flows/events-and-alerts.md` ok |
+| Fleet | POST | `/api/v1/fleet/batch` | `internal/hub/fleet.go` | [ingest.md](api/ingest.md) ok |
+| Eventos | POST | `/api/v1/events` | `handleEventIngest` | [ingest.md](api/ingest.md) ok |
 
 Coleta: `internal/agent/docker/` · envio: `internal/agent/client.go`
 
@@ -33,24 +33,39 @@ Coleta: `internal/agent/docker/` · envio: `internal/agent/client.go`
 
 | Funcionalidade | API | Handler | Store / lógica | UI | Doc |
 |---|---|---|---|---|---|
-| Health | GET `/health` | `server.go` | — | — | gap |
-| Workloads | GET `/api/v1/workloads` | `server.go` | `ListWorkloads` | `/containers` | gap |
-| Métricas (série) | GET `/api/v1/metrics/series` | `server.go` | `QueryMetricSeries` | `/metrics` (por container e comparar) | ok |
-| Catálogo métricas | GET `/api/v1/metrics/catalog` | `server.go` | estático | `/metrics?mode=compare` | gap |
-| HTTP summary | GET `/api/v1/metrics/http/summary` | `server.go` | `http_summary.go` | `/` (Visão geral) | gap |
+| Health | GET `/health` | `server.go` | — | — | [query.md](api/query.md) ok |
+| Workloads | GET `/api/v1/workloads` | `server.go` | `ListWorkloads` | `/containers` | [query.md](api/query.md) stub |
+| Métricas (série) | GET `/api/v1/metrics/series` | `server.go` | `QueryMetricSeries` | `/metrics` (por container e comparar) | [query.md](api/query.md) ok |
+| Catálogo métricas | GET `/api/v1/metrics/catalog` | `server.go` | estático | `/metrics?mode=compare` | [query.md](api/query.md) stub |
+| HTTP summary | GET `/api/v1/metrics/http/summary` | `server.go` | `http_summary.go` | `/` (Visão geral) | [query.md](api/query.md) stub |
 | Query genérica | GET `/api/v1/query` | `server.go` | `QueryMetrics` | — | gap |
-| Logs search | GET `/api/v1/logs/search` | `server.go` | `SearchLogs` + `trace_query.go` | `/logs` | ok |
-| Log patterns | GET `/api/v1/logs/patterns` | `patterns.go` | `patterns.go` | `/logs?mode=patterns` | [observability.md](api/observability.md) |
-| Eventos | GET `/api/v1/events` | `server.go` | `ListEvents` | `/problems?tab=history` | ok |
-| Alertas ativos | GET `/api/v1/alerts/active` | `topology.go` | `rules/engine.go` | `/problems`, `/` | gap |
-| Insights | GET `/api/v1/insights` | `server.go` | `internal/insights/*` | `/problems` | gap |
-| Fleet status | GET `/api/v1/fleet/status` | `fleet.go` | `fleet.go` | `/containers`, `/` | gap |
-| Grupos CRUD | `/api/v1/workload-groups*` | `groups.go` | `groups.go` | `/containers?panel=groups` | gap |
-| Topologia | GET `/api/v1/topology` | `topology.go` | `topology_edges` | `/topology` | gap |
-| Traces (OTLP) | POST `/v1/traces` | `otlp.go` | `trace_spans` | — | gap |
-| Traces recentes | GET `/api/v1/traces` | `traces.go` | `ListTraces` (`trace_spans` + `log_entries`) | `/traces` | [observability.md](api/observability.md) |
-| Trace detail | GET `/api/v1/traces/{id}` | `traces.go` | `traces.go` + `traces/from_logs.go` | `/traces?trace_id=` | gap |
-| SLOs | GET `/api/v1/slos`, `/status` | `slos.go` | `traces.go` (slos table) | `/problems?tab=slos` | gap |
+| Logs search | GET `/api/v1/logs/search` | `server.go` | `SearchLogs` + `trace_query.go` | `/logs` | [query.md](api/query.md) stub |
+| Log patterns | GET `/api/v1/logs/patterns` | `patterns.go` | `patterns.go` | `/logs?mode=patterns` | [observability.md](api/observability.md) stub |
+| Eventos | GET `/api/v1/events` | `server.go` | `ListEvents` | `/problems?tab=history` | [query.md](api/query.md) stub |
+| Alertas ativos | GET `/api/v1/alerts/active` | `topology.go` | `rules/engine.go` | `/problems`, `/` | [observability.md](api/observability.md) ok |
+| Insights | GET `/api/v1/insights` | `server.go` | `internal/insights/*` | `/problems` | [observability.md](api/observability.md) ok |
+| Fleet status | GET `/api/v1/fleet/status` | `fleet.go` | `fleet.go` | `/containers`, `/` | [query.md](api/query.md) stub |
+| Grupos CRUD | `/api/v1/workload-groups*` | `groups.go` | `groups.go` | `/containers?panel=groups` | [query.md](api/query.md) stub |
+| Topologia | GET `/api/v1/topology` | `topology.go` | `topology_edges` | `/topology` | [observability.md](api/observability.md) ok |
+| Traces (OTLP) | POST `/v1/traces` | `otlp.go` | `trace_spans` | — | [ingest.md](api/ingest.md) ok |
+| Traces recentes | GET `/api/v1/traces` | `traces.go` | `ListTraces` (`trace_spans` + `log_entries`) | `/traces` | [observability.md](api/observability.md) ok |
+| Trace detail | GET `/api/v1/traces/{id}` | `traces.go` | `traces.go` + `traces/from_logs.go` | `/traces?trace_id=` | [observability.md](api/observability.md) stub |
+| SLOs | GET `/api/v1/slos`, `/status` | `slos.go` | `traces.go` (slos table) | `/problems?tab=slos` | [observability.md](api/observability.md) ok |
+
+O que ainda falta nesta tabela ([#17](https://github.com/HarryRaddatz/argus-observability/issues/17)):
+
+| Status | Endpoint | Falta na doc |
+|---|---|---|
+| stub | GET `/api/v1/workloads` | Default de `since` (`15m`) e campos opcionais `stack`, `service`, `labels` |
+| stub | GET `/api/v1/metrics/catalog` | Array `{name, label, unit}` (lista estática em `server.go`) |
+| stub | GET `/api/v1/metrics/http/summary` | `since` (default `1h`) e array `HTTPServiceSummary` |
+| gap | GET `/api/v1/query` | Página não descreve a rota. Contrato: `metric` obrigatório (`400` se vazio), `since` default `1h`, corpo `QuerySeries` (`metric_name`, `points[]` de `{ts, value}`) |
+| stub | GET `/api/v1/logs/search` | Filtros além de `since`, `container` e `q`: `level`, `topic`, `trace_id`, `entity_uid`, `group`, `limit` |
+| stub | GET `/api/v1/logs/patterns` | Corpo: array de `LogPattern` (`pattern_key`, `pattern`, `container`, `service`, `count`, `last_seen`, `sample`), até 50 |
+| stub | GET `/api/v1/events` | Corpo: array de `Event` e o default de `since` |
+| stub | GET `/api/v1/fleet/status` | Corpo `FleetStatusResponse` (`updated_at`, `summary`, `services`, `containers`, `events_24h`) |
+| stub | `/api/v1/workload-groups*` | Corpos de `WorkloadGroup`, `WorkloadGroupInput` e `WorkloadGroupSummary`; códigos `201`, `204`, `400`, `404` |
+| stub | GET `/api/v1/traces/{id}` | Corpo `TraceDetail` (`trace_id`, `source`, `start_ts`, `end_ts`, `duration_ms`, `spans[]`) e `since` só no fallback por logs (default `24h`) |
 
 ## Pipeline de enriquecimento (logs → derivados)
 
@@ -94,15 +109,18 @@ Interface: `internal/store/store.go` · implementação: `internal/store/sqlite/
 
 ## Configuração (env)
 
-| Variável | Componente | Doc target |
+| Variável | Componente | Doc |
 |---|---|---|
-| `ARGUS_HUB_ADDR` | hub | `docs/api/configuration.md` gap |
-| `ARGUS_STORE_PATH` | hub | gap |
-| `ARGUS_AGENT_TOKEN` | hub + agent | gap |
-| `ARGUS_RETENTION_*` | hub | gap |
-| `ARGUS_HUB_URL` | agent | gap |
-| `ARGUS_AGENT_ID`, `ARGUS_HOST_ID` | agent | gap · **fix** generic host id |
-| `ARGUS_COLLECT_INTERVAL` | agent | gap |
+| `ARGUS_HUB_ADDR` | hub | [configuration.md](api/configuration.md) ok |
+| `ARGUS_STORE_PATH` | hub | ok |
+| `ARGUS_AGENT_TOKEN` | hub + agent | ok |
+| `ARGUS_RETENTION_LOGS`, `ARGUS_RETENTION_METRICS`, `ARGUS_RETENTION_EVENTS` | hub | ok |
+| `ARGUS_PURGE_INTERVAL`, `ARGUS_PURGE_TIMEOUT` | hub | ok |
+| `ARGUS_HUB_URL` | agent | ok |
+| `ARGUS_AGENT_ID`, `ARGUS_HOST_ID` | agent | ok · host id genérico (rótulo do operador, não um inventário) |
+| `ARGUS_COLLECT_INTERVAL` | agent | ok |
+
+Fora do `.env.example`, mas lidas pelo binário e descritas na mesma página: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL`, `ARGUS_NAME_PREFIX`, `DOCKER_HOST`, `VITE_API_BASE`, `VITE_HUB_PROXY`.
 
 Ver `.env.example` · tarefa [#16](https://github.com/HarryRaddatz/argus-observability/issues/16).
 

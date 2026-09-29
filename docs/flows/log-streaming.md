@@ -1,8 +1,8 @@
 # Fluxo: stream de logs
 
-Logs seguem do runtime ao hub e daí para clientes WebSocket. Sob pressão, o agent aplica backpressure antes de saturar o host.
+O agent lê logs do Docker no intervalo `ARGUS_LOG_INTERVAL` e envia um lote HTTP. O painel consulta o hub; não há stream WebSocket nem amostragem por pressão.
 
-## Sequência — tail contínuo
+## Sequência — coleta e persistência
 
 ```mermaid
 sequenceDiagram
@@ -10,33 +10,17 @@ sequenceDiagram
   participant Agent
   participant Hub
   participant Store
-  participant UI
 
-  Agent->>Runtime: follow logs (stdout/stderr)
-  Runtime-->>Agent: linha + metadata
-  Agent->>Agent: parse level, multiline
-  Agent->>Hub: POST /api/v1/logs/batch
-  Hub->>Store: insert + index
-  Hub->>UI: WS broadcast log.entry
+  loop ARGUS_LOG_INTERVAL
+    Agent->>Runtime: logs stdout/stderr
+    Runtime-->>Agent: linha + metadata
+    Agent->>Hub: POST /api/v1/logs/batch
+    Hub->>Store: insert log_entries
+    Hub-->>Agent: 202
+  end
 ```
 
-## Backpressure
-
-```mermaid
-flowchart TB
-  Prod[Produção de logs] --> Ring[Ring buffer]
-  Ring --> Fwd[Forwarder]
-  Ring -->|buffer > limite| Sample[Sample 1:N]
-  Sample --> Fwd
-  Ring -->|crítico| Event[agent.backpressure]
-  Event --> Hub
-```
-
-| Estágio | Ação |
-|---|---|
-| buffer < 70% | envio normal |
-| 70–90% | sample 1:5 |
-| > 90% | sample 1:10 + evento |
+O hub não expõe WebSocket. O painel relê a busca.
 
 ## Formato de entrada
 
@@ -51,21 +35,19 @@ flowchart TB
 }
 ```
 
-## Sequência — UI tail ao vivo
+## Sequência — painel
+
+`/logs` consulta a cada 15 s (`web/src/pages/logs.tsx`). Não há rota `/api/v1/ws`.
 
 ```mermaid
 sequenceDiagram
-  participant UI
+  participant Browser
   participant Hub
-  participant Store
 
-  UI->>Hub: WS connect /api/v1/ws/logs?entity_uid=...
-  Hub->>Store: subscribe recent + live
-  loop live
-    Hub-->>UI: log.entry
+  loop a cada 15s
+    Browser->>Hub: GET /api/v1/logs/search?since=1h&container=...
+    Hub-->>Browser: entries
   end
-  UI->>Hub: filter level>=error
-  Hub-->>UI: filtered stream
 ```
 
 ## Busca histórica
@@ -79,5 +61,5 @@ sequenceDiagram
   Client->>Hub: GET /api/v1/logs/search?q=refused&since=15m
   Hub->>Store: full-text + labels
   Store-->>Hub: hits
-  Hub-->>Client: paginated results
+  Hub-->>Client: entries
 ```

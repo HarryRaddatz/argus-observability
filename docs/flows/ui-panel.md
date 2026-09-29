@@ -88,6 +88,41 @@ sequenceDiagram
 
 Visão geral, Problemas, Containers e Logs (padrões) atualizam a cada 30 s; Logs (linhas) a cada 15 s.
 
+## Sequência — topologia
+
+A tela chama uma rota. `since` da URL (default `24h`) vai na query. Nó e aresta abrem Logs com o mesmo período (`web/src/pages/topology.tsx`).
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Hub
+
+  Browser->>Hub: GET /api/v1/topology?since=24h
+  Hub-->>Browser: nodes, edges
+  Browser->>Browser: link /logs?container=alvo&since=24h
+```
+
+## Sequência — grupos
+
+A lista de grupos carrega com Containers. O painel (`panel=groups`) pede sugestões e grava com POST. Um grupo selecionado (`group`) filtra a grade pelo summary (`web/src/pages/containers.tsx`, `web/src/views/groups-panel.tsx`).
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Hub
+
+  Browser->>Hub: GET /api/v1/workload-groups
+  Hub-->>Browser: grupos salvos
+  Browser->>Hub: GET /api/v1/workload-groups/discover
+  Hub-->>Browser: sugestões stack/service
+  Browser->>Hub: POST /api/v1/workload-groups
+  Hub-->>Browser: 201 grupo
+  Browser->>Hub: GET /api/v1/workload-groups/{id}/summary?since=30m
+  Hub-->>Browser: members
+```
+
+Apagar um grupo é `DELETE /api/v1/workload-groups/{id}` (`204`).
+
 ## Dev
 
 Proxy Vite: `/api` e `/health` → hub (`web/vite.config.ts`).
