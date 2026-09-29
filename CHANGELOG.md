@@ -7,6 +7,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 
 - CI roda `go`, `web` e o build de cada imagem só quando hub, agent ou web mudam no diff; tags e mudanças no próprio CI rodam tudo (#45)
+- `CONTRIBUTING.md`: comandos locais do painel iguais aos do CI (`npm run lint`) e versão do Node
 
 ## [0.2.1] - 2026-09-29
 

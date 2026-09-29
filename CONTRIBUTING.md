@@ -16,7 +16,7 @@ cp .env.example .env
 docker compose up -d --build   # stack completa
 go vet ./...
 go test ./...                  # backend (Go 1.27+)
-cd web && npm ci && npm run build
+cd web && npm ci && npm run lint && npm run build   # painel (Node 24 LTS)
 bash .github/scripts/check-no-vps-leak.sh   # opcional, local
 ```
 
