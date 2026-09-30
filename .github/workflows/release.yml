@@ -119,7 +119,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
 
       - name: Trivy before push
-        uses: aquasecurity/trivy-action@0.32.2
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: argus-${{ matrix.component }}:release-scan
           format: table
