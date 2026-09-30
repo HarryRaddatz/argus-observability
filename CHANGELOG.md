@@ -6,6 +6,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Go tests for hub HTTP ingest/queries and for `rules`, `slo`, `topology`, `groups`, and `bus`; CI runs `go test -race` and publishes coverage (#36)
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
 - Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
 - Docs sidebar: nested pages indent under section titles, hairline between categories
