@@ -120,7 +120,7 @@ mkdocs serve
 
 ## Commits
 
-Use mensagens convencionais curtas (`feat:`, `fix:`, `docs:`). Referencie issues no corpo quando aplicável (`Closes #123`).
+Use mensagens convencionais curtas **em inglês** (`feat:`, `fix:`, `docs:`). O mesmo vale para título e corpo de PR e para entradas novas do CHANGELOG. Referencie issues no corpo quando aplicável (`Closes #123`). Docs canônicos e identificadores de API são em inglês; os arquivos em português são só tradução.
 
 ## Pull requests
 

@@ -16,6 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Contributor docs: commits, PR text, new CHANGELOG entries, canonical docs, and API identifiers are English; Portuguese files are translations only
 - SQLite em WAL, com escritor único e pool de leitura: consultas do painel não bloqueiam a ingestão
 - Compose: retenção de logs `72h`, métricas `168h`, purge a cada `10m` com timeout `30s`; `GOMEMLIMIT` no hub
 
