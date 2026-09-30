@@ -120,7 +120,7 @@ mkdocs serve
 
 ## Commits
 
-Use short conventional messages (`feat:`, `fix:`, `docs:`). Reference issues in the body when applicable (`Closes #123`).
+Use short conventional messages in **English** (`feat:`, `fix:`, `docs:`). Same for PR titles, PR bodies, and new CHANGELOG entries. Reference issues in the body when applicable (`Closes #123`). Canonical docs and API identifiers are English; Portuguese files are translations only.
 
 ## Pull requests
 

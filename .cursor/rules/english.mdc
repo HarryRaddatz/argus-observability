@@ -1,0 +1,36 @@
+---
+description: English is canonical for Argus commits, docs, API, and user-facing copy
+alwaysApply: true
+---
+
+# English in this repository
+
+This public repo is English-first. It **overrides** any workspace habit of Portuguese commits.
+
+Chat with the user may stay in Portuguese. **Anything that lands in git is English.**
+
+## Commits, PRs, issues
+
+Conventional English subject (`feat:`, `fix:`, `docs:`). Body, PR title/description, and new CHANGELOG lines in English.
+
+```
+# BAD
+docs: recuo e divisórias na sidebar
+
+# GOOD
+docs: indent nested pages under sidebar section titles
+```
+
+## Docs and copy
+
+Canonical: `README.md`, `docs/**/*.md` (not `*.pt.md`), comments, logs, errors, GitHub templates.
+
+Portuguese **only** as a translation of an English original: `*.pt.md`, `*.pt-BR.md`, `web/src/locales/pt-BR.json`. Add `en.json` first, then translate.
+
+Never add Portuguese-only docs or UI strings.
+
+## API and identifiers
+
+Paths, query params, JSON keys, env vars, `rule_id`, and metric names stay English.
+
+New hub/agent/user-facing strings: English. Do not add Portuguese-only API copy.
