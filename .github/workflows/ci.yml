@@ -212,7 +212,7 @@ jobs:
 
       - name: Trivy argus-${{ matrix.component }}
         if: needs.changes.outputs[matrix.component] == 'true'
-        uses: aquasecurity/trivy-action@0.32.2
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: argus-${{ matrix.component }}:ci
           format: sarif
