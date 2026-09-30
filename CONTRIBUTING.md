@@ -6,7 +6,7 @@ Portuguese: [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md).
 
 ## Before opening a PR
 
-1. Open an issue with a template (bug, feature, or docs). Vulnerability: [SECURITY.md](SECURITY.md), not a public issue.
+1. Open an issue with a template (bug, feature, docs, or task). Blank issues are off. Vulnerability: [SECURITY.md](SECURITY.md), not a public issue.
 2. Fork + branch from `main`.
 3. Keep the diff focused — skip unrelated refactors.
 4. Do not include secrets, tokens, or private infra (hosts, internal stacks, production domains).
@@ -124,7 +124,7 @@ Use short conventional messages (`feat:`, `fix:`, `docs:`). Reference issues in 
 
 ## Pull requests
 
-GitHub fills [`.github/pull_request_template.md`](.github/pull_request_template.md). Describe the **why**, what changes, and how to validate. CI must pass. If you change API routes, contracts, or UI, update `docs/api/` and `docs/map.md`.
+GitHub fills [`.github/pull_request_template.md`](.github/pull_request_template.md) (Why, What changes, How to validate, checklist). Link the issue (`Closes #123`). CI must pass. If you change API routes, contracts, or UI, update `docs/api/` and `docs/map.md`.
 
 ## Code
 

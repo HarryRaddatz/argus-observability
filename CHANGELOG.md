@@ -16,6 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Issue chooser requires a form (bug, feature, docs, or task); pull request template has Why, What changes, How to validate, and a checklist
 - SQLite em WAL, com escritor único e pool de leitura: consultas do painel não bloqueiam a ingestão
 - Compose: retenção de logs `72h`, métricas `168h`, purge a cada `10m` com timeout `30s`; `GOMEMLIMIT` no hub
 

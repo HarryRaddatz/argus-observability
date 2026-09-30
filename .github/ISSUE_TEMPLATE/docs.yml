@@ -1,13 +1,40 @@
 name: Documentation
-description: Fix or gap in README, docs/, or CONTRIBUTING
+description: Fix or gap in README, the docs site, or CONTRIBUTING
 title: "[docs] "
 labels: [documentation]
+type: Task
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Canonical docs are English. Portuguese files (`*.pt.md`, `*.pt-BR.md`) are translations only.
+        Write this issue in English.
+  - type: checkboxes
+    id: prior
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I agree to follow the [Code of Conduct](https://github.com/HarryRaddatz/argus-observability/blob/main/CODE_OF_CONDUCT.md)
+          required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Where
+      options:
+        - README
+        - Docs site (`docs/`)
+        - CONTRIBUTING / SECURITY
+        - GitHub templates
+        - Other
+    validations:
+      required: true
   - type: textarea
     id: where
     attributes:
-      label: Where
-      description: Path or URL of the page.
+      label: Path or URL
+      description: Page that is wrong or missing.
       placeholder: docs/api/configuration.md
     validations:
       required: true
