@@ -1,0 +1,42 @@
+name: Feature
+description: Pedido de funcionalidade ou mudança de comportamento
+title: "[feat] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Descreva o problema de quem usa o Argus, não a implementação.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Quem é afetado e o que hoje não dá para fazer.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Comportamento desejado. Fora de escopo, se houver.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      options:
+        - hub
+        - agent
+        - web
+        - compose / imagens
+        - docs
+        - CI
+    validations:
+      required: true
+  - type: textarea
+    id: accept
+    attributes:
+      label: Critérios de aceite
+      description: Lista do que precisa estar verdadeiro para fechar.
+      placeholder: |
+        - [ ]

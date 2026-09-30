@@ -4,7 +4,7 @@ Obrigado por contribuir. Este repositório é a biblioteca pública de observabi
 
 ## Antes de abrir PR
 
-1. Abra uma issue descrevendo a mudança (bug, feature ou doc).
+1. Abra uma issue pelo template (bug, feature ou doc). Vulnerabilidade: [SECURITY.md](SECURITY.md), não issue pública.
 2. Fork + branch a partir de `main`.
 3. Mantenha o diff focado — evite refactors não relacionados.
 4. Não inclua secrets, tokens ou referências a infra privada (hosts, stacks internas, domínios de produção).
@@ -122,9 +122,7 @@ Use mensagens convencionais curtas (`feat:`, `fix:`, `docs:`). Referencie issues
 
 ## Pull requests
 
-- Descreva o **porquê** e como validar.
-- CI deve passar (anti-leak, go vet, go test, build web).
-- Docs: se alterar rotas API, contratos ou UI, atualize `docs/api/` e `docs/map.md`.
+O GitHub preenche [`.github/pull_request_template.md`](.github/pull_request_template.md). Descreva o **porquê**, o que muda e como validar. CI deve passar. Se alterar rotas API, contratos ou UI, atualize `docs/api/` e `docs/map.md`.
 
 ## Código
 

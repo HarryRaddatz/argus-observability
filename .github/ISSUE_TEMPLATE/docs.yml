@@ -1,0 +1,24 @@
+name: Documentação
+description: Correção ou lacuna em README, docs/ ou CONTRIBUTING
+title: "[docs] "
+labels: [documentation]
+body:
+  - type: textarea
+    id: where
+    attributes:
+      label: Onde
+      description: Path ou URL da página.
+      placeholder: docs/api/configuration.md
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: O que está errado ou faltando
+    validations:
+      required: true
+  - type: textarea
+    id: suggest
+    attributes:
+      label: Correção sugerida
+      description: Opcional.

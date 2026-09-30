@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- `SECURITY.md`, templates de issue (bug, feature, docs) e template de pull request
+
 ## [0.3.0] - 2026-09-29
 
 ### Added
