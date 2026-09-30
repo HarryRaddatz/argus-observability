@@ -212,16 +212,17 @@ jobs:
 
       - name: Trivy argus-${{ matrix.component }}
         if: needs.changes.outputs[matrix.component] == 'true'
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: argus-${{ matrix.component }}:ci
-          format: sarif
-          output: trivy.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-        env:
-          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/out" \
+            aquasec/trivy:0.58.1 image \
+              --severity CRITICAL,HIGH \
+              --ignore-unfixed \
+              --exit-code 1 \
+              --format sarif \
+              --output /out/trivy.sarif \
+              "argus-${{ matrix.component }}:ci"
 
       - name: Upload Trivy SARIF
         if: >-

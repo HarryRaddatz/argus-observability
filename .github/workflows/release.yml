@@ -119,15 +119,15 @@ jobs:
           cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
 
       - name: Trivy before push
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: argus-${{ matrix.component }}:release-scan
-          format: table
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-        env:
-          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.58.1 image \
+              --severity CRITICAL,HIGH \
+              --ignore-unfixed \
+              --exit-code 1 \
+              --format table \
+              "argus-${{ matrix.component }}:release-scan"
 
       - name: Docker metadata
         id: meta
