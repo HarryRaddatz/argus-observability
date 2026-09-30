@@ -6,6 +6,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Panel unit tests with Vitest and Testing Library; CI runs `npm test -- --run` (#37)
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
 - Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
 - Docs sidebar: nested pages indent under section titles, hairline between categories

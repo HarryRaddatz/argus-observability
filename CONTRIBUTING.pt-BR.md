@@ -18,7 +18,7 @@ cp .env.example .env
 docker compose up -d --build   # stack completa
 go vet ./...
 go test ./...                  # backend (Go 1.27+)
-cd web && npm ci && npm run lint && npm run build   # painel (Node 24 LTS)
+cd web && npm ci && npm run lint && npm test -- --run && npm run build   # painel (Node 24 LTS)
 bash .github/scripts/check-no-vps-leak.sh   # opcional, local
 ```
 
@@ -31,7 +31,7 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo P
 | `changes` | Quais componentes mudaram no diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
 | `anti-leak` | Padrões de infra privada no diff |
 | `go` | `go vet`, `go test`, `go build ./cmd/...` — só se hub ou agent mudou |
-| `web` | `npm ci`, `npm run lint`, `npm run build` — só se web mudou |
+| `web` | `npm ci`, `npm run lint`, `npm test -- --run`, `npm run build` — só se web mudou |
 | `docker (hub/agent/web)` | Build do Dockerfile do componente que mudou, sem push, com cache compartilhado com o release |
 | `test` | Agregador: passa se nenhum job falhou (jobs pulados contam como ok) |
 
