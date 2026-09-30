@@ -11,8 +11,6 @@ DOCS_DIR = "docs"
 # Site page -> repository file used as its source.
 # Written into docs/ at build time so mkdocs-static-i18n can read them from disk.
 ROOT_PAGES = {
-    "index.md": "README.md",
-    "index.pt.md": "README.pt-BR.md",
     "changelog.md": "CHANGELOG.md",
     "contributing.md": "CONTRIBUTING.md",
     "contributing.pt.md": "CONTRIBUTING.pt-BR.md",

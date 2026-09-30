@@ -7,6 +7,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
+- Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
 - `SECURITY.md`, issue templates (bug, feature, docs) and pull request template
 - Hub: concurrent ingest limit (`ARGUS_INGEST_CONCURRENCY`, `ARGUS_INGEST_WAIT`, `ARGUS_MAX_BODY_BYTES`); bounded queue for pattern/topology batches
 - `argus-web` listens on `8081` only for ingest POSTs and `/health`, so agents on other hosts do not need the hub GET routes exposed

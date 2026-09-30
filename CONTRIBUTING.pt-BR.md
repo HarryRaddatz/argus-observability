@@ -105,7 +105,7 @@ Atualizar uma instância existente: [docs/deploy.md](docs/deploy.md).
 
 ## Site de documentação
 
-O site em [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/) é gerado pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) com MkDocs a partir de `docs/`, `README.md` (início), `CHANGELOG.md` (novidades) e `CONTRIBUTING.md`.
+O site em [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/) é gerado pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) com MkDocs a partir de `docs/` (início em `docs/index.md`), `CHANGELOG.md` e `CONTRIBUTING.md`. Inglês é o idioma padrão; português usa o sufixo `*.pt.md`.
 
 - PR que toca esses arquivos roda `mkdocs build --strict`: link ou página quebrada falha o check.
 - Merge em `main` e cada release concluída publicam o site.

@@ -6,24 +6,49 @@ repo_name: HarryRaddatz/argus-observability
 edit_uri: edit/main/docs/
 docs_dir: docs
 site_dir: site
+copyright: MIT
 
 theme:
   name: material
   language: en
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.sections
     - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.follow
     - content.code.copy
     - search.suggest
+    - search.highlight
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/HarryRaddatz/argus-observability
 
 hooks:
   - .github/pages/hooks.py
@@ -44,12 +69,12 @@ plugins:
           build: true
           nav_translations:
             Home: Início
-            What's new: Novidades
             Get started: Começar
             Overview: Visão geral
-            Deploy and upgrades: Deploy e atualização
-            Product map: Mapa do produto
+            Deploy: Deploy
+            Panel: Painel
             API: API
+            Reference: Referência
             Configuration: Configuração
             Ingest: Ingest
             Query: Query
@@ -59,13 +84,16 @@ plugins:
             Metrics ingest: Ingestão de métricas
             Log streaming: Streaming de logs
             Events and alerts: Eventos e alertas
-            Panel: Painel
             Project: Projeto
+            Product map: Mapa do produto
             Roadmap: Roadmap
+            Changelog: Novidades
             Contributing: Contribuir
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - tables
   - toc:
       permalink: true
@@ -74,6 +102,9 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 validation:
   links:
@@ -83,13 +114,12 @@ validation:
 
 nav:
   - Home: index.md
-  - What's new: changelog.md
   - Get started:
       - Overview: overview.md
-      - Deploy and upgrades: deploy.md
-      - Product map: map.md
+      - Deploy: deploy.md
+      - Panel: flows/ui-panel.md
   - API:
-      - api/README.md
+      - Reference: api/README.md
       - Configuration: api/configuration.md
       - Ingest: api/ingest.md
       - Query: api/query.md
@@ -99,7 +129,8 @@ nav:
       - Metrics ingest: flows/metrics-ingestion.md
       - Log streaming: flows/log-streaming.md
       - Events and alerts: flows/events-and-alerts.md
-      - Panel: flows/ui-panel.md
   - Project:
+      - Product map: map.md
       - Roadmap: public-library/roadmap.md
+      - Changelog: changelog.md
       - Contributing: contributing.md

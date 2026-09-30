@@ -1,0 +1,73 @@
+:root > * {
+  --md-primary-fg-color: #171717;
+  --md-primary-fg-color--light: #404040;
+  --md-primary-fg-color--dark: #0a0a0a;
+  --md-accent-fg-color: #404040;
+  --md-accent-fg-color--transparent: rgba(23, 23, 23, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0a0a0a;
+  --md-accent-fg-color: #a3a3a3;
+  --md-accent-fg-color--transparent: rgba(163, 163, 163, 0.12);
+  --md-typeset-a-color: #d4d4d4;
+}
+
+.md-header__button.md-logo {
+  margin: 0.2rem;
+  padding: 0.2rem;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.md-typeset h1 {
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.md-typeset .lead {
+  max-width: 42rem;
+  margin-bottom: 1.25rem;
+  font-size: 1.05rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .md-button {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset table:not([class]) {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-typeset table:not([class]) th {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.md-typeset .mermaid,
+.md-typeset pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.md-typeset .grid.cards > ol > li,
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.5rem;
+}
