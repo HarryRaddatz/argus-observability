@@ -22,6 +22,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- `argus-web` runtime image runs `apk upgrade` so Alpine packages in `nginx:1.30-alpine` pick up fixable HIGH/CRITICAL patches (#40)
 - Pages **build site** check runs on every PR so it can be required on `main` (#33)
 - Contributor docs: commits, PR text, new CHANGELOG entries, canonical docs, and API identifiers are English; Portuguese files are translations only
 - Issue chooser requires a form (bug, feature, docs, or task); pull request template has Why, What changes, How to validate, and a checklist
