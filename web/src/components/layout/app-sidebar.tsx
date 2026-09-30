@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import {
   Sidebar,
@@ -15,6 +16,7 @@ import { isNavItemActive, navItems } from "@/lib/navigation"
 
 export function AppSidebar() {
   const location = useLocation()
+  const { t } = useTranslation()
 
   return (
     <Sidebar collapsible="icon">
@@ -27,26 +29,26 @@ export function AppSidebar() {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">Argus</span>
-                <span className="truncate text-xs text-muted-foreground">Observabilidade</span>
+                <span className="truncate text-xs text-muted-foreground">{t("shell.brand")}</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <nav aria-label="Principal">
+        <nav aria-label={t("nav.main")}>
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton
-                      tooltip={item.label}
                       isActive={isNavItemActive(item, location.pathname)}
+                      tooltip={t(item.labelKey)}
                       render={<NavLink to={item.to} end={item.end} />}
                     >
                       <item.icon />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

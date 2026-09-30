@@ -1,8 +1,8 @@
-# Fluxo: stream de logs
+# Flow: log stream
 
-O agent lê logs do Docker no intervalo `ARGUS_LOG_INTERVAL` e envia um lote HTTP. O painel consulta o hub; não há stream WebSocket nem amostragem por pressão.
+The agent reads Docker logs on `ARGUS_LOG_INTERVAL` and sends an HTTP batch. The panel queries the hub; there is no WebSocket stream and no sampling under pressure.
 
-## Sequência — coleta e persistência
+## Sequence — collect and persist
 
 ```mermaid
 sequenceDiagram
@@ -13,16 +13,16 @@ sequenceDiagram
 
   loop ARGUS_LOG_INTERVAL
     Agent->>Runtime: logs stdout/stderr
-    Runtime-->>Agent: linha + metadata
+    Runtime-->>Agent: line + metadata
     Agent->>Hub: POST /api/v1/logs/batch
     Hub->>Store: insert log_entries
     Hub-->>Agent: 202
   end
 ```
 
-O hub não expõe WebSocket. O painel relê a busca.
+The hub does not expose WebSocket. The panel re-runs search.
 
-## Formato de entrada
+## Input format
 
 ```json
 {
@@ -35,22 +35,22 @@ O hub não expõe WebSocket. O painel relê a busca.
 }
 ```
 
-## Sequência — painel
+## Sequence — panel
 
-`/logs` consulta a cada 15 s (`web/src/pages/logs.tsx`). Não há rota `/api/v1/ws`.
+`/logs` polls every 15 s (`web/src/pages/logs.tsx`). There is no `/api/v1/ws` route.
 
 ```mermaid
 sequenceDiagram
   participant Browser
   participant Hub
 
-  loop a cada 15s
+  loop every 15s
     Browser->>Hub: GET /api/v1/logs/search?since=1h&container=...
     Hub-->>Browser: entries
   end
 ```
 
-## Busca histórica
+## Historical search
 
 ```mermaid
 sequenceDiagram

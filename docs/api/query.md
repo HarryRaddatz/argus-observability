@@ -1,6 +1,6 @@
 # Query API
 
-Rotas GET de consulta. Parâmetro `since` aceita duração Go (`30m`, `1h`, `24h`).
+GET query routes. The `since` parameter accepts a Go duration (`30m`, `1h`, `24h`).
 
 ## GET `/health`
 
@@ -10,9 +10,9 @@ Rotas GET de consulta. Parâmetro `since` aceita duração Go (`30m`, `1h`, `24h
 
 ## GET `/api/v1/workloads`
 
-Último snapshot por container monitorado.
+Latest snapshot per monitored container.
 
-**Exemplo:** `GET /api/v1/workloads?since=30m`
+**Example:** `GET /api/v1/workloads?since=30m`
 
 ```json
 [
@@ -29,9 +29,9 @@ Rotas GET de consulta. Parâmetro `since` aceita duração Go (`30m`, `1h`, `24h
 
 ## GET `/api/v1/metrics/series`
 
-Série temporal agregada.
+Aggregated time series.
 
-**Exemplo:** `GET /api/v1/metrics/series?metric=cpu.usage&since=1h&container=stack-demo-api-1`
+**Example:** `GET /api/v1/metrics/series?metric=cpu.usage&since=1h&container=stack-demo-api-1`
 
 ```json
 {
@@ -49,19 +49,19 @@ Série temporal agregada.
 }
 ```
 
-Filtros opcionais: `container`, `group` (ID de workload group).
+Optional filters: `container`, `group` (workload group ID).
 
 ## GET `/api/v1/metrics/catalog`
 
-Lista métricas disponíveis no explorer.
+Lists metrics available in the explorer.
 
 ## GET `/api/v1/metrics/http/summary`
 
-Resumo HTTP derivado de logs por serviço (`service` label).
+HTTP summary derived from logs per service (`service` label).
 
 ## GET `/api/v1/logs/search`
 
-**Exemplo:** `GET /api/v1/logs/search?since=1h&container=stack-demo-api-1&q=error`
+**Example:** `GET /api/v1/logs/search?since=1h&container=stack-demo-api-1&q=error`
 
 ```json
 {
@@ -79,15 +79,15 @@ Resumo HTTP derivado de logs por serviço (`service` label).
 
 ## GET `/api/v1/events`
 
-Timeline de eventos. Query: `since`, `entity_uid`.
+Event timeline. Query: `since`, `entity_uid`.
 
 ## GET `/api/v1/fleet/status`
 
-Estado operacional agregado + lista de containers.
+Aggregated operational state plus container list.
 
 ## Workload groups
 
-| Método | Rota |
+| Method | Route |
 |---|---|
 | GET | `/api/v1/workload-groups` |
 | GET | `/api/v1/workload-groups/discover` |

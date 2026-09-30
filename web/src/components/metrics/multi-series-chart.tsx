@@ -1,12 +1,13 @@
 import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, XAxis, YAxis } from "recharts"
+import { useTranslation } from "react-i18next"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatTime } from "@/lib/format"
 import type { ContainerSeries } from "@/lib/api"
-
 import { containerColor } from "@/lib/chart-colors"
+import type { TFunction } from "i18next"
 
 type Props = {
   title: string
@@ -29,9 +30,10 @@ export function MultiSeriesChart({
   chartType = "area",
   statMode,
 }: Props) {
+  const { t } = useTranslation()
   const data = mergeSeries(series, transform)
   const keys = series.map((s) => s.container)
-  const statLabel = statMode ? describeStat(series, statMode, unit, transform) : null
+  const statLabel = statMode ? describeStat(t, series, statMode, unit, transform) : null
 
   return (
     <Card>
@@ -45,7 +47,7 @@ export function MultiSeriesChart({
           <Skeleton className="h-[280px] w-full" />
         ) : data.length === 0 ? (
           <p className="text-muted-foreground flex h-[280px] items-center justify-center text-sm">
-            Sem dados no período.
+            {t("chart.empty")}
           </p>
         ) : chartType === "line" ? (
           <ChartContainer config={{}} className="h-[280px] w-full">
@@ -111,7 +113,13 @@ function mergeSeries(series: ContainerSeries[], transform?: (v: number) => numbe
   return [...byTime.values()]
 }
 
-function describeStat(series: ContainerSeries[], mode: "avg" | "max", unit: string, transform?: (v: number) => number) {
+function describeStat(
+  t: TFunction,
+  series: ContainerSeries[],
+  mode: "avg" | "max",
+  unit: string,
+  transform?: (v: number) => number,
+) {
   const values: number[] = []
   for (const s of series) {
     for (const p of s.points ?? []) {
@@ -120,6 +128,6 @@ function describeStat(series: ContainerSeries[], mode: "avg" | "max", unit: stri
   }
   if (values.length === 0) return null
   const agg = mode === "max" ? Math.max(...values) : values.reduce((a, b) => a + b, 0) / values.length
-  const label = mode === "max" ? "Pico" : "Média"
-  return `${label}: ${Math.round(agg * 10) / 10}${unit}`
+  const label = mode === "max" ? t("chart.peak") : t("chart.avg")
+  return t("chart.statLine", { label, value: Math.round(agg * 10) / 10, unit })
 }

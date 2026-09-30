@@ -1,12 +1,14 @@
 # Observability API
 
-Endpoints de análise derivada (logs, rules, SLO).
+Derived analysis endpoints (logs, rules, SLO).
 
 ## GET `/api/v1/insights`
 
-Insights automáticos (CPU, memória, HTTP, fleet, patterns, topologia).
+Automatic insights (CPU, memory, HTTP, fleet, patterns, topology).
 
-**Exemplo:** `GET /api/v1/insights?since=1h`
+**Example:** `GET /api/v1/insights?since=1h`
+
+Hub JSON titles stay in the seed language. The panel maps `rule_id` and metric names to the UI locale.
 
 ```json
 {
@@ -29,28 +31,28 @@ Insights automáticos (CPU, memória, HTTP, fleet, patterns, topologia).
 
 ## GET `/api/v1/logs/patterns`
 
-Padrões normalizados de mensagens de log, do mais frequente para o menos (até 50).
+Normalized log-message patterns, most frequent first (up to 50).
 
-| Parâmetro | Default | Descrição |
+| Parameter | Default | Description |
 |---|---|---|
-| `since` | `1h` | Janela (`time.ParseDuration`) |
-| `container` | — | Só padrões deste container |
-| `group` | — | Só containers do grupo; `404` se o grupo não existir |
-| `q` | — | Texto contido no padrão ou na amostra (sem diferenciar maiúsculas) |
+| `since` | `1h` | Window (`time.ParseDuration`) |
+| `container` | — | Only patterns from this container |
+| `group` | — | Only containers in the group; `404` if the group does not exist |
+| `q` | — | Text contained in the pattern or sample (case-insensitive) |
 
-**Exemplo:** `GET /api/v1/logs/patterns?since=6h&group=stack-shop&q=timeout`
+**Example:** `GET /api/v1/logs/patterns?since=6h&group=stack-shop&q=timeout`
 
 ## GET `/api/v1/topology`
 
-Grafo de dependências inferido a partir de logs (`TopologyGraph` em `internal/model/types.go`).
+Dependency graph inferred from logs (`TopologyGraph` in `internal/model/types.go`).
 
-| Parâmetro | Default | Descrição |
+| Parameter | Default | Description |
 |---|---|---|
-| `since` | `24h` | Janela (`time.ParseDuration`). Valor inválido mantém o default |
+| `since` | `24h` | Window (`time.ParseDuration`). Invalid value keeps the default |
 
-`kind` observado na inferência: `http`, `amqp`. Listas vazias vêm como `[]`, não `null`.
+`kind` observed in inference: `http`, `amqp`. Empty lists come as `[]`, not `null`.
 
-**Exemplo:** `GET /api/v1/topology?since=24h`
+**Example:** `GET /api/v1/topology?since=24h`
 
 ```json
 {
@@ -71,17 +73,17 @@ Grafo de dependências inferido a partir de logs (`TopologyGraph` em `internal/m
 
 ## GET `/api/v1/traces`
 
-Traces recentes, do mais novo para o mais antigo. Junta spans OTLP e linhas de log com `trace_id`; um trace presente nas duas fontes aparece uma vez, pelos spans OTLP.
+Recent traces, newest first. Joins OTLP spans and log lines with `trace_id`; a trace present in both sources appears once, from the OTLP spans.
 
-| Parâmetro | Default | Descrição |
+| Parameter | Default | Description |
 |---|---|---|
-| `since` | `1h` | Janela (`time.ParseDuration`) |
-| `service` | — | Traces com pelo menos um span ou linha deste serviço |
-| `limit` | `50` | Máximo `200` |
+| `since` | `1h` | Window (`time.ParseDuration`) |
+| `service` | — | Traces with at least one span or line from this service |
+| `limit` | `50` | Max `200` |
 
-Cada fonte lê no máximo 5000 linhas da janela.
+Each source reads at most 5000 rows from the window.
 
-**Exemplo:** `GET /api/v1/traces?since=1h&service=demo-api`
+**Example:** `GET /api/v1/traces?since=1h&service=demo-api`
 
 ```json
 [
@@ -100,19 +102,19 @@ Cada fonte lê no máximo 5000 linhas da janela.
 ]
 ```
 
-`source` é `otlp` ou `logs`. Em traces de logs, `name` vem de `route`, `path`, `msg` ou `event` quando a linha é JSON, e `span_count` conta as linhas.
+`source` is `otlp` or `logs`. In log traces, `name` comes from `route`, `path`, `msg`, or `event` when the line is JSON, and `span_count` counts the lines.
 
 ## GET `/api/v1/traces/{trace_id}`
 
-Waterfall de spans (OTLP ou reconstruído de logs).
+Span waterfall (OTLP or rebuilt from logs).
 
-**Exemplo:** `GET /api/v1/traces/50e30959-f59e-487f-bbe0-89ae7d8e74e5?since=24h`
+**Example:** `GET /api/v1/traces/50e30959-f59e-487f-bbe0-89ae7d8e74e5?since=24h`
 
 ## GET `/api/v1/alerts/active`
 
-Alertas ainda abertos no rule engine (`internal/rules/engine.go`, serializados em `internal/hub/topology.go`). Sem query. Se o engine não estiver ligado, o corpo é `[]`.
+Alerts still open in the rule engine (`internal/rules/engine.go`, serialized in `internal/hub/topology.go`). No query. If the engine is not running, the body is `[]`.
 
-Regras embutidas: `cpu-high` (`cpu.usage` ≥ 80 por 5 minutos, `warning`) e `memory-high` (`memory.usage_pct` ≥ 90 por 5 minutos, `critical`).
+Built-in rules: `cpu-high` (`cpu.usage` ≥ 80 for 5 minutes, `warning`) and `memory-high` (`memory.usage_pct` ≥ 90 for 5 minutes, `critical`).
 
 ```json
 [
@@ -131,17 +133,17 @@ Regras embutidas: `cpu-high` (`cpu.usage` ≥ 80 por 5 minutos, `warning`) e `me
 
 ## SLOs
 
-Contrato: `SLODefinition` e `SLOStatus` em `internal/model/types.go`. Handlers em `internal/hub/slos.go`.
+Contract: `SLODefinition` and `SLOStatus` in `internal/model/types.go`. Handlers in `internal/hub/slos.go`.
 
-| Rota | Corpo |
+| Route | Body |
 |---|---|
-| GET `/api/v1/slos` | Array de definições. Vazio: `[]` |
-| GET `/api/v1/slos/status` | Array de status. Definição que falha na avaliação é omitida |
-| GET `/api/v1/slos/{id}/status` | Um status. `404` com texto `not found` se o id não existe |
+| GET `/api/v1/slos` | Array of definitions. Empty: `[]` |
+| GET `/api/v1/slos/status` | Array of statuses. A definition that fails evaluation is omitted |
+| GET `/api/v1/slos/{id}/status` | One status. `404` with text `not found` if the id does not exist |
 
-Seed inclui dois SLOs do serviço `demo-api`, target `99.9`, janela `720` horas: `slo-demo-latency` (`latency_p95`, limiar 500 ms) e `slo-demo-availability` (`availability`).
+The seed includes two SLOs for service `demo-api`, target `99.9`, window `720` hours: `slo-demo-latency` (`latency_p95`, threshold 500 ms) and `slo-demo-availability` (`availability`).
 
-**Exemplo:** `GET /api/v1/slos/status`
+**Example:** `GET /api/v1/slos/status`
 
 ```json
 [
@@ -167,11 +169,11 @@ Seed inclui dois SLOs do serviço `demo-api`, target `99.9`, janela `720` horas:
 ]
 ```
 
-`GET /api/v1/slos/{id}/status` devolve o mesmo objeto, sem o array. `group_id` só aparece quando a definição tem grupo.
+`GET /api/v1/slos/{id}/status` returns the same object, without the array. `group_id` only appears when the definition has a group.
 
-## Pacotes relacionados
+## Related packages
 
-- `internal/insights/` — classificação, métricas HTTP, insights
-- `internal/rules/` — regras CPU/mem/SLO
-- `internal/slo/` — avaliador de SLO
-- `internal/traces/` — builder a partir de logs + OTLP store
+- `internal/insights/` — classification, HTTP metrics, insights
+- `internal/rules/` — CPU/mem/SLO rules
+- `internal/slo/` — SLO evaluator
+- `internal/traces/` — builder from logs + OTLP store

@@ -1,4 +1,5 @@
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { useTranslation } from "react-i18next"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -7,7 +8,7 @@ import { chartPoints } from "@/lib/format"
 import type { SeriesPoint } from "@/lib/api"
 
 const chartConfig = {
-  value: { label: "Valor", color: "var(--chart-1)" },
+  value: { label: "Value", color: "var(--chart-1)" },
 }
 
 type Props = {
@@ -29,7 +30,9 @@ export function TimeSeriesChart({
   transform,
   height = "h-[240px]",
 }: Props) {
+  const { t } = useTranslation()
   const data = chartPoints(points, transform)
+  const config = { value: { label: t("common.value"), color: "var(--chart-1)" } }
 
   return (
     <Card>
@@ -42,10 +45,10 @@ export function TimeSeriesChart({
           <Skeleton className={`${height} w-full`} />
         ) : data.length === 0 ? (
           <p className={`text-muted-foreground flex ${height} items-center justify-center text-sm`}>
-            Sem dados no período.
+            {t("chart.empty")}
           </p>
         ) : (
-          <ChartContainer config={chartConfig} className={`${height} w-full`}>
+          <ChartContainer config={config} className={`${height} w-full`}>
             <AreaChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="time" tickLine={false} axisLine={false} minTickGap={32} />

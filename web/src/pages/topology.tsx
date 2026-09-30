@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
 import { PageHeader } from "@/components/layout/page-header"
@@ -9,13 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryState } from "@/hooks/use-query-state"
 import { fetchTopology, type TopologyGraph } from "@/lib/api"
 
-const kindLabel: Record<string, string> = { http: "HTTP", amqp: "Fila AMQP" }
-
-function eventsLabel(n: number) {
-  return n === 1 ? "1 chamada" : `${n} chamadas`
-}
-
 export function TopologyPage() {
+  const { t } = useTranslation()
   const [since, setSince] = useQueryState("since", "24h")
   const [graph, setGraph] = useState<TopologyGraph>({ nodes: [], edges: [] })
   const [loading, setLoading] = useState(true)
@@ -37,8 +33,8 @@ export function TopologyPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Topologia"
-        description="Chamadas entre serviços encontradas nos logs."
+        title={t("topology.title")}
+        description={t("topology.description")}
         actions={<TimeRangePicker value={since} onChange={setSince} />}
       />
 
@@ -46,12 +42,12 @@ export function TopologyPage() {
         <Skeleton className="h-48 w-full" />
       ) : edges.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          Nenhuma dependência encontrada no período. Ela aparece quando os logs registram chamadas HTTP ou AMQP entre serviços.
+          {t("topology.empty")}
         </p>
       ) : (
         <>
           <section className="space-y-2">
-            <h2 className="text-sm font-medium">Serviços</h2>
+            <h2 className="text-sm font-medium">{t("topology.services")}</h2>
             <div className="flex flex-wrap gap-2">
               {graph.nodes.map((n) => (
                 <Link key={n.id} to={`/logs?container=${encodeURIComponent(n.id)}&since=${since}`}>
@@ -61,7 +57,7 @@ export function TopologyPage() {
             </div>
           </section>
           <section className="space-y-2">
-            <h2 className="text-sm font-medium">Dependências</h2>
+            <h2 className="text-sm font-medium">{t("topology.deps")}</h2>
             <div className="grid gap-3 md:grid-cols-2">
               {edges.map((e) => (
                 <Card key={`${e.source}-${e.target}-${e.kind}`}>
@@ -71,20 +67,22 @@ export function TopologyPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
-                    <p className="text-sm font-medium tabular-nums">{eventsLabel(e.count)}</p>
-                    <p className="text-muted-foreground">{kindLabel[e.kind] ?? e.kind}</p>
+                    <p className="text-sm font-medium tabular-nums">
+                      {e.count === 1 ? t("topology.oneCall") : t("topology.nCalls", { count: e.count })}
+                    </p>
+                    <p className="text-muted-foreground">{e.kind === "amqp" ? t("topology.amqp") : e.kind === "http" ? t("topology.http") : e.kind}</p>
                     <div className="flex flex-wrap gap-3">
                       <Link
                         to={`/logs?container=${encodeURIComponent(e.target)}&topic=error&since=${since}`}
                         className="text-primary hover:underline"
                       >
-                        Erros em {e.target}
+                        {t("topology.errorsIn", { name: e.target })}
                       </Link>
                       <Link
                         to={`/traces?service=${encodeURIComponent(e.target)}&since=${since}`}
                         className="text-primary hover:underline"
                       >
-                        Traces de {e.target}
+                        {t("topology.tracesOf", { name: e.target })}
                       </Link>
                     </div>
                   </CardContent>

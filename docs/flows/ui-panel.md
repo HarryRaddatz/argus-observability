@@ -1,41 +1,41 @@
-# Fluxo: painel de gestão
+# Flow: management panel
 
-SPA React (`web/`) consumindo a API do hub. Componentes shadcn/ui.
+React SPA (`web/`) consuming the hub API. shadcn/ui components.
 
-## Arquitetura de informação
+## Information architecture
 
-Sete destinos no menu (`web/src/lib/navigation.ts`). Filtros, agrupamentos e pivôs são modos dentro da tela, não destinos próprios.
+Seven destinations in the menu (`web/src/lib/navigation.ts`). Filters, groupings, and pivots are modes inside a screen, not destinations of their own.
 
-| Destino | Rota | O que mostra | Modos (parâmetro) |
+| Destination | Route | What it shows | Modes (parameter) |
 |---|---|---|---|
-| Visão geral | `/` | Só o que pede ação: alertas ativos, SLOs violados ou com margem baixa, containers com problema, serviços HTTP acima de 1% de erro | — |
-| Problemas | `/problems` | Alertas ativos e insights, SLOs, histórico de eventos | `tab=now` (padrão), `tab=slos`, `tab=history` |
-| Containers | `/containers` | Recurso (CPU, memória) e estado (health, reinícios, OOM) de cada container | `view=grid` (padrão) ou `view=table`, `filter=unstable`, `panel=groups` |
-| Métricas | `/metrics` | Séries de um container ou comparação entre containers | `mode=container` (padrão) ou `mode=compare` |
-| Logs | `/logs` | Busca de linhas e padrões repetidos com os mesmos filtros | `mode=lines` (padrão) ou `mode=patterns` |
-| Traces | `/traces` | Traces recentes por serviço e período; waterfall do trace aberto | `trace_id` abre o detalhe |
-| Topologia | `/topology` | Dependências entre serviços inferidas dos logs | — |
+| Overview | `/` | Only what needs action: active alerts, SLOs breached or with low budget, containers with issues, HTTP services over 1% error | — |
+| Problems | `/problems` | Active alerts and insights, SLOs, event history | `tab=now` (default), `tab=slos`, `tab=history` |
+| Containers | `/containers` | Resource (CPU, memory) and state (health, restarts, OOM) of each container | `view=grid` (default) or `view=table`, `filter=unstable`, `panel=groups` |
+| Metrics | `/metrics` | Series of one container or comparison across containers | `mode=container` (default) or `mode=compare` |
+| Logs | `/logs` | Line search and repeated patterns with the same filters | `mode=lines` (default) or `mode=patterns` |
+| Traces | `/traces` | Recent traces by service and range; waterfall of the open trace | `trace_id` opens the detail |
+| Topology | `/topology` | Service dependencies inferred from logs | — |
 
-A tela tem um único título (`PageHeader`), igual ao nome no menu. A barra do topo só tem o botão do menu. O primeiro elemento focável é o link "Pular para o conteúdo" (`#conteudo`), e o menu fica num landmark `nav` com `aria-label="Principal"`.
+The screen has a single title (`PageHeader`), the same as the menu name. The top bar only has the menu button. The first focusable element is the "Skip to content" link (`#main`), and the menu sits in a `nav` landmark with `aria-label` from the locale.
 
-## Estado na URL
+## State in the URL
 
-Tudo o que muda o que está na tela fica na query string e sobrevive a recarregar ou compartilhar o link (`web/src/hooks/use-query-state.ts`). Valores iguais ao padrão são removidos da URL.
+Everything that changes what is on screen lives in the query string and survives reload or a shared link (`web/src/hooks/use-query-state.ts`). Values equal to the default are stripped from the URL.
 
-| Parâmetro | Telas | Valores |
+| Parameter | Screens | Values |
 |---|---|---|
-| `since` | Métricas, Logs, Problemas, Traces, Topologia | `15m`, `1h`, `6h`, `24h` |
-| `group` | Containers, Métricas, Logs, Problemas (Agora) | id de `workload-groups` |
-| `container` | Métricas, Logs | nome do container |
-| `service` | Métricas, Traces | nome do serviço; em Métricas escolhe os containers do serviço |
-| `metric`, `containers`, `chart`, `stat` | Métricas (comparar) | métrica do catálogo, lista separada por vírgula, `area`/`line`, `avg`/`max` |
-| `q`, `level`, `topic`, `trace_id` | Logs | texto, nível, tópico, trace |
+| `since` | Metrics, Logs, Problems, Traces, Topology | `15m`, `1h`, `6h`, `24h` |
+| `group` | Containers, Metrics, Logs, Problems (Now) | `workload-groups` id |
+| `container` | Metrics, Logs | container name |
+| `service` | Metrics, Traces | service name; in Metrics it selects the service's containers |
+| `metric`, `containers`, `chart`, `stat` | Metrics (compare) | catalog metric, comma-separated list, `area`/`line`, `avg`/`max` |
+| `q`, `level`, `topic`, `trace_id` | Logs | text, level, topic, trace |
 
-## Rotas antigas
+## Legacy routes
 
-Redirecionam para o modo equivalente e mantêm os parâmetros recebidos (`web/src/components/layout/redirect.tsx`).
+They redirect to the equivalent mode and keep the received parameters (`web/src/components/layout/redirect.tsx`).
 
-| Antes | Depois |
+| Before | After |
 |---|---|
 | `/workloads` | `/containers` |
 | `/fleet` | `/containers?view=table` |
@@ -46,13 +46,13 @@ Redirecionam para o modo equivalente e mantêm os parâmetros recebidos (`web/sr
 | `/slos` | `/problems?tab=slos` |
 | `/events` | `/problems?tab=history` |
 
-## Mapa de navegação
+## Navigation map
 
 ```mermaid
 flowchart LR
-  Overview[Visão geral] --> Problems[Problemas]
+  Overview[Overview] --> Problems[Problems]
   Overview --> Containers
-  Overview --> Metrics[Métricas]
+  Overview --> Metrics[Metrics]
   Overview --> Logs
   Problems --> Metrics
   Problems --> Logs
@@ -64,13 +64,13 @@ flowchart LR
   Logs --> Traces
   Logs --> Metrics
   Traces --> Logs
-  Topology[Topologia] --> Logs
+  Topology[Topology] --> Logs
   Topology --> Traces
 ```
 
-Toda tela leva a pelo menos uma outra com o filtro aplicado.
+Every screen leads to at least one other with the filter applied.
 
-## Sequência — carregamento
+## Sequence — load
 
 ```mermaid
 sequenceDiagram
@@ -83,14 +83,14 @@ sequenceDiagram
   Browser->>Hub: GET /health
   Hub-->>Browser: ok
   Browser->>Hub: GET /api/v1/alerts/active, /slos/status, /fleet/status, /metrics/http/summary
-  Hub-->>Browser: dados da Visão geral
+  Hub-->>Browser: Overview data
 ```
 
-Visão geral, Problemas, Containers e Logs (padrões) atualizam a cada 30 s; Logs (linhas) a cada 15 s.
+Overview, Problems, Containers, and Logs (patterns) refresh every 30 s; Logs (lines) every 15 s.
 
-## Sequência — topologia
+## Sequence — topology
 
-A tela chama uma rota. `since` da URL (default `24h`) vai na query. Nó e aresta abrem Logs com o mesmo período (`web/src/pages/topology.tsx`).
+The screen calls one route. `since` from the URL (default `24h`) goes in the query. Node and edge open Logs with the same range (`web/src/pages/topology.tsx`).
 
 ```mermaid
 sequenceDiagram
@@ -99,12 +99,12 @@ sequenceDiagram
 
   Browser->>Hub: GET /api/v1/topology?since=24h
   Hub-->>Browser: nodes, edges
-  Browser->>Browser: link /logs?container=alvo&since=24h
+  Browser->>Browser: link /logs?container=target&since=24h
 ```
 
-## Sequência — grupos
+## Sequence — groups
 
-A lista de grupos carrega com Containers. O painel (`panel=groups`) pede sugestões e grava com POST. Um grupo selecionado (`group`) filtra a grade pelo summary (`web/src/pages/containers.tsx`, `web/src/views/groups-panel.tsx`).
+The group list loads with Containers. The panel (`panel=groups`) asks for suggestions and writes with POST. A selected group (`group`) filters the grid by the summary (`web/src/pages/containers.tsx`, `web/src/views/groups-panel.tsx`).
 
 ```mermaid
 sequenceDiagram
@@ -112,27 +112,27 @@ sequenceDiagram
   participant Hub
 
   Browser->>Hub: GET /api/v1/workload-groups
-  Hub-->>Browser: grupos salvos
+  Hub-->>Browser: saved groups
   Browser->>Hub: GET /api/v1/workload-groups/discover
-  Hub-->>Browser: sugestões stack/service
+  Hub-->>Browser: stack/service suggestions
   Browser->>Hub: POST /api/v1/workload-groups
-  Hub-->>Browser: 201 grupo
+  Hub-->>Browser: 201 group
   Browser->>Hub: GET /api/v1/workload-groups/{id}/summary?since=30m
   Hub-->>Browser: members
 ```
 
-Apagar um grupo é `DELETE /api/v1/workload-groups/{id}` (`204`).
+Deleting a group is `DELETE /api/v1/workload-groups/{id}` (`204`).
 
 ## Dev
 
-Proxy Vite: `/api` e `/health` → hub (`web/vite.config.ts`).
+Vite proxy: `/api` and `/health` → hub (`web/vite.config.ts`).
 
-Build produção: `npm run build` — artefatos servidos pelo container `argus-web`.
+Production build: `npm run build` — artifacts served by the `argus-web` container.
 
-## Referências
+## References
 
 - Layout: `web/src/components/layout/`
-- Telas: `web/src/pages/`; partes reutilizadas pelas telas: `web/src/views/`
-- Filtros: `web/src/components/filters/`
-- Métricas UI: `web/src/components/metrics/`
-- Mapa produto: [../map.md](../map.md)
+- Screens: `web/src/pages/`; pieces reused by screens: `web/src/views/`
+- Filters: `web/src/components/filters/`
+- Metrics UI: `web/src/components/metrics/`
+- Product map: [../map.md](../map.md)

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+
 import { GroupSelect } from "@/components/filters/group-select"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
 import { PageHeader } from "@/components/layout/page-header"
@@ -10,6 +12,7 @@ import { SLOList } from "@/views/slo-list"
 const defaultSince: Record<string, string> = { now: "1h", history: "24h" }
 
 export function ProblemsPage() {
+  const { t } = useTranslation()
   const [tab] = useQueryState("tab", "now")
   const [since, setSince] = useQueryState("since", defaultSince[tab] ?? "1h")
   const [group, setGroup] = useQueryState("group", "")
@@ -18,7 +21,7 @@ export function ProblemsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Problemas"
+        title={t("problems.title")}
         actions={
           tab === "slos" ? null : (
             <>
@@ -29,10 +32,10 @@ export function ProblemsPage() {
         }
       />
       <Tabs value={tab} onValueChange={(v) => patch({ tab: String(v), since: null }, { tab: "now" })}>
-        <TabsList aria-label="Seção">
-          <TabsTrigger value="now">Agora</TabsTrigger>
-          <TabsTrigger value="slos">SLOs</TabsTrigger>
-          <TabsTrigger value="history">Histórico de eventos</TabsTrigger>
+        <TabsList aria-label={t("common.section")}>
+          <TabsTrigger value="now">{t("problems.now")}</TabsTrigger>
+          <TabsTrigger value="slos">{t("problems.slos")}</TabsTrigger>
+          <TabsTrigger value="history">{t("problems.history")}</TabsTrigger>
         </TabsList>
       </Tabs>
       {tab === "slos" ? <SLOList /> : tab === "history" ? <EventHistory since={since} /> : <ProblemsNow since={since} group={group} />}

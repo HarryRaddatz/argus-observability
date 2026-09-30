@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next"
+
 import type { ContainerFleetStatus } from "@/lib/api"
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline"
@@ -9,21 +11,14 @@ const variants: Record<string, BadgeVariant> = {
   dead: "destructive",
 }
 
-const labels: Record<string, string> = {
-  running: "Rodando",
-  restarting: "Reiniciando",
-  exited: "Parado",
-  dead: "Morto",
-  paused: "Pausado",
-  created: "Criado",
-}
-
 export function stateVariant(state: string): BadgeVariant {
   return variants[state] ?? "outline"
 }
 
-export function stateLabel(state: string): string {
-  return labels[state] ?? state
+export function stateLabel(t: TFunction, state: string): string {
+  const key = `state.${state}`
+  const translated = t(key)
+  return translated === key ? state : translated
 }
 
 export function isUnstable(status: ContainerFleetStatus): boolean {
@@ -37,11 +32,11 @@ export function isUnstable(status: ContainerFleetStatus): boolean {
   )
 }
 
-export function instabilityReason(status: ContainerFleetStatus): string {
+export function instabilityReason(t: TFunction, status: ContainerFleetStatus): string {
   const state = status.state?.toLowerCase() ?? ""
-  if (status.oom_killed) return "Encerrado por falta de memória"
-  if (state === "dead") return "Container morto"
-  if (state === "restarting") return "Reiniciando agora"
-  if (status.health === "unhealthy") return "Healthcheck falhando"
-  return `${status.restart_count} reinícios`
+  if (status.oom_killed) return t("unstable.oom")
+  if (state === "dead") return t("unstable.dead")
+  if (state === "restarting") return t("unstable.restarting")
+  if (status.health === "unhealthy") return t("unstable.unhealthy")
+  return t("unstable.restarts", { count: status.restart_count })
 }

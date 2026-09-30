@@ -1,27 +1,27 @@
 # API reference
 
-Documentação HTTP do hub Argus.
+HTTP documentation for the Argus hub.
 
-## Índice
+## Index
 
-| Doc | Escopo |
+| Doc | Scope |
 |---|---|
-| [configuration.md](configuration.md) | Variáveis de ambiente |
+| [configuration.md](configuration.md) | Environment variables |
 | [ingest.md](ingest.md) | Agents, metrics, logs, fleet, events, OTLP |
-| [query.md](query.md) | Workloads, métricas, logs, eventos, grupos |
-| [observability.md](observability.md) | Insights, patterns, topology, traces, SLOs, alertas |
+| [query.md](query.md) | Workloads, metrics, logs, events, groups |
+| [observability.md](observability.md) | Insights, patterns, topology, traces, SLOs, alerts |
 
-Contratos compartilhados: `internal/model/types.go`
+Shared contracts: `internal/model/types.go`
 
-## Autenticação
+## Authentication
 
-Rotas de ingest exigem header quando `ARGUS_AGENT_TOKEN` está configurado:
+Ingest routes require a header when `ARGUS_AGENT_TOKEN` is set:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Consultas GET são abertas por default (sem auth).
+GET queries are open by default (no auth).
 
 ## Base URL
 

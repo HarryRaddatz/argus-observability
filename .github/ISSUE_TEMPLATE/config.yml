@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Documentação
+  - name: Documentation
     url: https://harryraddatz.github.io/argus-observability/
-    about: Mapa do produto, API, deploy e fluxos.
-  - name: Reportar vulnerabilidade
+    about: Product map, API, deploy, and flows.
+  - name: Report a vulnerability
     url: https://github.com/HarryRaddatz/argus-observability/security/advisories/new
-    about: Aviso privado — não use issue pública para falhas de segurança.
+    about: Private advisory — do not use a public issue for security flaws.

@@ -1,16 +1,16 @@
 # argus-web
 
-Painel web do [Argus](https://github.com/HarryRaddatz/argus-observability): dashboard, workloads, métricas, logs, traces, SLOs, topologia e eventos. Build estático servido por nginx.
+[Argus](https://github.com/HarryRaddatz/argus-observability) web panel: overview, containers, metrics, logs, traces, SLOs, topology, and events. Static build served by nginx.
 
-Imagens: `linux/amd64`, `linux/arm64` · Base `nginx:1.30-alpine` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+Images: `linux/amd64`, `linux/arm64` · Base `nginx:1.30-alpine` · MIT license · [Documentation](https://harryraddatz.github.io/argus-observability/)
 
-Também publicada no GHCR: `ghcr.io/harryraddatz/argus-web`.
+Also published on GHCR: `ghcr.io/harryraddatz/argus-web`.
 
-## Uso rápido
+## Quick start
 
-Stack completa: veja [`argus-hub`](https://hub.docker.com/r/pseudohuery/argus-hub).
+Full stack: see [`argus-hub`](https://hub.docker.com/r/pseudohuery/argus-hub).
 
-O nginx da imagem faz proxy de `/api/` e `/health` para `http://argus-hub:8080`. O container precisa estar na mesma rede Docker de um hub chamado `argus-hub`:
+The image nginx proxies `/api/` and `/health` to `http://argus-hub:8080`. The container must share a Docker network with a hub named `argus-hub`:
 
 ```bash
 docker network create argus
@@ -19,20 +19,20 @@ docker run -d --name argus-hub --network argus -v argus_data:/data \
 docker run -d --name argus-web --network argus -p 3000:80 pseudohuery/argus-web:latest
 ```
 
-Painel em `http://localhost:3000`.
+Panel at `http://localhost:3000`.
 
 ## Tags
 
-| Tag | Conteúdo |
+| Tag | Content |
 |---|---|
-| `X.Y.Z`, `vX.Y.Z` | Release exata (recomendado em produção) |
-| `X.Y` | Último patch da linha `X.Y` |
-| `X` | Última release da major `X` (a partir de `1.0`) |
-| `latest` | Última release estável |
+| `X.Y.Z`, `vX.Y.Z` | Exact release (recommended in production) |
+| `X.Y` | Latest patch of the `X.Y` line |
+| `X` | Latest release of major `X` (from `1.0`) |
+| `latest` | Latest stable release |
 
-Use a mesma versão no hub e no painel.
+Use the same version on the hub and the panel.
 
 ## Links
 
-- Código e issues: [GitHub](https://github.com/HarryRaddatz/argus-observability)
-- Guia do painel: [rotas e navegação](https://harryraddatz.github.io/argus-observability/flows/ui-panel/)
+- Code and issues: [GitHub](https://github.com/HarryRaddatz/argus-observability)
+- Panel guide: [routes and navigation](https://harryraddatz.github.io/argus-observability/flows/ui-panel/)

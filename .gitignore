@@ -19,6 +19,11 @@ web/dist/
 # Site MkDocs
 /site/
 __pycache__/
+/docs/index.md
+/docs/index.pt.md
+/docs/changelog.md
+/docs/contributing.md
+/docs/contributing.pt.md
 
 # IDE
 .idea/

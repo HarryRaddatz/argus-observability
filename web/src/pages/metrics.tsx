@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { GroupSelect } from "@/components/filters/group-select"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
@@ -10,6 +11,7 @@ import { ContainerMetrics } from "@/views/container-metrics"
 import { MetricCompare } from "@/views/metric-compare"
 
 export function MetricsPage() {
+  const { t } = useTranslation()
   const [mode] = useQueryState("mode", "container")
   const [since, setSince] = useQueryState("since", "1h")
   const [group, setGroup] = useQueryState("group", "")
@@ -34,7 +36,7 @@ export function MetricsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Métricas"
+        title={t("metrics.title")}
         actions={
           <>
             <GroupSelect value={group} onChange={setGroup} />
@@ -43,9 +45,9 @@ export function MetricsPage() {
         }
       />
       <Tabs value={mode} onValueChange={(v) => patch({ mode: String(v) }, { mode: "container" })}>
-        <TabsList aria-label="Modo">
-          <TabsTrigger value="container">Por container</TabsTrigger>
-          <TabsTrigger value="compare">Comparar containers</TabsTrigger>
+        <TabsList aria-label={t("common.mode")}>
+          <TabsTrigger value="container">{t("metrics.byContainer")}</TabsTrigger>
+          <TabsTrigger value="compare">{t("metrics.compare")}</TabsTrigger>
         </TabsList>
       </Tabs>
       {mode === "compare" ? (

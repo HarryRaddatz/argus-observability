@@ -1,27 +1,15 @@
 import { useCallback, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePolling } from "@/hooks/use-polling"
 import { fetchActiveAlerts, fetchInsights, type ActiveAlert, type Insight } from "@/lib/api"
+import { formatDateTime } from "@/lib/format"
+import { localizeAlertTitle } from "@/lib/i18n-catalog"
 import { severityLabel, severityVariant } from "@/lib/severity"
-
-const themeLabels: Record<string, string> = {
-  memory_pressure: "Memória",
-  gc_thrashing: "GC",
-  oom_risk: "Risco de OOM",
-  error_spike: "Erros",
-  cpu_hot: "CPU",
-  restart_loop: "Reinícios",
-  oom_killed: "OOM",
-  unhealthy: "Healthcheck",
-  group_degradation: "Grupo",
-  alert_active: "Alerta",
-  log_pattern_spike: "Padrão de log",
-  chain_degradation: "Cadeia de serviços",
-}
 
 const linkClass =
   "border-input bg-background hover:bg-muted inline-flex h-7 items-center rounded-md border px-2.5 text-xs"
@@ -32,6 +20,7 @@ type Props = {
 }
 
 export function ProblemsNow({ since, group }: Props) {
+  const { t } = useTranslation()
   const [alerts, setAlerts] = useState<ActiveAlert[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,9 +33,9 @@ export function ProblemsNow({ since, group }: Props) {
         setInsights(i.insights ?? [])
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar os problemas"))
+      .catch((e) => setError(e instanceof Error ? e.message : t("problems.loadError")))
       .finally(() => setLoading(false))
-  }, [since, group])
+  }, [since, group, t])
 
   usePolling(load)
 
@@ -65,20 +54,20 @@ export function ProblemsNow({ since, group }: Props) {
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Alertas ativos</h2>
+        <h2 className="text-lg font-medium">{t("problemsExtra.alerts")}</h2>
         {alerts.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nenhuma regra de alerta disparada agora.</p>
+          <p className="text-muted-foreground text-sm">{t("problems.noAlerts")}</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {alerts.map((a) => (
               <Card key={a.rule_id + a.entity_uid} className="border-destructive/30">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-sm">{a.title}</CardTitle>
-                    <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel[a.severity] ?? a.severity}</Badge>
+                    <CardTitle className="text-sm">{localizeAlertTitle(t, a.rule_id, a.title)}</CardTitle>
+                    <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel(t, a.severity)}</Badge>
                   </div>
                   <CardDescription>
-                    {a.container}, desde {new Date(a.fired_at).toLocaleString("pt-BR")}
+                    {t("problems.since", { container: a.container, when: formatDateTime(a.fired_at) })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
@@ -86,10 +75,10 @@ export function ProblemsNow({ since, group }: Props) {
                   {a.container ? (
                     <div className="flex flex-wrap gap-2">
                       <Link to={`/logs?container=${encodeURIComponent(a.container)}`} className={linkClass}>
-                        Logs do container
+                        {t("problems.logsOf")}
                       </Link>
                       <Link to={`/metrics?container=${encodeURIComponent(a.container)}`} className={linkClass}>
-                        Métricas do container
+                        {t("problems.metricsOf")}
                       </Link>
                     </div>
                   ) : null}
@@ -101,9 +90,9 @@ export function ProblemsNow({ since, group }: Props) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Insights</h2>
+        <h2 className="text-lg font-medium">{t("problemsExtra.insights")}</h2>
         {insights.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nenhum achado automático no período.</p>
+          <p className="text-muted-foreground text-sm">{t("problems.noInsights")}</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {insights.map((ins) => (
@@ -117,6 +106,7 @@ export function ProblemsNow({ since, group }: Props) {
 }
 
 function InsightCard({ insight, group }: { insight: Insight; group: string }) {
+  const { t } = useTranslation()
   const topic =
     insight.theme === "gc_thrashing"
       ? "gc"
@@ -133,15 +123,19 @@ function InsightCard({ insight, group }: { insight: Insight; group: string }) {
     ? `/metrics?mode=compare&group=${encodeURIComponent(group)}`
     : `/metrics?container=${encodeURIComponent(insight.container)}`
 
+  const themeKey = `insightTheme.${insight.theme}`
+  const theme = t(themeKey)
+  const themeLabel = theme === themeKey ? insight.theme : theme
+
   return (
     <Card className={insight.severity === "critical" ? "border-destructive/40" : undefined}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-snug">{insight.title}</CardTitle>
-          <Badge variant={severityVariant[insight.severity] ?? "outline"}>{severityLabel[insight.severity] ?? insight.severity}</Badge>
+          <Badge variant={severityVariant[insight.severity] ?? "outline"}>{severityLabel(t, insight.severity)}</Badge>
         </div>
         <CardDescription className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{themeLabels[insight.theme] ?? insight.theme}</Badge>
+          <Badge variant="outline">{themeLabel}</Badge>
           <span>{insight.container}</span>
         </CardDescription>
       </CardHeader>
@@ -156,10 +150,10 @@ function InsightCard({ insight, group }: { insight: Insight; group: string }) {
         ) : null}
         <div className="flex flex-wrap gap-2 pt-1">
           <Link to={metricsLink} className={linkClass}>
-            {group ? "Métricas do grupo" : "Métricas do container"}
+            {group ? t("problems.groupMetrics") : t("problems.metricsOf")}
           </Link>
           <Link to={logsLink} className={linkClass}>
-            Logs relacionados
+            {t("problemsExtra.relatedLogs")}
           </Link>
         </div>
       </CardContent>

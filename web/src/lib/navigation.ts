@@ -11,19 +11,19 @@ import {
 
 export type NavItem = {
   to: string
-  label: string
+  labelKey: string
   icon: LucideIcon
   end?: boolean
 }
 
 export const navItems: NavItem[] = [
-  { to: "/", label: "Visão geral", icon: LayoutDashboard, end: true },
-  { to: "/problems", label: "Problemas", icon: TriangleAlert },
-  { to: "/containers", label: "Containers", icon: Boxes },
-  { to: "/metrics", label: "Métricas", icon: Activity },
-  { to: "/logs", label: "Logs", icon: ScrollText },
-  { to: "/traces", label: "Traces", icon: GitCommitHorizontal },
-  { to: "/topology", label: "Topologia", icon: GitBranch },
+  { to: "/", labelKey: "nav.overview", icon: LayoutDashboard, end: true },
+  { to: "/problems", labelKey: "nav.problems", icon: TriangleAlert },
+  { to: "/containers", labelKey: "nav.containers", icon: Boxes },
+  { to: "/metrics", labelKey: "nav.metrics", icon: Activity },
+  { to: "/logs", labelKey: "nav.logs", icon: ScrollText },
+  { to: "/traces", labelKey: "nav.traces", icon: GitCommitHorizontal },
+  { to: "/topology", labelKey: "nav.topology", icon: GitBranch },
 ]
 
 export function isNavItemActive(item: NavItem, pathname: string) {

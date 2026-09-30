@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { listWorkloadGroups, type WorkloadGroup } from "@/lib/api"
 
@@ -10,6 +11,7 @@ type Props = {
 }
 
 export function GroupSelect({ value, onChange, disabled, groups: provided }: Props) {
+  const { t } = useTranslation()
   const [loaded, setLoaded] = useState<WorkloadGroup[]>([])
 
   useEffect(() => {
@@ -21,13 +23,13 @@ export function GroupSelect({ value, onChange, disabled, groups: provided }: Pro
 
   return (
     <select
-      aria-label="Grupo"
+      aria-label={t("common.group")}
       className="border-input bg-background h-8 rounded-md border px-2 text-sm disabled:opacity-50"
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">Todos os grupos</option>
+      <option value="">{t("common.allGroups")}</option>
       {groups.map((g) => (
         <option key={g.id} value={g.id}>
           {g.name}
