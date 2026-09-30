@@ -63,7 +63,7 @@ func (s *SQLite) GetTraceSpans(ctx context.Context, traceID string) ([]model.Tra
 	if norm == "" {
 		return nil, nil
 	}
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT trace_id, span_id, parent_span_id, name, service, container, entity_uid,
   start_ts, end_ts, duration_ms, status, kind, source, attributes_json
 FROM trace_spans
@@ -125,7 +125,7 @@ func (s *SQLite) ListTraces(ctx context.Context, filter model.TraceListFilter) (
 		services[key][svc] = struct{}{}
 	}
 
-	spanRows, err := s.db.QueryContext(ctx, `
+	spanRows, err := s.rdb.QueryContext(ctx, `
 SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, status
 FROM trace_spans WHERE start_ts >= ?
 ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
@@ -171,7 +171,7 @@ ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	}
 	spanRows.Close()
 
-	logRows, err := s.db.QueryContext(ctx, `
+	logRows, err := s.rdb.QueryContext(ctx, `
 SELECT ts, message, level, entity_uid, labels_json,
   COALESCE(json_extract(fields_json, '$.trace_id'), json_extract(fields_json, '$.traceId'), '')
 FROM log_entries
@@ -287,7 +287,7 @@ func truncateRunes(s string, n int) string {
 }
 
 func (s *SQLite) ListSLOs(ctx context.Context) ([]model.SLODefinition, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at
 FROM slos ORDER BY name ASC`)
 	if err != nil {
@@ -310,7 +310,7 @@ FROM slos ORDER BY name ASC`)
 }
 
 func (s *SQLite) GetSLO(ctx context.Context, id string) (model.SLODefinition, error) {
-	row := s.db.QueryRowContext(ctx, `
+	row := s.rdb.QueryRowContext(ctx, `
 SELECT id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at
 FROM slos WHERE id=?`, id)
 	var def model.SLODefinition
@@ -364,7 +364,7 @@ func (s *SQLite) EvaluateSLO(ctx context.Context, def model.SLODefinition, at ti
 }
 
 func (s *SQLite) httpMetricsForService(ctx context.Context, service string, since time.Time) ([]float64, int, int, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT metric_name, value, labels_json FROM metric_points
 WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts >= ?
 `, since.UTC().Format(time.RFC3339Nano))

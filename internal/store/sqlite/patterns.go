@@ -81,7 +81,7 @@ func (s *SQLite) listLogPatterns(ctx context.Context, since time.Time, limit int
 	if limit <= 0 {
 		limit = 50
 	}
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT pattern_key, pattern, container, service, count, last_seen, sample
 FROM log_patterns WHERE last_seen >= ?
 ORDER BY count DESC LIMIT ?
@@ -174,7 +174,7 @@ func (s *SQLite) GetTopology(ctx context.Context, since time.Time) (model.Topolo
 }
 
 func (s *SQLite) queryTopology(ctx context.Context, since time.Time) (TopologyResponse, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT source, target, kind, count FROM topology_edges
 WHERE last_seen >= ? ORDER BY count DESC LIMIT 200
 `, since.UTC().Format(time.RFC3339Nano))

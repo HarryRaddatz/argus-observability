@@ -41,7 +41,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 }
 
 func (s *SQLite) GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, updated_at
 FROM container_fleet ORDER BY container ASC`)
 	if err != nil {
@@ -67,7 +67,7 @@ FROM container_fleet ORDER BY container ASC`)
 }
 
 func (s *SQLite) CountFleetEvents(ctx context.Context, since time.Time) (model.FleetEventStats, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT type, payload_json FROM events WHERE ts >= ?
 `, since.UTC().Format(time.RFC3339Nano))
 	if err != nil {
