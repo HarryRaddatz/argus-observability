@@ -49,6 +49,9 @@ Pre-releases (`X.Y.Z-rc.N`) não movem `latest`.
 | `ARGUS_RETENTION_EVENTS` | `720h` | Retenção de eventos |
 | `ARGUS_PURGE_INTERVAL` | `1h` | Intervalo do job de purge |
 | `ARGUS_PURGE_TIMEOUT` | `5s` | Timeout por execução de purge |
+| `ARGUS_INGEST_CONCURRENCY` | `8` | Requests de ingest simultâneos |
+| `ARGUS_INGEST_WAIT` | `2s` | Espera por vaga de ingest antes de `503` |
+| `ARGUS_MAX_BODY_BYTES` | `8388608` | Tamanho máximo do corpo de ingest |
 
 Referência completa: [configuração](https://harryraddatz.github.io/argus-observability/api/configuration/).
 

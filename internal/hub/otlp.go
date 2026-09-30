@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Server) registerOTLPRoutes() {
-	s.mux.HandleFunc("POST /v1/traces", s.auth(s.handleOTLPTraces))
+	s.mux.HandleFunc("POST /v1/traces", s.ingest(s.handleOTLPTraces))
 }
 
 func (s *Server) handleOTLPTraces(w http.ResponseWriter, r *http.Request) {

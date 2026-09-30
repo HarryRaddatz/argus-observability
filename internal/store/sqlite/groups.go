@@ -12,7 +12,7 @@ import (
 )
 
 func (s *SQLite) ListWorkloadGroups(ctx context.Context) ([]model.WorkloadGroup, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at
 FROM workload_groups ORDER BY name ASC`)
 	if err != nil {
@@ -23,7 +23,7 @@ FROM workload_groups ORDER BY name ASC`)
 }
 
 func (s *SQLite) GetWorkloadGroup(ctx context.Context, id string) (model.WorkloadGroup, error) {
-	row := s.db.QueryRowContext(ctx, `
+	row := s.rdb.QueryRowContext(ctx, `
 SELECT id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at
 FROM workload_groups WHERE id=?`, id)
 	g, err := scanWorkloadGroupRow(row)

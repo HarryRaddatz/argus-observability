@@ -25,6 +25,11 @@ func (s *Server) retentionLoop() {
 }
 
 func (s *Server) runPurge() {
+	if !s.purging.CompareAndSwap(false, true) {
+		return
+	}
+	defer s.purging.Store(false)
+
 	timeout := s.cfg.PurgeTimeout
 	if timeout <= 0 {
 		timeout = 5 * time.Second

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/bus"
@@ -32,6 +33,9 @@ type Config struct {
 	RetentionEvents   time.Duration
 	PurgeInterval     time.Duration
 	PurgeTimeout      time.Duration
+	IngestConcurrency int
+	IngestWait        time.Duration
+	MaxBodyBytes      int64
 }
 
 type Server struct {
@@ -41,12 +45,16 @@ type Server struct {
 	logger *slog.Logger
 	mux    *http.ServeMux
 
-	staleMu    sync.Mutex
+	staleMu     sync.Mutex
 	staleAgents map[string]bool
-	alertMu    sync.Mutex
-	lastAlert  map[string]time.Time
-	rules      *rules.Engine
-	sloEval    *slo.Evaluator
+	alertMu     sync.Mutex
+	lastAlert   map[string]time.Time
+	rules       *rules.Engine
+	sloEval     *slo.Evaluator
+
+	purging      atomic.Bool
+	ingestSlots  chan struct{}
+	patternQueue chan []model.LogEntry
 }
 
 func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Server {
@@ -59,15 +67,27 @@ func New(cfg Config, st store.Store, eventBus *bus.Bus, logger *slog.Logger) *Se
 	if cfg.Heartbeat == 0 {
 		cfg.Heartbeat = 30 * time.Second
 	}
+	if cfg.IngestConcurrency <= 0 {
+		cfg.IngestConcurrency = 8
+	}
+	if cfg.IngestWait <= 0 {
+		cfg.IngestWait = 2 * time.Second
+	}
+	if cfg.MaxBodyBytes <= 0 {
+		cfg.MaxBodyBytes = 8 << 20
+	}
 	s := &Server{
 		cfg: cfg, store: st, bus: eventBus, logger: logger, mux: http.NewServeMux(),
-		staleAgents: map[string]bool{},
-		lastAlert:   map[string]time.Time{},
-		rules:       rules.NewEngine(eventBus),
-		sloEval:     slo.NewEvaluator(eventBus),
+		staleAgents:  map[string]bool{},
+		lastAlert:    map[string]time.Time{},
+		rules:        rules.NewEngine(eventBus),
+		sloEval:      slo.NewEvaluator(eventBus),
+		ingestSlots:  make(chan struct{}, cfg.IngestConcurrency),
+		patternQueue: make(chan []model.LogEntry, 64),
 	}
 	s.routes()
 	eventBus.Subscribe(s.onEvent)
+	go s.patternWorker()
 	go s.staleLoop()
 	go s.retentionLoop()
 	go s.rulesLoop()
@@ -79,9 +99,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("POST /api/v1/agents/register", s.auth(s.handleRegister))
 	s.mux.HandleFunc("POST /api/v1/agents/heartbeat", s.auth(s.handleHeartbeat))
-	s.mux.HandleFunc("POST /api/v1/metrics/batch", s.auth(s.handleMetricsBatch))
-	s.mux.HandleFunc("POST /api/v1/logs/batch", s.auth(s.handleLogsBatch))
-	s.mux.HandleFunc("POST /api/v1/events", s.auth(s.handleEventIngest))
+	s.mux.HandleFunc("POST /api/v1/metrics/batch", s.ingest(s.handleMetricsBatch))
+	s.mux.HandleFunc("POST /api/v1/logs/batch", s.ingest(s.handleLogsBatch))
+	s.mux.HandleFunc("POST /api/v1/events", s.ingest(s.handleEventIngest))
 	s.mux.HandleFunc("GET /api/v1/query", s.handleQuery)
 	s.mux.HandleFunc("GET /api/v1/metrics/series", s.handleMetricSeries)
 	s.mux.HandleFunc("GET /api/v1/workloads", s.handleWorkloads)
@@ -131,6 +151,40 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		next(w, r)
+	}
+}
+
+// ingest limita escritas simultâneas no SQLite (escritor único): acima do limite
+// o agente recebe 503 + Retry-After em vez de empilhar requests até o timeout.
+func (s *Server) ingest(next http.HandlerFunc) http.HandlerFunc {
+	return s.auth(func(w http.ResponseWriter, r *http.Request) {
+		wait := time.NewTimer(s.cfg.IngestWait)
+		defer wait.Stop()
+		select {
+		case s.ingestSlots <- struct{}{}:
+			defer func() { <-s.ingestSlots }()
+		case <-wait.C:
+			w.Header().Set("Retry-After", "5")
+			http.Error(w, "hub busy", http.StatusServiceUnavailable)
+			return
+		case <-r.Context().Done():
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, s.cfg.MaxBodyBytes)
+		next(w, r)
+	})
+}
+
+func (s *Server) patternWorker() {
+	for batch := range s.patternQueue {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := s.store.RecordLogPatterns(ctx, batch); err != nil {
+			s.logger.Warn("record log patterns", "err", err)
+		}
+		if err := s.store.RecordTopologyEdges(ctx, batch); err != nil {
+			s.logger.Warn("record topology", "err", err)
+		}
+		cancel()
 	}
 }
 
@@ -268,17 +322,11 @@ func (s *Server) handleLogsBatch(w http.ResponseWriter, r *http.Request) {
 			s.logger.Error("write derived metrics", "err", err)
 		}
 	}
-	entriesCopy := append([]model.LogEntry(nil), entries...)
-	go func(batch []model.LogEntry) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := s.store.RecordLogPatterns(ctx, batch); err != nil {
-			s.logger.Warn("record log patterns", "err", err)
-		}
-		if err := s.store.RecordTopologyEdges(ctx, batch); err != nil {
-			s.logger.Warn("record topology", "err", err)
-		}
-	}(entriesCopy)
+	select {
+	case s.patternQueue <- append([]model.LogEntry(nil), entries...):
+	default:
+		s.logger.Warn("log patterns queue full", "dropped", len(entries))
+	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
