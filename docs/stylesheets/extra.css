@@ -71,3 +71,33 @@
 .md-typeset .grid.cards > ul > li {
   border-radius: 0.5rem;
 }
+
+/* Sidebar: pages hang under section titles; hairline between categories. */
+.md-nav--primary > .md-nav__list > .md-nav__item + .md-nav__item--section {
+  margin-block-start: 0.5rem;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--md-default-fg-color--lightest);
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-nav--primary > .md-nav__list {
+    padding-inline-start: 0.75rem;
+  }
+
+  .md-nav--primary > .md-nav__list > .md-nav__item + .md-nav__item--section {
+    margin-block-start: 0.75rem;
+    padding-block-start: 0.75rem;
+  }
+
+  .md-nav--primary .md-nav__item--section > .md-nav {
+    margin-inline-start: 0;
+  }
+
+  .md-nav--primary .md-nav__item--section > .md-nav > .md-nav__list {
+    padding-inline-start: 0.75rem;
+  }
+
+  .md-nav--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link {
+    padding-block: 0.25rem;
+  }
+}
