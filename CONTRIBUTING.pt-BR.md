@@ -30,9 +30,13 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo P
 |---|---|
 | `changes` | Quais componentes mudaram no diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
 | `anti-leak` | Padrões de infra privada no diff |
+| `gitleaks` | Secrets commitados: intervalo do PR, ou histórico completo no agendamento semanal |
+| `vuln-go` | `govulncheck ./...` (só CVE Go alcançável) |
+| `vuln-web` | `npm audit --omit=dev --audit-level=high` em `web/` |
 | `go` | `go vet`, `go test`, `go build ./cmd/...` — só se hub ou agent mudou |
 | `web` | `npm ci`, `npm run lint`, `npm test -- --run`, `npm run build` — só se web mudou |
-| `docker (hub/agent/web)` | Build do Dockerfile do componente que mudou, sem push, com cache compartilhado com o release |
+| `docker (hub/agent/web)` | Build do Dockerfile do componente que mudou (`load: true`), Trivy `CRITICAL,HIGH` (ignora unfixed), SARIF em Security |
+| `smoke` | Compose com essas imagens e um sidecar de log JSON; checklist pós-deploy |
 | `test` | Agregador: passa se nenhum job falhou (jobs pulados contam como ok) |
 
 Componentes por path:
@@ -43,7 +47,9 @@ Componentes por path:
 | agent | `cmd/agent/`, `internal/agent/`, `internal/model/`, `go.mod`, `go.sum`, `Dockerfile.agent` |
 | web | `web/` |
 
-Mudança em `ci.yml` ou `ci-changes.sh`, tag, `workflow_dispatch` ou branch nova sem base roda tudo.
+Mudança em `ci.yml`, `ci-changes.sh` ou nos arquivos de smoke, tag, `workflow_dispatch`, schedule ou branch nova sem base roda tudo.
+
+O mesmo workflow também roda **semanalmente** (segunda) para CVE sem mudança de código falhar no Actions. O [CodeQL](.github/workflows/codeql.yml) (`go` e `javascript-typescript`) roda em todo PR e no agendamento semanal; alertas vão para **Security → Code scanning**.
 
 O workflow Pages [`.github/workflows/pages.yml`](.github/workflows/pages.yml) roda o check **build site** em todo PR (`mkdocs build --strict`). Push em `main` só faz deploy quando paths de docs mudam.
 
@@ -52,6 +58,14 @@ O workflow Pages [`.github/workflows/pages.yml`](.github/workflows/pages.yml) ro
 **PRs empilhados:** se `main` andou, ou o PR foi aberto contra uma feature, redirecione a base para `main` e faça rebase em `main` antes do merge. Não faça merge de PR cuja base é outra feature.
 
 O Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml)) abre PRs agrupados semanais para GitHub Actions, módulos Go, npm (`web/`) e a imagem web. O CI roda nesses PRs como nos demais.
+
+### Alertas de dependência e imagem
+
+Quando `vuln-go`, `vuln-web` ou Trivy falha:
+
+1. Atualize para uma versão com patch (`go get`, `npm update` ou imagem base mais nova) e rode o CI de novo.
+2. Se não houver patch, abra uma issue com o CVE, por que o risco é aceito e quando revisitar. Não ignore em silêncio sem issue.
+3. No npm, use `overrides` só num PR que cite essa issue. O `govulncheck` já ignora achados inalcançáveis; não desligue o job para esconder um alcançável.
 
 ## Release (maintainers)
 
@@ -81,8 +95,8 @@ git push origin v0.1.1
 O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda em etapas:
 
 1. `verify tag` — tag semver, commit presente em `main` e seção `[X.Y.Z]` no CHANGELOG. Falha aqui não publica nada.
-2. `ci` — o mesmo CI de PR, reutilizado.
-3. `image (hub/agent/web)` — build multi-arch (`linux/amd64`, `linux/arm64`) e push em paralelo para GHCR e Docker Hub, com SBOM e provenance. Tags `X.Y.Z`, `X.Y`, `X` (a partir de `1.0`), `vX.Y.Z` e `latest`.
+2. `ci` — o mesmo CI de PR, reutilizado (incluindo smoke).
+3. `image (hub/agent/web)` — Trivy numa imagem amd64 (`CRITICAL,HIGH`, ignora unfixed); depois build multi-arch (`linux/amd64`, `linux/arm64`) e push em paralelo para GHCR e Docker Hub, com SBOM e provenance. CVE crítica/alta corrigível bloqueia o push. Tags `X.Y.Z`, `X.Y`, `X` (a partir de `1.0`), `vX.Y.Z` e `latest`.
 4. `docker hub description` — sincroniza README e descrição curta de cada repositório a partir de `.github/dockerhub/`.
 5. `github release` — notas extraídas do CHANGELOG.
 
