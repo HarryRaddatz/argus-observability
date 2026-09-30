@@ -12,6 +12,8 @@ COMPONENTS=(hub agent web)
 FULL_RUN_FILES=(
   '.github/workflows/ci.yml'
   '.github/scripts/ci-changes.sh'
+  '.github/scripts/ci-smoke.sh'
+  '.github/ci/docker-compose.smoke.yml'
 )
 
 matches() {

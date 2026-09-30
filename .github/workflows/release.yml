@@ -106,6 +106,29 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Build amd64 for Trivy
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: argus-${{ matrix.component }}:release-scan
+          cache-from: type=gha,scope=argus-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
+
+      - name: Trivy before push
+        uses: aquasecurity/trivy-action@0.32.2
+        with:
+          image-ref: argus-${{ matrix.component }}:release-scan
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6

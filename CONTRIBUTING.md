@@ -30,9 +30,13 @@ The [`.github/workflows/ci.yml`](.github/workflows/ci.yml) workflow runs on ever
 |---|---|
 | `changes` | Which components changed in the diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
 | `anti-leak` | Private-infra patterns in the diff |
+| `gitleaks` | Committed secrets: PR commit range, or full history on the weekly schedule |
+| `vuln-go` | `govulncheck ./...` (reachable Go CVEs only) |
+| `vuln-web` | `npm audit --omit=dev --audit-level=high` in `web/` |
 | `go` | `go vet`, `go test`, `go build ./cmd/...` — only if hub or agent changed |
 | `web` | `npm ci`, `npm run lint`, `npm run build` — only if web changed |
-| `docker (hub/agent/web)` | Build of the changed component's Dockerfile, no push, cache shared with release |
+| `docker (hub/agent/web)` | Build of the changed component's Dockerfile (`load: true`), Trivy `CRITICAL,HIGH` (ignore unfixed), SARIF to Security |
+| `smoke` | Compose stack with those images plus a JSON-log sidecar; post-deploy checklist |
 | `test` | Aggregator: passes if no job failed (skipped jobs count as ok) |
 
 Components by path:
@@ -43,7 +47,9 @@ Components by path:
 | agent | `cmd/agent/`, `internal/agent/`, `internal/model/`, `go.mod`, `go.sum`, `Dockerfile.agent` |
 | web | `web/` |
 
-A change in `ci.yml` or `ci-changes.sh`, a tag, `workflow_dispatch`, or a new branch without a base runs everything.
+A change in `ci.yml`, `ci-changes.sh`, or the smoke compose files, a tag, `workflow_dispatch`, schedule, or a new branch without a base runs everything.
+
+The same workflow also runs **weekly** (Monday) so a CVE with no code change still fails in Actions. [CodeQL](.github/workflows/codeql.yml) (`go` and `javascript-typescript`) runs on every PR and on a weekly schedule; alerts land in **Security → Code scanning**.
 
 The Pages workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) runs the **build site** check on every PR (`mkdocs build --strict`). Push to `main` still deploys only when docs paths change.
 
@@ -52,6 +58,14 @@ The Pages workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) 
 **Stacked PRs:** if `main` moved, or the PR was opened against a feature branch, retarget the base to `main` and rebase onto `main` before merge. Do not merge a PR whose base is another feature branch.
 
 Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml)) opens grouped weekly PRs for GitHub Actions, Go modules, npm (`web/`), and the web image. CI runs on those PRs like any other.
+
+### Dependency and image alerts
+
+When `vuln-go`, `vuln-web`, or Trivy fails:
+
+1. Upgrade to a patched version (`go get`, `npm update`, or a newer base image) and re-run CI.
+2. If there is no patch, open an issue with the CVE, why the risk is accepted, and when you will revisit. Do not add a silent ignore without a linked issue.
+3. For npm, use `overrides` only in a PR that cites that issue. `govulncheck` already ignores unreachable findings; do not disable the job to hide a reachable one.
 
 ## Release (maintainers)
 
@@ -81,8 +95,8 @@ git push origin v0.1.1
 The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow runs in stages:
 
 1. `verify tag` — semver tag, commit present on `main`, and `[X.Y.Z]` section in the CHANGELOG. Failure here publishes nothing.
-2. `ci` — the same PR CI, reused.
-3. `image (hub/agent/web)` — multi-arch build (`linux/amd64`, `linux/arm64`) and parallel push to GHCR and Docker Hub, with SBOM and provenance. Tags `X.Y.Z`, `X.Y`, `X` (from `1.0`), `vX.Y.Z`, and `latest`.
+2. `ci` — the same PR CI, reused (including smoke).
+3. `image (hub/agent/web)` — Trivy on an amd64 image (`CRITICAL,HIGH`, ignore unfixed); then multi-arch build (`linux/amd64`, `linux/arm64`) and parallel push to GHCR and Docker Hub, with SBOM and provenance. A fixable critical/high CVE blocks the push. Tags `X.Y.Z`, `X.Y`, `X` (from `1.0`), `vX.Y.Z`, and `latest`.
 4. `docker hub description` — syncs README and short description of each repository from `.github/dockerhub/`.
 5. `github release` — notes extracted from the CHANGELOG.
 

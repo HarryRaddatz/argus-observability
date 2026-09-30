@@ -6,6 +6,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- CI: `govulncheck` and production `npm audit` on PRs, pushes, and a weekly schedule (#39)
+- CI: Trivy on hub/agent/web images (SARIF; release scans before push), gitleaks on PR diffs, CodeQL for Go and JavaScript/TypeScript (#40)
+- CI: compose smoke after docker builds, covering the post-deploy checklist (#38)
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
 - Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
 - Docs sidebar: nested pages indent under section titles, hairline between categories
