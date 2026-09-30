@@ -45,7 +45,13 @@ Components by path:
 
 A change in `ci.yml` or `ci-changes.sh`, a tag, `workflow_dispatch`, or a new branch without a base runs everything.
 
-**Branch protection (manual GitHub config):** in *Settings → Branches → main*, enable *Require status checks* and select the **test** check. Without that, merges can ignore CI.
+The Pages workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) runs the **build site** check on every PR (`mkdocs build --strict`). Push to `main` still deploys only when docs paths change.
+
+**Branch protection on `main`:** require a pull request, require the **test** and **build site** checks, require the branch to be up to date, and block force-push. Without those rules, merges can ignore CI.
+
+**Stacked PRs:** if `main` moved, or the PR was opened against a feature branch, retarget the base to `main` and rebase onto `main` before merge. Do not merge a PR whose base is another feature branch.
+
+Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml)) opens grouped weekly PRs for GitHub Actions, Go modules, npm (`web/`), and the web image. CI runs on those PRs like any other.
 
 ## Release (maintainers)
 
