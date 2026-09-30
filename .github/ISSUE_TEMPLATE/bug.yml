@@ -1,0 +1,52 @@
+name: Bug
+description: Algo não funciona como documentado
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Confira se o comportamento já está descrito em [docs](https://harryraddatz.github.io/argus-observability/).
+        Vulnerabilidade: use o [aviso privado](https://github.com/HarryRaddatz/argus-observability/security/advisories/new), não esta issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Resultado observado.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Como reproduzir
+      description: Passos, compose ou comando. Sem secrets nem hosts privados.
+      placeholder: |
+        1. docker compose up -d
+        2. curl ...
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      options:
+        - hub
+        - agent
+        - web
+        - compose / imagens
+        - docs
+        - CI
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versão
+      description: Tag (`v0.3.0`) ou SHA.
+      placeholder: v0.3.0

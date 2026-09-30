@@ -86,7 +86,7 @@ Variáveis principais — ver `.env.example` e [docs/api/configuration.md](docs/
 
 ## Contribuir
 
-Leia [CONTRIBUTING.md](CONTRIBUTING.md) e [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Leia [CONTRIBUTING.md](CONTRIBUTING.md) e [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Vulnerabilidades: [SECURITY.md](SECURITY.md).
 
 ## Licença
 

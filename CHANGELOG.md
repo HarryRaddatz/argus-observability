@@ -6,6 +6,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- `SECURITY.md`, templates de issue (bug, feature, docs) e template de pull request
 - Hub: limite de ingest simultâneo (`ARGUS_INGEST_CONCURRENCY`, `ARGUS_INGEST_WAIT`, `ARGUS_MAX_BODY_BYTES`); lotes de padrões/topologia em fila limitada
 - `argus-web` escuta `8081` só para POST de ingest e `/health`, para agents em outros hosts sem expor as rotas GET do hub
 - Purge também remove `log_patterns` e `topology_edges` pela retenção de logs e métricas
