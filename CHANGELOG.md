@@ -10,6 +10,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
 - Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
 - Docs sidebar: nested pages indent under section titles, hairline between categories
+- Dependabot weekly grouped updates for GitHub Actions, Go modules, npm (`web/`), and the web image (#33)
 - `SECURITY.md`, issue templates (bug, feature, docs) and pull request template
 - Hub: concurrent ingest limit (`ARGUS_INGEST_CONCURRENCY`, `ARGUS_INGEST_WAIT`, `ARGUS_MAX_BODY_BYTES`); bounded queue for pattern/topology batches
 - `argus-web` listens on `8081` only for ingest POSTs and `/health`, so agents on other hosts do not need the hub GET routes exposed
@@ -17,6 +18,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Pages **build site** check runs on every PR so it can be required on `main` (#33)
 - Contributor docs: commits, PR text, new CHANGELOG entries, canonical docs, and API identifiers are English; Portuguese files are translations only
 - Issue chooser requires a form (bug, feature, docs, or task); pull request template has Why, What changes, How to validate, and a checklist
 - SQLite em WAL, com escritor único e pool de leitura: consultas do painel não bloqueiam a ingestão

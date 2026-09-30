@@ -15,16 +15,6 @@ on:
       - ".github/workflows/pages.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "docs/**"
-      - "README.md"
-      - "README.pt-BR.md"
-      - "CHANGELOG.md"
-      - "CONTRIBUTING.md"
-      - "CONTRIBUTING.pt-BR.md"
-      - "mkdocs.yml"
-      - ".github/pages/**"
-      - ".github/workflows/pages.yml"
   workflow_run:
     workflows: [Release]
     types: [completed]

@@ -45,7 +45,13 @@ Componentes por path:
 
 Mudança em `ci.yml` ou `ci-changes.sh`, tag, `workflow_dispatch` ou branch nova sem base roda tudo.
 
-**Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
+O workflow Pages [`.github/workflows/pages.yml`](.github/workflows/pages.yml) roda o check **build site** em todo PR (`mkdocs build --strict`). Push em `main` só faz deploy quando paths de docs mudam.
+
+**Branch protection em `main`:** exigir pull request, os checks **test** e **build site**, branch atualizada, e bloquear force-push. Sem essas regras, merges podem ignorar o CI.
+
+**PRs empilhados:** se `main` andou, ou o PR foi aberto contra uma feature, redirecione a base para `main` e faça rebase em `main` antes do merge. Não faça merge de PR cuja base é outra feature.
+
+O Dependabot ([`.github/dependabot.yml`](.github/dependabot.yml)) abre PRs agrupados semanais para GitHub Actions, módulos Go, npm (`web/`) e a imagem web. O CI roda nesses PRs como nos demais.
 
 ## Release (maintainers)
 
