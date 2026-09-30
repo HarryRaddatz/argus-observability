@@ -16,6 +16,13 @@ Recrie os containers depois de alterar `.env` (`docker compose up -d --force-rec
 | `ARGUS_RETENTION_EVENTS` | Idade máxima de `events` | `720h` | não | `720h` |
 | `ARGUS_PURGE_INTERVAL` | Período do job de purge | `1h` | não | `1h` |
 | `ARGUS_PURGE_TIMEOUT` | Timeout de uma execução de purge | `5s` | não | `5s` |
+| `ARGUS_INGEST_CONCURRENCY` | Requests de ingest processados ao mesmo tempo (todas as rotas autenticadas por Bearer, exceto register/heartbeat) | `8` | não | `8` |
+| `ARGUS_INGEST_WAIT` | Espera máxima por vaga de ingest; depois responde `503` com `Retry-After: 5` | `2s` | não | `2s` |
+| `ARGUS_MAX_BODY_BYTES` | Tamanho máximo do corpo de um request de ingest | `8388608` | não | `8388608` |
+
+Agents em outros hosts: o `argus-web` escuta também na porta `8081`, que só repassa ao hub os POST de ingest e `/health`. Publique essa porta no reverse proxy (não a `80`, nem o hub direto: as rotas GET do hub não têm auth) e use `ARGUS_AGENT_TOKEN` no hub. Cada agent precisa de `ARGUS_AGENT_ID` e `ARGUS_HOST_ID` próprios.
+
+O SQLite abre em WAL, com um escritor serializado e um pool de leitura: consultas do painel e do SLO não bloqueiam a ingestão. O purge também remove `log_patterns` (retenção de logs) e `topology_edges` (retenção de métricas) pelo `last_seen`.
 
 Duração inválida cai no default. O compose e o `.env.example` apontam o SQLite para `/data/argus.db`.
 

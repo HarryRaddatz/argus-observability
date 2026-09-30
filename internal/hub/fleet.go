@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Server) registerFleetRoutes() {
-	s.mux.HandleFunc("POST /api/v1/fleet/batch", s.auth(s.handleFleetBatch))
+	s.mux.HandleFunc("POST /api/v1/fleet/batch", s.ingest(s.handleFleetBatch))
 	s.mux.HandleFunc("GET /api/v1/fleet/status", s.handleFleetStatus)
 }
 

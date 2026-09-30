@@ -16,11 +16,35 @@ import (
 )
 
 type SQLite struct {
-	db *sql.DB
+	db  *sql.DB
+	rdb *sql.DB
 }
 
+const readPoolSize = 4
+
 func Open(path string) (store.Store, error) {
-	db, err := sql.Open("sqlite", path)
+	if path == ":memory:" || strings.Contains(path, "mode=memory") {
+		db, err := sql.Open("sqlite", path)
+		if err != nil {
+			return nil, err
+		}
+		db.SetMaxOpenConns(1)
+		s := &SQLite{db: db, rdb: db}
+		if err := s.migrate(); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+		return s, nil
+	}
+
+	// Um escritor serializado (BEGIN IMMEDIATE respeita busy_timeout) e um pool
+	// de leitura em WAL: leituras longas do painel/SLO não bloqueiam a ingestão.
+	db, err := sql.Open("sqlite", dsn(path,
+		"_pragma=journal_mode(WAL)",
+		"_pragma=busy_timeout(5000)",
+		"_pragma=synchronous(NORMAL)",
+		"_txlock=immediate",
+	))
 	if err != nil {
 		return nil, err
 	}
@@ -30,10 +54,33 @@ func Open(path string) (store.Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+
+	rdb, err := sql.Open("sqlite", dsn(path,
+		"_pragma=busy_timeout(5000)",
+		"_pragma=query_only(1)",
+	))
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	rdb.SetMaxOpenConns(readPoolSize)
+	rdb.SetMaxIdleConns(readPoolSize)
+	s.rdb = rdb
 	return s, nil
 }
 
+func dsn(path string, params ...string) string {
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	return path + sep + strings.Join(params, "&")
+}
+
 func (s *SQLite) Close() error {
+	if s.rdb != nil && s.rdb != s.db {
+		_ = s.rdb.Close()
+	}
 	return s.db.Close()
 }
 
@@ -192,7 +239,7 @@ func (s *SQLite) TouchAgent(ctx context.Context, agentID string, at time.Time) e
 }
 
 func (s *SQLite) GetAgent(ctx context.Context, agentID string) (model.AgentRegistration, error) {
-	row := s.db.QueryRowContext(ctx, `
+	row := s.rdb.QueryRowContext(ctx, `
 SELECT agent_id, host_id, runtime, labels_json, last_seen FROM agents WHERE agent_id=?
 `, agentID)
 	var reg model.AgentRegistration
@@ -206,7 +253,7 @@ SELECT agent_id, host_id, runtime, labels_json, last_seen FROM agents WHERE agen
 }
 
 func (s *SQLite) StaleAgents(ctx context.Context, before time.Time) ([]model.AgentRegistration, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT agent_id, host_id, runtime, labels_json, last_seen FROM agents WHERE last_seen < ?
 `, before.UTC().Format(time.RFC3339Nano))
 	if err != nil {
@@ -311,7 +358,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 }
 
 func (s *SQLite) QueryMetrics(ctx context.Context, metricName string, labels model.Labels, since time.Time) ([]model.SeriesPoint, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT ts, value FROM metric_points
 WHERE metric_name=? AND ts >= ?
 ORDER BY ts ASC
@@ -337,7 +384,7 @@ ORDER BY ts ASC
 }
 
 func (s *SQLite) QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT ts, value, entity_uid, labels_json FROM metric_points
 WHERE metric_name=? AND ts >= ?
 ORDER BY ts ASC
@@ -388,7 +435,7 @@ ORDER BY ts ASC
 }
 
 func (s *SQLite) ListWorkloads(ctx context.Context, since time.Time) ([]model.WorkloadSnapshot, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT ts, metric_name, value, entity_uid, labels_json FROM metric_points
 WHERE ts >= ? AND metric_name IN ('cpu.usage', 'memory.usage', 'memory.limit')
 ORDER BY ts DESC
@@ -463,7 +510,7 @@ func (s *SQLite) ListEvents(ctx context.Context, entityUID string, since time.Ti
 	}
 	q += ` ORDER BY ts DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := s.db.QueryContext(ctx, q, args...)
+	rows, err := s.rdb.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +574,7 @@ func (s *SQLite) SearchLogs(ctx context.Context, filter model.LogSearchFilter) (
 
 	q += ` ORDER BY ts DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := s.db.QueryContext(ctx, q, args...)
+	rows, err := s.rdb.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +596,7 @@ func (s *SQLite) SearchLogs(ctx context.Context, filter model.LogSearchFilter) (
 }
 
 func (s *SQLite) CountLogTopics(ctx context.Context, since time.Time) ([]model.LogTopicCount, error) {
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := s.rdb.QueryContext(ctx, `
 SELECT entity_uid, fields_json FROM log_entries WHERE ts >= ?
 `, since.UTC().Format(time.RFC3339Nano))
 	if err != nil {

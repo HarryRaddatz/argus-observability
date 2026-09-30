@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -35,19 +36,25 @@ func main() {
 
 	eventBus := bus.New()
 	srv := hub.New(hub.Config{
-		Addr:             addr,
-		AgentToken:       token,
-		RetentionLogs:    durationEnv("ARGUS_RETENTION_LOGS", 7*24*time.Hour),
-		RetentionMetrics: durationEnv("ARGUS_RETENTION_METRICS", 30*24*time.Hour),
-		RetentionEvents:  durationEnv("ARGUS_RETENTION_EVENTS", 30*24*time.Hour),
-		PurgeInterval:    durationEnv("ARGUS_PURGE_INTERVAL", time.Hour),
-		PurgeTimeout:     durationEnv("ARGUS_PURGE_TIMEOUT", 5*time.Second),
+		Addr:              addr,
+		AgentToken:        token,
+		RetentionLogs:     durationEnv("ARGUS_RETENTION_LOGS", 7*24*time.Hour),
+		RetentionMetrics:  durationEnv("ARGUS_RETENTION_METRICS", 30*24*time.Hour),
+		RetentionEvents:   durationEnv("ARGUS_RETENTION_EVENTS", 30*24*time.Hour),
+		PurgeInterval:     durationEnv("ARGUS_PURGE_INTERVAL", time.Hour),
+		PurgeTimeout:      durationEnv("ARGUS_PURGE_TIMEOUT", 5*time.Second),
+		IngestConcurrency: intEnv("ARGUS_INGEST_CONCURRENCY", 8),
+		IngestWait:        durationEnv("ARGUS_INGEST_WAIT", 2*time.Second),
+		MaxBodyBytes:      int64(intEnv("ARGUS_MAX_BODY_BYTES", 8<<20)),
 	}, st, eventBus, logger)
 
 	httpServer := &http.Server{
 		Addr:              addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -71,6 +78,15 @@ func main() {
 func env(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func intEnv(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
 	}
 	return fallback
 }
