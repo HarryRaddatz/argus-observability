@@ -19,6 +19,12 @@ The Vite proxy forwards `/api` and `/health` to the hub (default `http://127.0.0
 
 Default locale is English. The language switcher stores `pt-BR` in `localStorage`.
 
+```bash
+npm run test
+```
+
+Runs without a hub (`fetch` is mocked in unit tests).
+
 ## Build
 
 ```bash

@@ -37,8 +37,11 @@ export function TracesPage() {
   const [service, setService] = useQueryState("service", "")
   const patch = useQueryPatch()
   const [draft, setDraft] = useState(traceId)
-
-  useEffect(() => setDraft(traceId), [traceId])
+  const [seenId, setSeenId] = useState(traceId)
+  if (traceId !== seenId) {
+    setSeenId(traceId)
+    setDraft(traceId)
+  }
 
   return (
     <div className="space-y-6">

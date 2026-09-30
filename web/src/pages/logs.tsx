@@ -49,11 +49,18 @@ export function LogsPage() {
   const patch = useQueryPatch()
 
   const [queryDraft, setQueryDraft] = useState(q)
+  const [qSeen, setQSeen] = useState(q)
+  if (q !== qSeen) {
+    setQSeen(q)
+    setQueryDraft(q)
+  }
   const [traceDraft, setTraceDraft] = useState(traceId)
+  const [traceSeen, setTraceSeen] = useState(traceId)
+  if (traceId !== traceSeen) {
+    setTraceSeen(traceId)
+    setTraceDraft(traceId)
+  }
   const [containers, setContainers] = useState<string[]>([])
-
-  useEffect(() => setQueryDraft(q), [q])
-  useEffect(() => setTraceDraft(traceId), [traceId])
 
   useEffect(() => {
     listWorkloads("1h")
