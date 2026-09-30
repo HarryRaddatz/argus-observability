@@ -6,10 +6,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- `SECURITY.md`, templates de issue (bug, feature, docs) e template de pull request
-- Hub: limite de ingest simultâneo (`ARGUS_INGEST_CONCURRENCY`, `ARGUS_INGEST_WAIT`, `ARGUS_MAX_BODY_BYTES`); lotes de padrões/topologia em fila limitada
-- `argus-web` escuta `8081` só para POST de ingest e `/health`, para agents em outros hosts sem expor as rotas GET do hub
-- Purge também remove `log_patterns` e `topology_edges` pela retenção de logs e métricas
+- Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
+- Docs site: dedicated landing page, Material theme aligned with the panel, scrollable tables
+- `SECURITY.md`, issue templates (bug, feature, docs) and pull request template
+- Hub: concurrent ingest limit (`ARGUS_INGEST_CONCURRENCY`, `ARGUS_INGEST_WAIT`, `ARGUS_MAX_BODY_BYTES`); bounded queue for pattern/topology batches
+- `argus-web` listens on `8081` only for ingest POSTs and `/health`, so agents on other hosts do not need the hub GET routes exposed
+- Purge also removes `log_patterns` and `topology_edges` using log and metric retention
 
 ### Changed
 

@@ -1,8 +1,8 @@
-# Fluxo: eventos e alertas
+# Flow: events and alerts
 
-Eventos tipados circulam no bus interno. Regras avaliam condições e disparam notificações com deduplicação.
+Typed events travel on the internal bus. Rules evaluate conditions and fire notifications with deduplication.
 
-## Envelope de evento
+## Event envelope
 
 ```json
 {
@@ -17,11 +17,11 @@ Eventos tipados circulam no bus interno. Regras avaliam condições e disparam n
 }
 ```
 
-## Sequência — publicação no bus
+## Sequence — publish on the bus
 
 ```mermaid
 sequenceDiagram
-  participant Source as Origem
+  participant Source
   participant Bus
   participant Store
 
@@ -29,7 +29,7 @@ sequenceDiagram
   Bus->>Store: WriteEvents
 ```
 
-## Sequência — regra de limiar
+## Sequence — threshold rule
 
 ```mermaid
 sequenceDiagram
@@ -40,47 +40,47 @@ sequenceDiagram
 
   Loop->>Rules: Evaluate
   Rules->>Store: ListWorkloads since 10m
-  Store-->>Rules: cpu e memória
-  alt acima do limiar por 5m
-    Rules->>Bus: alert.fired e metric.threshold
-  else valor voltou
+  Store-->>Rules: cpu and memory
+  alt above threshold for 5m
+    Rules->>Bus: alert.fired and metric.threshold
+  else value recovered
     Rules->>Bus: alert.resolved
   end
   Bus->>Store: persist event
 ```
 
-## Deduplicação
+## Deduplication
 
-A chave é `rule_id` + `entity_uid`. O alerta dispara uma vez depois de 5 minutos acima do limiar e só resolve quando o valor cai. O campo `dedupe` de 5 minutos no engine não é consultado.
+The key is `rule_id` + `entity_uid`. The alert fires once after 5 minutes above the threshold and only resolves when the value drops. The engine's 5-minute `dedupe` field is not queried.
 
 ```mermaid
 flowchart LR
-  Tick[Evaluate] --> Above{valor >= limiar?}
-  Above -->|sim, ainda não disparou| Wait[espera 5 min]
+  Tick[Evaluate] --> Above{value >= threshold?}
+  Above -->|yes, not yet fired| Wait[wait 5 min]
   Wait --> Fire[alert.fired]
-  Above -->|já disparou| Keep[mantém ativo]
-  Above -->|não| Resolve[alert.resolved]
+  Above -->|already fired| Keep[stay active]
+  Above -->|no| Resolve[alert.resolved]
 ```
 
-## Catálogo de tipos (v1)
+## Type catalog (v1)
 
-| type | severity típica | Origem |
+| type | typical severity | Source |
 |---|---|---|
 | `agent.register` | info | hub |
 | `agent.reconnect` | info | hub |
 | `agent.disconnect` | warning | hub (`staleLoop`) |
 | `metric.threshold` | warning / critical | rule engine |
-| `alert.fired` | a da regra | rule engine |
+| `alert.fired` | the rule's severity | rule engine |
 | `alert.resolved` | info | rule engine |
-| `resource.pressure` | warning | hub, na ingestão de métricas |
-| `slo.budget_low` | warning | avaliador de SLO (60 s) |
+| `resource.pressure` | warning | hub, on metrics ingest |
+| `slo.budget_low` | warning | SLO evaluator (60 s) |
 | `container.start` | info | agent |
-| `container.die` | info ou warning | agent |
+| `container.die` | info or warning | agent |
 | `container.oom` | critical | agent |
 | `container.restart` | warning | agent |
 | `container.pause`, `unpause`, `destroy`, `rename` | info | agent |
 
-## Timeline na UI
+## Timeline in the UI
 
 ```mermaid
 sequenceDiagram
@@ -94,6 +94,6 @@ sequenceDiagram
   Hub-->>UI: timeline JSON
 ```
 
-## Notificações
+## Notifications
 
-O hub não envia webhook. Alerta ativo sai em `GET /api/v1/alerts/active` e o evento fica em `GET /api/v1/events`.
+The hub does not send webhooks. Active alerts come from `GET /api/v1/alerts/active` and the event stays in `GET /api/v1/events`.

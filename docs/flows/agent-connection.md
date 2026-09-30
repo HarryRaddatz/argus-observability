@@ -1,8 +1,8 @@
-# Fluxo: conexão agent ↔ hub
+# Flow: agent ↔ hub connection
 
-O agent inicia a sessão com o hub por HTTP. Não há WebSocket no hub.
+The agent starts the session with the hub over HTTP. There is no WebSocket on the hub.
 
-## Sequência — registro e heartbeat
+## Sequence — register and heartbeat
 
 ```mermaid
 sequenceDiagram
@@ -15,14 +15,14 @@ sequenceDiagram
   Hub->>Store: upsert agent session
   Hub-->>Agent: 200 session_id, interval
 
-  loop a cada 30s
+  loop every 30s
     Agent->>Hub: POST /api/v1/agents/heartbeat
     Hub->>Store: touch last_seen
     Hub-->>Agent: 200 status ok
   end
 ```
 
-## Sequência — desconexão detectada
+## Sequence — detected disconnect
 
 ```mermaid
 sequenceDiagram
@@ -30,29 +30,29 @@ sequenceDiagram
   participant Store
   participant Bus
 
-  Hub->>Store: last_seen anterior a StaleAfter
+  Hub->>Store: last_seen older than StaleAfter
   Hub->>Bus: publish agent.disconnect
   Bus->>Store: persist event
 ```
 
-## Modos de transporte
+## Transport modes
 
-| Modo | Uso | Endpoint |
+| Mode | Use | Endpoint |
 |---|---|---|
-| HTTP | registro, heartbeat, métricas, logs, fleet, eventos | `ARGUS_HUB_URL` |
+| HTTP | register, heartbeat, metrics, logs, fleet, events | `ARGUS_HUB_URL` |
 
-## Autenticação
+## Authentication
 
 ```
 Authorization: Bearer <ARGUS_AGENT_TOKEN>
 ```
 
-Token compartilhado por agent ou por host — configurável no hub.
+Shared token per agent or per host — configured on the hub.
 
-## Falhas comuns
+## Common failures
 
-| Sintoma | Causa provável | Comportamento do agent |
+| Symptom | Likely cause | Agent behavior |
 |---|---|---|
-| 401 | token inválido | para e loga erro |
-| 503 | hub indisponível | backoff exponencial |
-| timeout no ingest | hub saturado | backpressure local |
+| 401 | invalid token | stops and logs an error |
+| 503 | hub unavailable | exponential backoff |
+| ingest timeout | hub saturated | local backpressure |

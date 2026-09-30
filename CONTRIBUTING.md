@@ -1,88 +1,90 @@
 # Contributing to Argus
 
-Obrigado por contribuir. Este repositório é a biblioteca pública de observabilidade Argus.
+Thanks for contributing. This repository is the public Argus observability library.
 
-## Antes de abrir PR
+Portuguese: [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md).
 
-1. Abra uma issue pelo template (bug, feature ou doc). Vulnerabilidade: [SECURITY.md](SECURITY.md), não issue pública.
-2. Fork + branch a partir de `main`.
-3. Mantenha o diff focado — evite refactors não relacionados.
-4. Não inclua secrets, tokens ou referências a infra privada (hosts, stacks internas, domínios de produção).
+## Before opening a PR
 
-## Desenvolvimento
+1. Open an issue with a template (bug, feature, or docs). Vulnerability: [SECURITY.md](SECURITY.md), not a public issue.
+2. Fork + branch from `main`.
+3. Keep the diff focused — skip unrelated refactors.
+4. Do not include secrets, tokens, or private infra (hosts, internal stacks, production domains).
+
+## Development
 
 ```bash
 cp .env.example .env
-docker compose up -d --build   # stack completa
+docker compose up -d --build   # full stack
 go vet ./...
 go test ./...                  # backend (Go 1.27+)
-cd web && npm ci && npm run lint && npm run build   # painel (Node 24 LTS)
-bash .github/scripts/check-no-vps-leak.sh   # opcional, local
+cd web && npm ci && npm run lint && npm run build   # panel (Node 24 LTS)
+bash .github/scripts/check-no-vps-leak.sh   # optional, local
 ```
 
-## CI e branch protection
+## CI and branch protection
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo PR e push para `main`. Os jobs rodam em paralelo; um PR novo cancela a execução anterior do mesmo PR.
+The [`.github/workflows/ci.yml`](.github/workflows/ci.yml) workflow runs on every PR and push to `main`. Jobs run in parallel; a new PR cancels the previous run of the same PR.
 
-| Job | O que valida |
+| Job | What it checks |
 |---|---|
-| `changes` | Quais componentes mudaram no diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
-| `anti-leak` | Padrões de infra privada no diff |
-| `go` | `go vet`, `go test`, `go build ./cmd/...` — só se hub ou agent mudou |
-| `web` | `npm ci`, `npm run lint`, `npm run build` — só se web mudou |
-| `docker (hub/agent/web)` | Build do Dockerfile do componente que mudou, sem push, com cache compartilhado com o release |
-| `test` | Agregador: passa se nenhum job falhou (jobs pulados contam como ok) |
+| `changes` | Which components changed in the diff ([`ci-changes.sh`](.github/scripts/ci-changes.sh)) |
+| `anti-leak` | Private-infra patterns in the diff |
+| `go` | `go vet`, `go test`, `go build ./cmd/...` — only if hub or agent changed |
+| `web` | `npm ci`, `npm run lint`, `npm run build` — only if web changed |
+| `docker (hub/agent/web)` | Build of the changed component's Dockerfile, no push, cache shared with release |
+| `test` | Aggregator: passes if no job failed (skipped jobs count as ok) |
 
-Componentes por path:
+Components by path:
 
-| Componente | Paths |
+| Component | Paths |
 |---|---|
-| hub | `cmd/hub/`, `internal/` (exceto `internal/agent/`), `go.mod`, `go.sum`, `Dockerfile.hub` |
+| hub | `cmd/hub/`, `internal/` (except `internal/agent/`), `go.mod`, `go.sum`, `Dockerfile.hub` |
 | agent | `cmd/agent/`, `internal/agent/`, `internal/model/`, `go.mod`, `go.sum`, `Dockerfile.agent` |
 | web | `web/` |
 
-Mudança em `ci.yml` ou `ci-changes.sh`, tag, `workflow_dispatch` ou branch nova sem base roda tudo.
+A change in `ci.yml` or `ci-changes.sh`, a tag, `workflow_dispatch`, or a new branch without a base runs everything.
 
-**Branch protection (config manual no GitHub):** em *Settings → Branches → main*, marque *Require status checks* e selecione o check **test**. Sem isso, merges podem ignorar o CI.
+**Branch protection (manual GitHub config):** in *Settings → Branches → main*, enable *Require status checks* and select the **test** check. Without that, merges can ignore CI.
 
 ## Release (maintainers)
 
-### Escolher a versão
+### Choose the version
 
-Siga [semver](https://semver.org/). Enquanto a versão for `0.x`, mudanças incompatíveis sobem o **minor**.
+Follow [semver](https://semver.org/). While the version is `0.x`, breaking changes bump the **minor**.
 
-| Mudança | Bump | Exemplo |
+| Change | Bump | Example |
 |---|---|---|
-| Correção sem alterar contrato | patch | `0.1.0` → `0.1.1` |
-| Funcionalidade nova, rota ou env opcional | minor | `0.1.1` → `0.2.0` |
-| Rota removida/renomeada, payload incompatível, env obrigatória nova, schema SQLite incompatível | major (minor em `0.x`) | `1.4.2` → `2.0.0` |
+| Fix without changing the contract | patch | `0.1.0` → `0.1.1` |
+| New feature, route, or optional env | minor | `0.1.1` → `0.2.0` |
+| Removed/renamed route, incompatible payload, new required env, incompatible SQLite schema | major (minor on `0.x`) | `1.4.2` → `2.0.0` |
 
-Mudanças incompatíveis entram no CHANGELOG sob `### Breaking`, com o passo de migração para quem atualiza.
+Breaking changes go in the CHANGELOG under `### Breaking`, with the migration step for operators.
 
-### Publicar
+### Publish
 
-1. Atualize `CHANGELOG.md` (seção `[Unreleased]` → `[X.Y.Z] - data`) e o link da versão no rodapé
-2. Commit e push em `main`
-3. Tag semver e push:
+1. Update `CHANGELOG.md` (`[Unreleased]` → `[X.Y.Z] - date`) and the version link in the footer
+2. Commit and push to `main`
+3. Tag semver and push:
 
 ```bash
 git tag v0.1.1
 git push origin v0.1.1
 ```
 
-O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) roda em etapas:
+The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow runs in stages:
 
-1. `verify tag` — tag semver, commit presente em `main` e seção `[X.Y.Z]` no CHANGELOG. Falha aqui não publica nada.
-2. `ci` — o mesmo CI de PR, reutilizado.
-3. `image (hub/agent/web)` — build multi-arch (`linux/amd64`, `linux/arm64`) e push em paralelo para GHCR e Docker Hub, com SBOM e provenance. Tags `X.Y.Z`, `X.Y`, `X` (a partir de `1.0`), `vX.Y.Z` e `latest`.
-4. `docker hub description` — sincroniza README e descrição curta de cada repositório a partir de `.github/dockerhub/`.
-5. `github release` — notas extraídas do CHANGELOG.
+1. `verify tag` — semver tag, commit present on `main`, and `[X.Y.Z]` section in the CHANGELOG. Failure here publishes nothing.
+2. `ci` — the same PR CI, reused.
+3. `image (hub/agent/web)` — multi-arch build (`linux/amd64`, `linux/arm64`) and parallel push to GHCR and Docker Hub, with SBOM and provenance. Tags `X.Y.Z`, `X.Y`, `X` (from `1.0`), `vX.Y.Z`, and `latest`.
+4. `docker hub description` — syncs README and short description of each repository from `.github/dockerhub/`.
+5. `github release` — notes extracted from the CHANGELOG.
 
-Tags com sufixo (`v0.2.0-rc.1`) viram pre-release e não movem `latest`.
+Suffixed tags (`v0.2.0-rc.1`) become pre-releases and do not move `latest`.
 
-O Docker Hub usa os secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` (token com permissão Read, Write, Delete) e a variável de repositório `DOCKERHUB_NAMESPACE`. Sem a variável (por exemplo, em forks), o release publica só no GHCR.
+Docker Hub uses secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (token with Read, Write, Delete) and repository variable `DOCKERHUB_NAMESPACE`. Without the variable (for example, on forks), the release publishes only to GHCR.
 
-Smoke test pós-release:
+Post-release smoke test:
 
 ```bash
 docker compose -f examples/compose-minimal/docker-compose.published.yml pull
@@ -92,24 +94,24 @@ curl -s http://localhost:8080/health
 
 ### Checklist
 
-- [ ] CI verde em `main` no commit da tag
-- [ ] Seção `[X.Y.Z]` no CHANGELOG com data e itens de `[Unreleased]` movidos
-- [ ] `### Breaking` preenchido quando houver mudança incompatível
-- [ ] Novas variáveis em `.env.example` e `docs/api/configuration.md`
-- [ ] Workflow Release concluído e as três imagens com a tag `X.Y.Z` no GHCR e no Docker Hub
-- [ ] Smoke test acima com `ARGUS_VERSION=X.Y.Z`
+- [ ] Green CI on `main` at the tag commit
+- [ ] `[X.Y.Z]` section in the CHANGELOG with date and items moved from `[Unreleased]`
+- [ ] `### Breaking` filled when there is an incompatible change
+- [ ] New variables in `.env.example` and `docs/api/configuration.md`
+- [ ] Release workflow finished and all three images have tag `X.Y.Z` on GHCR and Docker Hub
+- [ ] Smoke test above with `ARGUS_VERSION=X.Y.Z`
 
-Atualizar uma instância existente: [docs/deploy.md](docs/deploy.md).
+Upgrade an existing instance: [docs/deploy.md](docs/deploy.md).
 
-## Site de documentação
+## Documentation site
 
-O site em [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/) é gerado pelo workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) com MkDocs a partir de `docs/`, `README.md` (início), `CHANGELOG.md` (novidades) e `CONTRIBUTING.md`.
+The site at [harryraddatz.github.io/argus-observability](https://harryraddatz.github.io/argus-observability/) is generated by [`.github/workflows/pages.yml`](.github/workflows/pages.yml) with MkDocs from `docs/` (home is `docs/index.md`), `CHANGELOG.md`, and `CONTRIBUTING.md`. English is the default locale; Portuguese uses the `*.pt.md` suffix.
 
-- PR que toca esses arquivos roda `mkdocs build --strict`: link ou página quebrada falha o check.
-- Merge em `main` e cada release concluída publicam o site.
-- Página nova em `docs/` precisa entrar no `nav` do `mkdocs.yml`.
+- A PR that touches these files runs `mkdocs build --strict`: a broken link or page fails the check.
+- Merge to `main` and each completed release publish the site.
+- A new page in `docs/` must enter the `nav` in `mkdocs.yml`.
 
-Preview local:
+Local preview:
 
 ```bash
 pip install -r .github/pages/requirements.txt
@@ -118,18 +120,18 @@ mkdocs serve
 
 ## Commits
 
-Use mensagens convencionais curtas (`feat:`, `fix:`, `docs:`). Referencie issues no corpo quando aplicável (`Closes #123`).
+Use short conventional messages (`feat:`, `fix:`, `docs:`). Reference issues in the body when applicable (`Closes #123`).
 
 ## Pull requests
 
-O GitHub preenche [`.github/pull_request_template.md`](.github/pull_request_template.md). Descreva o **porquê**, o que muda e como validar. CI deve passar. Se alterar rotas API, contratos ou UI, atualize `docs/api/` e `docs/map.md`.
+GitHub fills [`.github/pull_request_template.md`](.github/pull_request_template.md). Describe the **why**, what changes, and how to validate. CI must pass. If you change API routes, contracts, or UI, update `docs/api/` and `docs/map.md`.
 
-## Código
+## Code
 
-- Go: siga o estilo existente no pacote tocado.
-- Web: React + shadcn/ui em `web/` — componentes reutilizáveis em `web/src/components/`.
-- Testes: adicione ou ajuste `_test.go` para lógica de domínio alterada.
+- Go: follow the existing style in the package you touch.
+- Web: React + shadcn/ui in `web/` — reusable components in `web/src/components/`.
+- Tests: add or adjust `_test.go` for changed domain logic.
 
-## Conduta
+## Conduct
 
-Participantes seguem o [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Participants follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

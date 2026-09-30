@@ -1,12 +1,12 @@
-## Porquê
+## Why
 
-## O que muda
+## What changes
 
-## Como validar
+## How to validate
 
 ## Checklist
 
-- [ ] CI verde (`test`)
-- [ ] Sem secrets, tokens ou infra privada no diff
-- [ ] `CHANGELOG.md` (`[Unreleased]`) se o usuário ou o operador perceber a mudança
-- [ ] Docs (`docs/api/`, `docs/map.md`) se rotas, contrato ou UI mudaram
+- [ ] CI green (`test`)
+- [ ] No secrets, tokens, or private infra in the diff
+- [ ] `CHANGELOG.md` (`[Unreleased]`) if a user or operator will notice the change
+- [ ] Docs (`docs/api/`, `docs/map.md`) if routes, contract, or UI changed

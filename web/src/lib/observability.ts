@@ -1,26 +1,26 @@
 export const LOG_TOPICS = [
-  { id: "all", label: "Todos" },
-  { id: "gc", label: "GC / JVM" },
-  { id: "memory", label: "Memória" },
-  { id: "oom", label: "OOM" },
-  { id: "error", label: "Erros" },
-  { id: "performance", label: "Performance" },
-  { id: "trace", label: "Trace" },
+  { id: "all" },
+  { id: "gc" },
+  { id: "memory" },
+  { id: "oom" },
+  { id: "error" },
+  { id: "performance" },
+  { id: "trace" },
 ] as const
 
 export const LOG_LEVELS = [
-  { id: "all", label: "Todos" },
-  { id: "error", label: "Error" },
-  { id: "warn", label: "Warn" },
-  { id: "info", label: "Info" },
-  { id: "debug", label: "Debug" },
+  { id: "all" },
+  { id: "error" },
+  { id: "warn" },
+  { id: "info" },
+  { id: "debug" },
 ] as const
 
 export const TIME_RANGES = [
-  { id: "15m", label: "15 min" },
-  { id: "1h", label: "1 hora" },
-  { id: "6h", label: "6 horas" },
-  { id: "24h", label: "24 horas" },
+  { id: "15m" },
+  { id: "1h" },
+  { id: "6h" },
+  { id: "24h" },
 ] as const
 
 export type SavedView = {

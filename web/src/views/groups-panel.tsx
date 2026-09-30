@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import type { TFunction } from "i18next"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,14 +16,15 @@ import {
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
-const kindLabel: Record<string, string> = {
-  stack: "Stack",
-  service: "Serviço",
-  custom: "Personalizado",
+function kindLabel(t: TFunction, kind: string) {
+  if (kind === "stack") return t("groups.kindStack")
+  if (kind === "service") return t("groups.kindService")
+  if (kind === "custom") return t("groups.kindCustom")
+  return kind
 }
 
-function membersLabel(n: number) {
-  return n === 1 ? "1 container" : `${n} containers`
+function membersLabel(t: TFunction, n: number) {
+  return n === 1 ? t("groups.oneContainer") : t("groups.nContainers", { count: n })
 }
 
 type Props = {
@@ -35,6 +38,7 @@ type Props = {
 }
 
 export function GroupsPanel({ open, onOpenChange, groups, containers, activeGroup, onSelectGroup, onChanged }: Props) {
+  const { t } = useTranslation()
   const [discovered, setDiscovered] = useState<WorkloadGroup[]>([])
   const [customName, setCustomName] = useState("")
   const [customSelected, setCustomSelected] = useState<string[]>([])
@@ -58,7 +62,7 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
       onChanged()
       loadDiscovered()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Não foi possível salvar")
+      setError(e instanceof Error ? e.message : t("groups.saveError"))
     }
   }
 
@@ -68,7 +72,7 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
       kind: g.kind,
       label_key: g.label_key,
       label_value: g.label_value,
-      description: `Importado de ${kindLabel[g.kind] ?? g.kind} ${g.label_value ?? ""}`.trim(),
+      description: t("groups.importedFrom", { kind: kindLabel(t, g.kind), value: g.label_value ?? "" }).trim(),
     }
     return run(() => createWorkloadGroup(input))
   }
@@ -80,7 +84,7 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
         name: customName.trim(),
         kind: "custom",
         containers: customSelected,
-        description: "Grupo personalizado",
+        description: t("groups.customDescription"),
       })
       setCustomName("")
       setCustomSelected([])
@@ -100,17 +104,17 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Grupos</SheetTitle>
-          <SheetDescription>Use um grupo para filtrar Containers, Métricas, Logs e Problemas.</SheetDescription>
+          <SheetTitle>{t("groups.title")}</SheetTitle>
+          <SheetDescription>{t("groups.description")}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 px-4 pb-6">
           {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
           <section className="space-y-2">
-            <h2 className="text-sm font-medium">Seus grupos</h2>
+            <h2 className="text-sm font-medium">{t("groups.yours")}</h2>
             {groups.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Nenhum grupo salvo. Adicione um sugerido ou crie um abaixo.</p>
+              <p className="text-muted-foreground text-sm">{t("groups.empty")}</p>
             ) : (
               <ul className="space-y-1">
                 {groups.map((g) => (
@@ -123,11 +127,11 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
                   >
                     <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onSelectGroup(g.id)}>
                       <span className="block truncate text-sm font-medium">{g.name}</span>
-                      <span className="text-muted-foreground block text-xs">{membersLabel(g.member_count ?? 0)}</span>
+                      <span className="text-muted-foreground block text-xs">{membersLabel(t, g.member_count ?? 0)}</span>
                     </button>
-                    <Badge variant="outline">{kindLabel[g.kind] ?? g.kind}</Badge>
-                    <Button size="sm" variant="ghost" onClick={() => removeGroup(g.id)} aria-label={`Remover o grupo ${g.name}`}>
-                      Remover
+                    <Badge variant="outline">{kindLabel(t, g.kind)}</Badge>
+                    <Button size="sm" variant="ghost" onClick={() => removeGroup(g.id)} aria-label={t("groups.remove", { name: g.name })}>
+                      {t("groups.removeShort")}
                     </Button>
                   </li>
                 ))}
@@ -137,16 +141,16 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
 
           {suggestions.length > 0 ? (
             <section className="space-y-2">
-              <h2 className="text-sm font-medium">Sugeridos pelos labels dos containers</h2>
+              <h2 className="text-sm font-medium">{t("groups.suggested")}</h2>
               <ul className="space-y-2">
                 {suggestions.map((g) => (
                   <li key={g.id} className="flex items-center justify-between gap-2 text-sm">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{g.name}</p>
-                      <p className="text-muted-foreground text-xs">{membersLabel(g.member_count ?? 0)}</p>
+                      <p className="text-muted-foreground text-xs">{membersLabel(t, g.member_count ?? 0)}</p>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => importDiscovered(g)}>
-                      Adicionar
+                      {t("groups.add")}
                     </Button>
                   </li>
                 ))}
@@ -155,10 +159,10 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
           ) : null}
 
           <section className="space-y-3">
-            <h2 className="text-sm font-medium">Novo grupo</h2>
+            <h2 className="text-sm font-medium">{t("groups.new")}</h2>
             <Input
-              aria-label="Nome do grupo"
-              placeholder="Nome do grupo"
+              aria-label={t("groups.name")}
+              placeholder={t("groups.name")}
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
             />
@@ -188,8 +192,8 @@ export function GroupsPanel({ open, onOpenChange, groups, containers, activeGrou
               onClick={saveCustomGroup}
             >
               {customSelected.length === 0
-                ? "Selecione containers para criar"
-                : `Criar grupo com ${membersLabel(customSelected.length)}`}
+                ? t("groups.selectToCreate")
+                : t("groups.createWith", { members: membersLabel(t, customSelected.length) })}
             </Button>
           </section>
         </div>

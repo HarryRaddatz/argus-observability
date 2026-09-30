@@ -1,34 +1,34 @@
 name: Feature
-description: Pedido de funcionalidade ou mudança de comportamento
+description: Feature request or behavior change
 title: "[feat] "
 labels: [enhancement]
 body:
   - type: markdown
     attributes:
-      value: Descreva o problema de quem usa o Argus, não a implementação.
+      value: Describe the problem for someone using Argus, not the implementation.
   - type: textarea
     id: problem
     attributes:
-      label: Problema
-      description: Quem é afetado e o que hoje não dá para fazer.
+      label: Problem
+      description: Who is affected and what cannot be done today.
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposta
-      description: Comportamento desejado. Fora de escopo, se houver.
+      label: Proposal
+      description: Desired behavior. Out of scope, if any.
     validations:
       required: true
   - type: dropdown
     id: component
     attributes:
-      label: Componente
+      label: Component
       options:
         - hub
         - agent
         - web
-        - compose / imagens
+        - compose / images
         - docs
         - CI
     validations:
@@ -36,7 +36,7 @@ body:
   - type: textarea
     id: accept
     attributes:
-      label: Critérios de aceite
-      description: Lista do que precisa estar verdadeiro para fechar.
+      label: Acceptance criteria
+      description: What must be true to close the issue.
       placeholder: |
         - [ ]

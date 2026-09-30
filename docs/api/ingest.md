@@ -1,12 +1,12 @@
 # Ingest API
 
-Rotas POST usadas pelo agent. Auth via `Authorization: Bearer` quando configurado.
+POST routes used by the agent. Auth via `Authorization: Bearer` when configured.
 
 ## POST `/api/v1/agents/register`
 
-Registra o agent no hub.
+Registers the agent on the hub.
 
-**Request** (`agent_id` e `host_id` obrigatórios; `runtime` vazio vira `docker`)
+**Request** (`agent_id` and `host_id` required; empty `runtime` becomes `docker`)
 
 ```json
 {
@@ -26,11 +26,11 @@ Registra o agent no hub.
 }
 ```
 
-`interval_seconds` é o intervalo de heartbeat do hub (default 30). Não é `ARGUS_COLLECT_INTERVAL`.
+`interval_seconds` is the hub heartbeat interval (default 30). It is not `ARGUS_COLLECT_INTERVAL`.
 
 ## POST `/api/v1/agents/heartbeat`
 
-O handler lê só `agent_id`.
+The handler reads only `agent_id`.
 
 ```json
 { "agent_id": "agent-1" }
@@ -44,7 +44,7 @@ O handler lê só `agent_id`.
 
 ## POST `/api/v1/metrics/batch`
 
-Corpo: array de `MetricPoint`. Array vazio responde `202` sem persistir.
+Body: array of `MetricPoint`. An empty array responds `202` without persisting.
 
 ```json
 [
@@ -58,13 +58,13 @@ Corpo: array de `MetricPoint`. Array vazio responde `202` sem persistir.
 ]
 ```
 
-**Response** `202` sem corpo.
+**Response** `202` with no body.
 
-Métricas de infra coletadas pelo agent: `cpu.usage`, `memory.usage`, `memory.limit`, `network.rx`, `network.tx`, `block.read`, `block.write`.
+Infrastructure metrics collected by the agent: `cpu.usage`, `memory.usage`, `memory.limit`, `network.rx`, `network.tx`, `block.read`, `block.write`.
 
 ## POST `/api/v1/logs/batch`
 
-Corpo: array de `LogEntry`. Array vazio responde `202` sem persistir.
+Body: array of `LogEntry`. An empty array responds `202` without persisting.
 
 ```json
 [
@@ -78,11 +78,11 @@ Corpo: array de `LogEntry`. Array vazio responde `202` sem persistir.
 ]
 ```
 
-**Response** `202` sem corpo. O hub preenche `fields` na ingestão; o agent não precisa enviá-los.
+**Response** `202` with no body. The hub fills `fields` on ingest; the agent does not need to send them.
 
 ## POST `/api/v1/fleet/batch`
 
-Array de `ContainerFleetStatus`. Array vazio responde `202` sem gravar.
+Array of `ContainerFleetStatus`. An empty array responds `202` without writing.
 
 ```json
 [
@@ -100,11 +100,11 @@ Array de `ContainerFleetStatus`. Array vazio responde `202` sem gravar.
 ]
 ```
 
-**Response** `202` sem corpo. `exit_code` é omitido quando zero.
+**Response** `202` with no body. `exit_code` is omitted when zero.
 
 ## POST `/api/v1/events`
 
-Um `Event`. `id` vazio recebe UUID; `ts` vazio recebe o horário do hub. A resposta é `202`.
+One `Event`. Empty `id` gets a UUID; empty `ts` gets the hub time. The response is `202`.
 
 ```json
 {
@@ -125,15 +125,15 @@ Um `Event`. `id` vazio recebe UUID; `ts` vazio recebe o horário do hub. A respo
 { "id": "3c1f0a2b-9d44-4e11-8a77-1b2c3d4e5f60" }
 ```
 
-Tipos que o agent emite a partir de eventos Docker: `container.start`, `container.die`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. O hub também publica no mesmo endpoint interno do bus (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
+Types the agent emits from Docker events: `container.start`, `container.die`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. The hub also publishes on the same internal bus endpoint (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
 
 ## POST `/v1/traces`
 
-Única rota OTLP do hub. JSON (`application/json`), corpo até 4 MiB. Handler: `internal/hub/otlp.go`. Parser: `internal/otel/ingest.go`.
+The hub's only OTLP route. JSON (`application/json`), body up to 4 MiB. Handler: `internal/hub/otlp.go`. Parser: `internal/otel/ingest.go`.
 
-Não há `POST /v1/logs` nem `POST /v1/metrics`. Protobuf OTLP não é aceito.
+There is no `POST /v1/logs` or `POST /v1/metrics`. OTLP protobuf is not accepted.
 
-O parser lê `resourceSpans[].resource.attributes` (`service.name`, `container.id` ou `container.name`) e `scopeSpans[].spans`. IDs em hex de 32 caracteres, UUID ou base64. `startTimeUnixNano` e `endTimeUnixNano` são strings decimais. `kind` é o inteiro OTLP (1 internal, 2 server, 3 client, 4 producer, 5 consumer). `status.code` 1 vira `ok`, 2 vira `error`.
+The parser reads `resourceSpans[].resource.attributes` (`service.name`, `container.id` or `container.name`) and `scopeSpans[].spans`. IDs as 32-character hex, UUID, or base64. `startTimeUnixNano` and `endTimeUnixNano` are decimal strings. `kind` is the OTLP integer (1 internal, 2 server, 3 client, 4 producer, 5 consumer). `status.code` 1 becomes `ok`, 2 becomes `error`.
 
 ```json
 {
@@ -168,12 +168,12 @@ O parser lê `resourceSpans[].resource.attributes` (`service.name`, `container.i
 }
 ```
 
-**Response** `200` sem corpo. JSON inválido: `400` `invalid otlp json`. Span sem `traceId` ou `spanId` decodificável é ignorado; se nenhum span restar, a resposta continua `200` e nada é gravado.
+**Response** `200` with no body. Invalid JSON: `400` `invalid otlp json`. A span without a decodable `traceId` or `spanId` is ignored; if no span remains, the response is still `200` and nothing is written.
 
-## Códigos de erro
+## Error codes
 
-| Código | Situação |
+| Code | Situation |
 |---|---|
-| `401` | Token ausente ou inválido |
-| `400` | JSON inválido |
-| `500` | Erro de persistência |
+| `401` | Missing or invalid token |
+| `400` | Invalid JSON |
+| `500` | Persistence error |

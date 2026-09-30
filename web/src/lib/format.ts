@@ -1,3 +1,5 @@
+import i18n, { localeBcp47 } from "@/i18n"
+
 export function formatPercent(value: number) {
   return `${value.toFixed(1)}%`
 }
@@ -10,7 +12,11 @@ export function formatBytes(value: number) {
 }
 
 export function formatTime(ts: string) {
-  return new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  return new Date(ts).toLocaleTimeString(localeBcp47(i18n.language), { hour: "2-digit", minute: "2-digit" })
+}
+
+export function formatDateTime(ts: string) {
+  return new Date(ts).toLocaleString(localeBcp47(i18n.language))
 }
 
 export function chartPoints(points: { ts: string; value: number }[], transform?: (v: number) => number) {

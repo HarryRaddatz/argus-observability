@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { GroupSelect } from "@/components/filters/group-select"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
@@ -36,6 +37,7 @@ function formatTraceShort(id: string): string {
 }
 
 export function LogsPage() {
+  const { t } = useTranslation()
   const [mode] = useQueryState("mode", "lines")
   const [q] = useQueryState("q", "")
   const [traceId] = useQueryState("trace_id", "")
@@ -65,7 +67,7 @@ export function LogsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Logs"
+        title={t("logs.title")}
         actions={
           <>
             <GroupSelect
@@ -74,13 +76,13 @@ export function LogsPage() {
               onChange={(v) => patch({ group: v, container: v ? null : container })}
             />
             <select
-              aria-label="Container"
+              aria-label={t("common.container")}
               className="border-input bg-background h-8 rounded-md border px-2 text-sm disabled:opacity-50"
               value={container}
               disabled={Boolean(group) || traceActive}
               onChange={(e) => setContainer(e.target.value)}
             >
-              <option value="all">Todos os containers</option>
+              <option value="all">{t("common.allContainers")}</option>
               {containers.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -93,9 +95,9 @@ export function LogsPage() {
       />
 
       <Tabs value={mode} onValueChange={(v) => patch({ mode: String(v) }, { mode: "lines" })}>
-        <TabsList aria-label="Modo">
-          <TabsTrigger value="lines">Linhas</TabsTrigger>
-          <TabsTrigger value="patterns">Padrões repetidos</TabsTrigger>
+        <TabsList aria-label={t("common.mode")}>
+          <TabsTrigger value="lines">{t("logs.lines")}</TabsTrigger>
+          <TabsTrigger value="patterns">{t("logs.patterns")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -108,9 +110,9 @@ export function LogsPage() {
             patch({ q: queryDraft.trim() })
           }}
         >
-          <Input aria-label="Texto na mensagem" placeholder="Texto na mensagem" value={queryDraft} onChange={(e) => setQueryDraft(e.target.value)} />
+          <Input aria-label={t("logs.message")} placeholder={t("logs.message")} value={queryDraft} onChange={(e) => setQueryDraft(e.target.value)} />
           <Button type="submit" size="sm" variant="outline">
-            Buscar
+            {t("logs.search")}
           </Button>
         </form>
         <form
@@ -130,49 +132,49 @@ export function LogsPage() {
             className="font-mono text-xs"
           />
           <Button type="submit" size="sm" variant="outline" disabled={patterns}>
-            Filtrar trace
+            {t("logs.filterTrace")}
           </Button>
         </form>
       </div>
 
       <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-        <div role="group" aria-label="Tópico" className="space-y-1">
-          <p className="text-muted-foreground text-sm">Tópico</p>
+        <div role="group" aria-label={t("logs.topic")} className="space-y-1">
+          <p className="text-muted-foreground text-sm">{t("logs.topic")}</p>
           <div className="flex flex-wrap gap-1">
-            {LOG_TOPICS.map((t) => (
+            {LOG_TOPICS.map((item) => (
               <Button
-                key={t.id}
+                key={item.id}
                 size="sm"
-                variant={topic === t.id ? "default" : "outline"}
-                aria-pressed={topic === t.id}
+                variant={topic === item.id ? "default" : "outline"}
+                aria-pressed={topic === item.id}
                 disabled={patterns}
-                onClick={() => setTopic(t.id)}
+                onClick={() => setTopic(item.id)}
               >
-                {t.label}
+                {item.id === "error" ? t("logs.errors") : t(`logs.${item.id}`)}
               </Button>
             ))}
           </div>
         </div>
-        <div role="group" aria-label="Nível" className="space-y-1">
-          <p className="text-muted-foreground text-sm">Nível</p>
+        <div role="group" aria-label={t("logs.level")} className="space-y-1">
+          <p className="text-muted-foreground text-sm">{t("logs.level")}</p>
           <div className="flex flex-wrap gap-1">
-            {LOG_LEVELS.map((l) => (
+            {LOG_LEVELS.map((item) => (
               <Button
-                key={l.id}
+                key={item.id}
                 size="sm"
-                variant={level === l.id ? "secondary" : "ghost"}
-                aria-pressed={level === l.id}
+                variant={level === item.id ? "secondary" : "ghost"}
+                aria-pressed={level === item.id}
                 disabled={patterns}
-                onClick={() => setLevel(l.id)}
+                onClick={() => setLevel(item.id)}
               >
-                {l.label}
+                {item.id === "all" ? t("logs.all") : item.id}
               </Button>
             ))}
           </div>
         </div>
       </div>
       {patterns ? (
-        <p className="text-muted-foreground text-xs">Tópico, nível e trace filtram só o modo Linhas.</p>
+        <p className="text-muted-foreground text-xs">{t("logs.linesOnlyFilters")}</p>
       ) : null}
 
       {traceActive ? (
@@ -220,6 +222,7 @@ type LinesProps = {
 }
 
 function LogLines({ q, since, level, topic, container, group, traceId }: LinesProps) {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -239,11 +242,11 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
         setError(null)
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : "Não foi possível buscar os logs")
+        setError(e instanceof Error ? e.message : t("logs.searchError"))
         setRows([])
       })
       .finally(() => setLoading(false))
-  }, [q, since, level, topic, container, group, traceId])
+  }, [q, since, level, topic, container, group, traceId, t])
 
   usePolling(load, 15_000)
 
@@ -254,12 +257,12 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Hora</TableHead>
-              <TableHead>Nível</TableHead>
-              <TableHead>Container</TableHead>
-              <TableHead>Trace</TableHead>
-              <TableHead>Tópicos</TableHead>
-              <TableHead>Mensagem</TableHead>
+              <TableHead>{t("logs.time")}</TableHead>
+              <TableHead>{t("logs.level")}</TableHead>
+              <TableHead>{t("common.container")}</TableHead>
+              <TableHead>{t("logs.trace")}</TableHead>
+              <TableHead>{t("logs.topics")}</TableHead>
+              <TableHead>{t("logs.message")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -272,7 +275,7 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
             ) : rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-muted-foreground text-center">
-                  Nenhuma linha com estes filtros. Amplie o período ou limpe um filtro.
+                  {t("logs.linesEmpty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -286,17 +289,18 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
 }
 
 function LogRowView({ row }: { row: LogRow }) {
+  const { t, i18n } = useTranslation()
   const topics = (row.fields?.topics as string[] | undefined) ?? []
   const tid = getTraceId(row)
   const container = row.entity_uid.split(":").pop() ?? row.entity_uid
   return (
     <TableRow>
-      <TableCell className="whitespace-nowrap font-mono text-xs">{new Date(row.ts).toLocaleTimeString("pt-BR")}</TableCell>
+      <TableCell className="whitespace-nowrap font-mono text-xs">{new Date(row.ts).toLocaleTimeString(i18n.language)}</TableCell>
       <TableCell>
         <Badge variant={levelVariant[row.level] ?? "outline"}>{row.level}</Badge>
       </TableCell>
       <TableCell className="max-w-[160px] truncate font-mono text-xs">
-        <Link to={`/metrics?container=${encodeURIComponent(container)}`} className="hover:underline" title={`Métricas de ${container}`}>
+        <Link to={`/metrics?container=${encodeURIComponent(container)}`} className="hover:underline" title={t("logs.metricsOf", { container })}>
           {container}
         </Link>
       </TableCell>
@@ -312,10 +316,10 @@ function LogRowView({ row }: { row: LogRow }) {
       <TableCell>
         <div className="flex flex-wrap gap-1">
           {topics
-            .filter((t) => t !== "general")
-            .map((t) => (
-              <Badge key={t} variant="outline" className="text-xs">
-                {t}
+            .filter((topicId) => topicId !== "general")
+            .map((topicId) => (
+              <Badge key={topicId} variant="outline" className="text-xs">
+                {topicId}
               </Badge>
             ))}
         </div>

@@ -1,5 +1,6 @@
 import type { SLODefinition } from "@/lib/api"
 import type { MeterTone } from "@/lib/meter"
+import type { TFunction } from "i18next"
 
 export function budgetTone(pct: number): MeterTone {
   if (pct < 10) return "critical"
@@ -7,10 +8,10 @@ export function budgetTone(pct: number): MeterTone {
   return "default"
 }
 
-export function sloObjective(s: SLODefinition) {
+export function sloObjective(t: TFunction, s: SLODefinition) {
   return s.sli_metric === "latency_p95"
-    ? `p95 abaixo de ${s.latency_threshold_ms} ms em ${s.target}% das requisições`
-    : `${s.target}% das requisições sem erro`
+    ? t("slo.latency", { ms: s.latency_threshold_ms, target: s.target })
+    : t("slo.availability", { target: s.target })
 }
 
 export function sloMetricsLink(s: SLODefinition) {

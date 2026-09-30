@@ -1,19 +1,19 @@
-# Visão geral
+# Overview
 
-O Argus separa **coleta** (agent) de **agregação e regras** (hub). Tudo que transita entre eles usa envelopes estáveis com labels e `entity_uid`, para métricas, logs e eventos compartilharem o mesmo vocabulário de filtro.
+Argus splits **collection** (agent) from **aggregation and rules** (hub). Everything that moves between them uses stable envelopes with labels and `entity_uid`, so metrics, logs, and events share the same filter vocabulary.
 
-## Topologia
+## Topology
 
 ```mermaid
 flowchart TB
   subgraph hostA [Host A]
     A1[Agent]
-    D1[Runtime Docker]
+    D1[Docker runtime]
     A1 --> D1
   end
   subgraph hostB [Host B]
     A2[Agent]
-    D2[Runtime Docker]
+    D2[Docker runtime]
     A2 --> D2
   end
   Hub[Hub]
@@ -23,7 +23,7 @@ flowchart TB
   Hub --> Store
 ```
 
-## Camadas do hub
+## Hub layers
 
 ```mermaid
 flowchart TB
@@ -36,37 +36,37 @@ flowchart TB
   Ingest --> Bus
   Bus --> Rules
   Rules --> Store
-  Rules --> Notify[Notificadores]
+  Rules --> Notify[Notifiers]
   WS --> Store
 ```
 
-## Entidade de workload
+## Workload entity
 
-Cada sinal referencia uma entidade:
+Every signal points at an entity:
 
 ```
 entity_uid = {runtime}:{host}:{workload_id}
 ```
 
-Exemplo: `docker:vps-01:api-gateway`
+Example: `docker:vps-01:api-gateway`
 
-Labels comuns: `host`, `runtime`, `container`, `namespace`, `pod`, `service`.
+Common labels: `host`, `runtime`, `container`, `namespace`, `pod`, `service`.
 
-## Estados do agent
+## Agent states
 
 ```mermaid
 stateDiagram-v2
   [*] --> Starting
   Starting --> Connected: hub OK
-  Starting --> Backoff: falha
+  Starting --> Backoff: failure
   Backoff --> Starting: retry
-  Connected --> Backpressure: buffer cheio
-  Backpressure --> Connected: buffer normalizado
-  Connected --> Disconnected: hub perdido
+  Connected --> Backpressure: buffer full
+  Backpressure --> Connected: buffer drained
+  Connected --> Disconnected: hub lost
   Disconnected --> Backoff
 ```
 
-## Próximos fluxos
+## Next flows
 
 - [agent-connection.md](flows/agent-connection.md)
 - [metrics-ingestion.md](flows/metrics-ingestion.md)

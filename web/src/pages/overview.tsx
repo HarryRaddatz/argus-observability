@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { PageHeader } from "@/components/layout/page-header"
 import { StatCard } from "@/components/metrics/stat-card"
@@ -19,6 +20,7 @@ import {
 } from "@/lib/api"
 import { instabilityReason, isUnstable } from "@/lib/container-state"
 import { formatPercent } from "@/lib/format"
+import { localizeAlertTitle } from "@/lib/i18n-catalog"
 import { severityLabel, severityVariant } from "@/lib/severity"
 import { sloMetricsLink } from "@/lib/slo"
 
@@ -43,6 +45,7 @@ type ActionItem = {
 const EMPTY: State = { alerts: [], slos: [], unstable: [], http: [] }
 
 export function OverviewPage() {
+  const { t } = useTranslation()
   const [data, setData] = useState<State>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,9 +62,9 @@ export function OverviewPage() {
         })
         setError(null)
       })
-      .catch(() => setError("O hub não respondeu. Os dados abaixo podem estar desatualizados."))
+      .catch(() => setError(t("common.hubDown")))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   usePolling(load)
 
@@ -72,9 +75,9 @@ export function OverviewPage() {
     for (const a of data.alerts) {
       list.push({
         key: `alert-${a.rule_id}-${a.entity_uid}`,
-        title: a.title,
+        title: localizeAlertTitle(t, a.rule_id, a.title),
         detail: a.container,
-        status: <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel[a.severity] ?? a.severity}</Badge>,
+        status: <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel(t, a.severity)}</Badge>,
         to: a.container ? `/logs?container=${encodeURIComponent(a.container)}` : "/problems",
       })
     }
@@ -82,8 +85,8 @@ export function OverviewPage() {
       list.push({
         key: `slo-${s.slo.id}`,
         title: s.slo.name,
-        detail: `SLO de ${s.slo.service}`,
-        status: <Badge variant={s.breached ? "destructive" : "secondary"}>{s.breached ? "Violado" : "Margem baixa"}</Badge>,
+        detail: t("overview.sloOf", { service: s.slo.service }),
+        status: <Badge variant={s.breached ? "destructive" : "secondary"}>{s.breached ? t("overview.violated") : t("overview.lowMargin")}</Badge>,
         to: sloMetricsLink(s.slo),
       })
     }
@@ -91,8 +94,8 @@ export function OverviewPage() {
       list.push({
         key: `container-${c.entity_uid}`,
         title: c.container,
-        detail: instabilityReason(c),
-        status: <Badge variant="destructive">Container</Badge>,
+        detail: instabilityReason(t, c),
+        status: <Badge variant="destructive">{t("common.container")}</Badge>,
         to: `/logs?container=${encodeURIComponent(c.container)}`,
       })
     }
@@ -100,17 +103,17 @@ export function OverviewPage() {
       list.push({
         key: `http-${s.service}`,
         title: s.service,
-        detail: `${formatPercent(s.error_rate * 100)} das requisições HTTP com erro`,
+        detail: t("overview.httpDetail", { pct: formatPercent(s.error_rate * 100) }),
         status: <Badge variant={s.error_rate >= 0.05 ? "destructive" : "secondary"}>HTTP</Badge>,
         to: `/metrics?mode=compare&metric=http.error_rate&service=${encodeURIComponent(s.service)}`,
       })
     }
     return list
-  }, [data])
+  }, [data, t])
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Visão geral" />
+      <PageHeader title={t("overview.title")} />
 
       {error ? (
         <Card className="border-destructive/50">
@@ -120,42 +123,42 @@ export function OverviewPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Alertas ativos"
+          label={t("overview.alerts")}
           value={data.alerts.length}
           tone={data.alerts.length > 0 ? "critical" : "default"}
           to="/problems"
           loading={loading}
         />
         <StatCard
-          label="SLOs violados"
+          label={t("overview.slosBreached")}
           value={breached}
           tone={breached > 0 ? "critical" : data.slos.length > 0 ? "warning" : "default"}
-          hint={data.slos.length > breached ? `${data.slos.length - breached} com margem baixa` : undefined}
+          hint={data.slos.length > breached ? t("overview.lowBudget", { count: data.slos.length - breached }) : undefined}
           to="/problems?tab=slos"
           loading={loading}
         />
         <StatCard
-          label="Containers com problema"
+          label={t("overview.unstableContainers")}
           value={data.unstable.length}
           tone={data.unstable.length > 0 ? "critical" : "default"}
           to="/containers?filter=unstable&view=table"
           loading={loading}
         />
         <StatCard
-          label="Serviços HTTP com erro"
+          label={t("overview.httpErrors")}
           value={data.http.length}
           tone={data.http.length > 0 ? "warning" : "default"}
-          hint="Mais de 1% em 1 hora"
+          hint={t("overview.httpHint")}
           to="/metrics?mode=compare&metric=http.error_rate"
           loading={loading}
         />
       </div>
 
       {loading ? null : items.length === 0 ? (
-        error ? null : <p className="text-muted-foreground text-sm">Nada pede ação agora.</p>
+        error ? null : <p className="text-muted-foreground text-sm">{t("overview.empty")}</p>
       ) : (
         <section className="space-y-3">
-          <h2 className="text-lg font-medium">Pedem ação agora</h2>
+          <h2 className="text-lg font-medium">{t("overview.needsAction")}</h2>
           <ul className="divide-y rounded-md border">
             {items.slice(0, LIST_LIMIT).map((item) => (
               <li key={item.key}>
@@ -174,7 +177,7 @@ export function OverviewPage() {
           </ul>
           {items.length > LIST_LIMIT ? (
             <p className="text-muted-foreground text-sm">
-              Mais {items.length - LIST_LIMIT} nos indicadores acima.
+              {t("overview.more", { count: items.length - LIST_LIMIT })}
             </p>
           ) : null}
         </section>

@@ -1,22 +1,24 @@
-# Política de segurança
+# Security policy
 
-## Versões suportadas
+## Supported versions
 
-Correções de segurança entram na **última release** publicada em [Releases](https://github.com/HarryRaddatz/argus-observability/releases). Enquanto o projeto estiver em `0.x`, use a tag mais recente (`v0.3.x` no momento).
+Security fixes land in the **latest published release** on [Releases](https://github.com/HarryRaddatz/argus-observability/releases). While the project is on `0.x`, use the newest tag (`v0.3.x` at the moment).
 
-| Linha | Recebe correção |
+| Line | Receives a fix |
 |---|---|
-| Última tag `vX.Y.Z` | Sim |
-| Tags anteriores | Não — atualize pela [runbook de deploy](docs/deploy.md) |
+| Latest tag `vX.Y.Z` | Yes |
+| Older tags | No — upgrade using the [deploy runbook](docs/deploy.md) |
 
-## Como reportar
+Portuguese: [SECURITY.pt-BR.md](SECURITY.pt-BR.md).
 
-Não abra issue pública nem PR com PoC de exploração.
+## How to report
 
-1. Abra um [aviso privado](https://github.com/HarryRaddatz/argus-observability/security/advisories/new) (Private vulnerability reporting).
-2. Inclua componente (`hub`, `agent`, `web`), versão ou commit, impacto e passos para reproduzir.
-3. Não cole tokens, dumps de produção nem `.env`.
+Do not open a public issue or a PR with an exploit PoC.
 
-Resposta esperada em até **7 dias**. Correção publicada no `CHANGELOG.md` na seção `Security`.
+1. Open a [private advisory](https://github.com/HarryRaddatz/argus-observability/security/advisories/new) (Private vulnerability reporting).
+2. Include component (`hub`, `agent`, `web`), version or commit, impact, and steps to reproduce.
+3. Do not paste tokens, production dumps, or `.env` files.
 
-Rotas de consulta do hub não têm autenticação. Não exponha a porta do hub à internet sem um proxy autenticado na frente — ver [configuração](docs/api/configuration.md).
+Expected response within **7 days**. The fix is published in `CHANGELOG.md` under `Security`.
+
+Hub query routes have no authentication. Do not expose the hub port to the internet without an authenticated proxy in front — see [configuration](docs/api/configuration.md).

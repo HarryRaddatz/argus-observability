@@ -1,77 +1,77 @@
-# Configuração
+# Configuration
 
-Copie `.env.example` para `.env`. Valores vazios usam o default do binário. Duração no formato de `time.ParseDuration` (`15s`, `1h`, `168h`).
+Copy `.env.example` to `.env`. Empty values use the binary default. Durations use `time.ParseDuration` (`15s`, `1h`, `168h`).
 
-Recrie os containers depois de alterar `.env` (`docker compose up -d --force-recreate`).
+Recreate containers after changing `.env` (`docker compose up -d --force-recreate`).
 
 ## Hub
 
-| Variável | Descrição | Default | Obrigatória | Exemplo |
+| Variable | Description | Default | Required | Example |
 |---|---|---|---|---|
-| `ARGUS_HUB_ADDR` | Endereço de bind HTTP | `:8080` | não | `:8080` |
-| `ARGUS_STORE_PATH` | Arquivo SQLite | `./data/argus.db` | não | `/data/argus.db` |
-| `ARGUS_AGENT_TOKEN` | Bearer exigido nas rotas de ingest. Vazio desliga a checagem | vazio | não | `change-me` |
-| `ARGUS_RETENTION_LOGS` | Idade máxima de `log_entries` | `168h` | não | `168h` |
-| `ARGUS_RETENTION_METRICS` | Idade máxima de `metric_points` | `720h` | não | `720h` |
-| `ARGUS_RETENTION_EVENTS` | Idade máxima de `events` | `720h` | não | `720h` |
-| `ARGUS_PURGE_INTERVAL` | Período do job de purge | `1h` | não | `1h` |
-| `ARGUS_PURGE_TIMEOUT` | Timeout de uma execução de purge | `5s` | não | `5s` |
-| `ARGUS_INGEST_CONCURRENCY` | Requests de ingest processados ao mesmo tempo (todas as rotas autenticadas por Bearer, exceto register/heartbeat) | `8` | não | `8` |
-| `ARGUS_INGEST_WAIT` | Espera máxima por vaga de ingest; depois responde `503` com `Retry-After: 5` | `2s` | não | `2s` |
-| `ARGUS_MAX_BODY_BYTES` | Tamanho máximo do corpo de um request de ingest | `8388608` | não | `8388608` |
+| `ARGUS_HUB_ADDR` | HTTP bind address | `:8080` | no | `:8080` |
+| `ARGUS_STORE_PATH` | SQLite file | `./data/argus.db` | no | `/data/argus.db` |
+| `ARGUS_AGENT_TOKEN` | Bearer required on ingest routes. Empty disables the check | empty | no | `change-me` |
+| `ARGUS_RETENTION_LOGS` | Max age of `log_entries` | `168h` | no | `168h` |
+| `ARGUS_RETENTION_METRICS` | Max age of `metric_points` | `720h` | no | `720h` |
+| `ARGUS_RETENTION_EVENTS` | Max age of `events` | `720h` | no | `720h` |
+| `ARGUS_PURGE_INTERVAL` | Purge job period | `1h` | no | `1h` |
+| `ARGUS_PURGE_TIMEOUT` | Timeout of one purge run | `5s` | no | `5s` |
+| `ARGUS_INGEST_CONCURRENCY` | Ingest requests processed at once (all Bearer-authenticated routes except register/heartbeat) | `8` | no | `8` |
+| `ARGUS_INGEST_WAIT` | Max wait for an ingest slot; then `503` with `Retry-After: 5` | `2s` | no | `2s` |
+| `ARGUS_MAX_BODY_BYTES` | Max body size of an ingest request | `8388608` | no | `8388608` |
 
-Agents em outros hosts: o `argus-web` escuta também na porta `8081`, que só repassa ao hub os POST de ingest e `/health`. Publique essa porta no reverse proxy (não a `80`, nem o hub direto: as rotas GET do hub não têm auth) e use `ARGUS_AGENT_TOKEN` no hub. Cada agent precisa de `ARGUS_AGENT_ID` e `ARGUS_HOST_ID` próprios.
+Agents on other hosts: `argus-web` also listens on port `8081`, which only proxies ingest POSTs and `/health` to the hub. Publish that port on the reverse proxy (not `80`, and not the hub directly: hub GET routes have no auth) and set `ARGUS_AGENT_TOKEN` on the hub. Each agent needs its own `ARGUS_AGENT_ID` and `ARGUS_HOST_ID`.
 
-O SQLite abre em WAL, com um escritor serializado e um pool de leitura: consultas do painel e do SLO não bloqueiam a ingestão. O purge também remove `log_patterns` (retenção de logs) e `topology_edges` (retenção de métricas) pelo `last_seen`.
+SQLite opens in WAL, with a serialized writer and a read pool: panel and SLO queries do not block ingest. Purge also removes `log_patterns` (log retention) and `topology_edges` (metric retention) by `last_seen`.
 
-Duração inválida cai no default. O compose e o `.env.example` apontam o SQLite para `/data/argus.db`.
+An invalid duration falls back to the default. Compose and `.env.example` point SQLite at `/data/argus.db`.
 
 ## Agent
 
-| Variável | Descrição | Default | Obrigatória | Exemplo |
+| Variable | Description | Default | Required | Example |
 |---|---|---|---|---|
-| `ARGUS_HUB_URL` | URL base do hub, sem barra final | `http://127.0.0.1:8080` | não | `http://argus-hub:8080` |
-| `ARGUS_AGENT_TOKEN` | Mesmo valor do hub, quando o hub exige Bearer | vazio | não | `change-me` |
-| `ARGUS_AGENT_ID` | Identificador do processo do agent | hostname | não | `agent-1` |
-| `ARGUS_HOST_ID` | Identificador do host observado | hostname | não | `docker-host` |
-| `ARGUS_COLLECT_INTERVAL` | Intervalo de coleta de métricas Docker | `15s` | não | `15s` |
+| `ARGUS_HUB_URL` | Hub base URL, no trailing slash | `http://127.0.0.1:8080` | no | `http://argus-hub:8080` |
+| `ARGUS_AGENT_TOKEN` | Same value as the hub when the hub requires Bearer | empty | no | `change-me` |
+| `ARGUS_AGENT_ID` | Agent process identifier | hostname | no | `agent-1` |
+| `ARGUS_HOST_ID` | Observed host identifier | hostname | no | `docker-host` |
+| `ARGUS_COLLECT_INTERVAL` | Docker metrics collection interval | `15s` | no | `15s` |
 
-O agent também lê variáveis que o `.env.example` ainda não lista:
+The agent also reads variables that `.env.example` does not yet list:
 
-| Variável | Descrição | Default | Obrigatória | Exemplo |
+| Variable | Description | Default | Required | Example |
 |---|---|---|---|---|
-| `ARGUS_LOG_INTERVAL` | Intervalo de coleta de logs | `30s` | não | `30s` |
-| `ARGUS_FLEET_INTERVAL` | Intervalo do snapshot de fleet | `60s` | não | `60s` |
-| `ARGUS_NAME_PREFIX` | Só containers cujo nome começa com o prefixo. Vazio coleta todos | vazio | não | `stack-` |
-| `DOCKER_HOST` | Socket Unix do Docker. Só `unix://` | `unix:///var/run/docker.sock` | não | `unix:///var/run/docker.sock` |
+| `ARGUS_LOG_INTERVAL` | Log collection interval | `30s` | no | `30s` |
+| `ARGUS_FLEET_INTERVAL` | Fleet snapshot interval | `60s` | no | `60s` |
+| `ARGUS_NAME_PREFIX` | Only containers whose name starts with the prefix. Empty collects all | empty | no | `stack-` |
+| `DOCKER_HOST` | Docker Unix socket. `unix://` only | `unix:///var/run/docker.sock` | no | `unix:///var/run/docker.sock` |
 
-## Identificador de host
+## Host identifier
 
-`ARGUS_AGENT_ID` e `ARGUS_HOST_ID` são rótulos escolhidos por quem opera o agent. Não vêm de inventário, provedor ou nome de máquina da instalação.
+`ARGUS_AGENT_ID` and `ARGUS_HOST_ID` are labels chosen by whoever operates the agent. They do not come from inventory, a provider, or a machine name of the install.
 
-| Variável | Papel |
+| Variable | Role |
 |---|---|
-| `ARGUS_AGENT_ID` | Identifica o processo. Vai em `agent_id` no registro e no heartbeat |
-| `ARGUS_HOST_ID` | Identifica o host (ou o ambiente Docker) que o agent observa. Entra no label `host` e no `entity_uid` dos eventos (`docker:<host_id>:<container>`) |
+| `ARGUS_AGENT_ID` | Identifies the process. Goes in `agent_id` on register and heartbeat |
+| `ARGUS_HOST_ID` | Identifies the host (or Docker environment) the agent observes. Enters the `host` label and the `entity_uid` of events (`docker:<host_id>:<container>`) |
 
-Com a variável vazia, o binário usa o hostname do sistema. Se o hostname não puder ser lido, o fallback é `unknown`.
+When the variable is empty, the binary uses the system hostname. If the hostname cannot be read, the fallback is `unknown`.
 
-Use um par estável entre reinícios (`agent-1`, `docker-host`) para métricas, logs e eventos continuarem no mesmo host. O valor de exemplo do `.env.example` é esse rótulo genérico, não um host específico.
+Use a stable pair across restarts (`agent-1`, `docker-host`) so metrics, logs, and events stay on the same host. The example value in `.env.example` is that generic label, not a specific host.
 
 ## Web (dev)
 
-O painel em produção fala com o hub pelo proxy do container. Estas variáveis valem para `npm run dev`:
+The production panel talks to the hub through the container proxy. These variables apply to `npm run dev`:
 
-| Variável | Descrição | Default | Obrigatória | Exemplo |
+| Variable | Description | Default | Required | Example |
 |---|---|---|---|---|
-| `VITE_API_BASE` | Prefixo da API no browser. Vazio usa o mesmo origin (proxy do Vite) | vazio | não | `` |
-| `VITE_HUB_PROXY` | Upstream do proxy de desenvolvimento (`/api` e `/health`) | `http://127.0.0.1:8080` | não | `http://127.0.0.1:8080` |
+| `VITE_API_BASE` | API prefix in the browser. Empty uses the same origin (Vite proxy) | empty | no | `` |
+| `VITE_HUB_PROXY` | Development proxy upstream (`/api` and `/health`) | `http://127.0.0.1:8080` | no | `http://127.0.0.1:8080` |
 
-Nenhuma das duas está no `.env.example`.
+Neither is in `.env.example`.
 
 ## Docker Compose
 
-O compose na raiz publica:
+The compose file at the repo root publishes:
 
 - Hub: `8080:8080`
-- Painel: `3000:80`
+- Panel: `3000:80`

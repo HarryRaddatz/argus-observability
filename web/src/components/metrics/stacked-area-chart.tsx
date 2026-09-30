@@ -1,4 +1,5 @@
 import { Area, AreaChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts"
+import { useTranslation } from "react-i18next"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -24,10 +25,12 @@ export function StackedAreaChart({
   loading,
   unit = "",
   transform,
-  emptyHint = "Sem dados no período — tente ampliar o intervalo.",
+  emptyHint,
 }: Props) {
+  const { t } = useTranslation()
   const data = mergeStacked(series, transform)
   const keys = series.map((s) => s.container)
+  const hint = emptyHint ?? t("chart.emptyHint")
 
   return (
     <Card>
@@ -40,7 +43,7 @@ export function StackedAreaChart({
           <Skeleton className="h-[280px] w-full" />
         ) : data.length === 0 ? (
           <p className="text-muted-foreground flex h-[280px] items-center justify-center px-4 text-center text-sm">
-            {emptyHint}
+            {hint}
           </p>
         ) : (
           <ChartContainer config={{}} className="h-[280px] w-full">

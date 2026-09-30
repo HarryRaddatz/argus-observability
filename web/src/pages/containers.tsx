@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { GroupSelect } from "@/components/filters/group-select"
 import { PageHeader } from "@/components/layout/page-header"
@@ -40,6 +41,7 @@ type Row = {
 }
 
 export function ContainersPage() {
+  const { t } = useTranslation()
   const [view, setView] = useQueryState("view", "grid")
   const [group, setGroup] = useQueryState("group", "")
   const [panel, setPanel] = useQueryState("panel", "")
@@ -68,9 +70,9 @@ export function ContainersPage() {
         setMemSeries(mem.series ?? [])
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Não foi possível carregar os containers"))
+      .catch((e) => setError(e instanceof Error ? e.message : t("containers.loadError")))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   usePolling(load)
 
@@ -150,17 +152,17 @@ export function ContainersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Containers"
+        title={t("containers.title")}
         actions={
           <>
             <GroupSelect value={group} onChange={setGroup} groups={groups} />
             <Button size="sm" variant="outline" onClick={() => setPanel("groups")}>
-              Gerenciar grupos
+              {t("containers.manageGroups")}
             </Button>
             <Tabs value={view} onValueChange={(v) => setView(String(v))}>
-              <TabsList aria-label="Visualização">
-                <TabsTrigger value="grid">Grade</TabsTrigger>
-                <TabsTrigger value="table">Tabela</TabsTrigger>
+              <TabsList aria-label={t("containers.view")}>
+                <TabsTrigger value="grid">{t("containers.grid")}</TabsTrigger>
+                <TabsTrigger value="table">{t("containers.table")}</TabsTrigger>
               </TabsList>
             </Tabs>
           </>
@@ -170,12 +172,12 @@ export function ContainersPage() {
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Rodando" value={counts.running} loading={loading} />
+        <StatCard label={t("containers.running")} value={counts.running} loading={loading} />
         <StatCard
-          label="Com problema"
+          label={t("containers.withIssues")}
           value={counts.unstable}
           tone={counts.unstable > 0 ? "critical" : "default"}
-          hint={counts.unstable > 0 && filter !== "unstable" ? "Ver só esses" : undefined}
+          hint={counts.unstable > 0 && filter !== "unstable" ? t("containers.seeThose") : undefined}
           to={
             counts.unstable > 0 && filter !== "unstable"
               ? `/containers?${new URLSearchParams({ ...(group ? { group } : {}), filter: "unstable", view: "table" })}`
@@ -183,9 +185,9 @@ export function ContainersPage() {
           }
           loading={loading}
         />
-        <StatCard label="Parados" value={counts.stopped} loading={loading} />
+        <StatCard label={t("containers.stopped")} value={counts.stopped} loading={loading} />
         <StatCard
-          label="Reinícios"
+          label={t("containers.restarts")}
           value={counts.restarts}
           tone={counts.restarts > 10 ? "warning" : "default"}
           loading={loading}
@@ -194,9 +196,9 @@ export function ContainersPage() {
 
       {filter === "unstable" ? (
         <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-          <span>Mostrando só containers com problema.</span>
+          <span>{t("containers.unstableBanner")}</span>
           <Button size="sm" variant="ghost" onClick={() => setFilter("")}>
-            Mostrar todos
+            {t("containers.showAll")}
           </Button>
         </div>
       ) : null}
@@ -204,8 +206,8 @@ export function ContainersPage() {
       {view === "grid" ? (
         <div className="space-y-4">
           <StackedAreaChart
-            title="CPU dos oito containers que mais consomem"
-            description="Última hora, empilhado"
+            title={t("containers.cpuTopTitle")}
+            description={t("containers.cpuTopDesc")}
             series={stackedCpu}
             loading={loading}
             unit="%"
@@ -226,9 +228,9 @@ export function ContainersPage() {
           {!loading && gridRows.length === 0 ? <EmptyRows filtered={Boolean(group || filter)} /> : null}
           {rows.length > gridRows.length ? (
             <p className="text-muted-foreground text-sm">
-              A grade mostra {gridRows.length} de {rows.length} containers.{" "}
+              {t("containers.gridShows", { shown: gridRows.length, total: rows.length })}{" "}
               <button type="button" className="text-primary hover:underline" onClick={() => setView("table")}>
-                Ver todos na tabela
+                {t("containers.seeAllTable")}
               </button>
             </p>
           ) : null}
@@ -239,14 +241,14 @@ export function ContainersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Container</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>CPU</TableHead>
-                  <TableHead>Memória</TableHead>
-                  <TableHead>Reinícios</TableHead>
-                  <TableHead>Atenção</TableHead>
+                  <TableHead>{t("common.container")}</TableHead>
+                  <TableHead>{t("containers.state")}</TableHead>
+                  <TableHead>{t("containers.cpu")}</TableHead>
+                  <TableHead>{t("containers.memory")}</TableHead>
+                  <TableHead>{t("containers.restarts")}</TableHead>
+                  <TableHead>{t("containers.attention")}</TableHead>
                   <TableHead>
-                    <span className="sr-only">Ações</span>
+                    <span className="sr-only">{t("containers.actions")}</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -272,15 +274,15 @@ export function ContainersPage() {
 
           {fleet && fleet.services.length > 0 && !group ? (
             <section className="space-y-2">
-              <h2 className="text-sm font-medium">Réplicas por serviço</h2>
+              <h2 className="text-sm font-medium">{t("containers.replicasByService")}</h2>
               <ScrollArea className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Serviço</TableHead>
-                      <TableHead>Réplicas no ar</TableHead>
-                      <TableHead>Reiniciando</TableHead>
-                      <TableHead>Healthcheck falhando</TableHead>
+                      <TableHead>{t("common.service")}</TableHead>
+                      <TableHead>{t("containers.replicasUp")}</TableHead>
+                      <TableHead>{t("containers.restarting")}</TableHead>
+                      <TableHead>{t("containers.healthFailing")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -288,7 +290,7 @@ export function ContainersPage() {
                       <TableRow key={s.service}>
                         <TableCell className="font-medium">{s.service}</TableCell>
                         <TableCell className="tabular-nums">
-                          {s.replicas_up} de {s.replicas_total}
+                          {s.replicas_up} {t("containers.of")} {s.replicas_total}
                         </TableCell>
                         <TableCell className="tabular-nums">{s.restarting || "—"}</TableCell>
                         <TableCell className="tabular-nums">{s.unhealthy || "—"}</TableCell>
@@ -316,23 +318,23 @@ export function ContainersPage() {
 }
 
 function EmptyRows({ filtered }: { filtered: boolean }) {
+  const { t } = useTranslation()
   return (
     <p className="text-muted-foreground py-6 text-center text-sm">
-      {filtered
-        ? "Nenhum container com estes filtros."
-        : "Nenhum container monitorado. Suba o agent com acesso ao socket do Docker."}
+      {filtered ? t("containers.empty") : t("containers.emptyAgent")}
     </p>
   )
 }
 
 function ContainerRow({ row }: { row: Row }) {
+  const { t } = useTranslation()
   const { workload: w, status } = row
   const state = status?.state?.toLowerCase()
   const unstable = status ? isUnstable(status) : false
   return (
     <TableRow className={unstable ? "bg-destructive/5" : undefined}>
       <TableCell className="font-medium">{row.container}</TableCell>
-      <TableCell>{state ? <Badge variant={stateVariant(state)}>{stateLabel(state)}</Badge> : "—"}</TableCell>
+      <TableCell>{state ? <Badge variant={stateVariant(state)}>{stateLabel(t, state)}</Badge> : "—"}</TableCell>
       <TableCell className="tabular-nums">
         {w ? (
           <Badge variant={w.cpu_usage > 80 ? "destructive" : "secondary"}>{formatPercent(w.cpu_usage)}</Badge>
@@ -344,7 +346,7 @@ function ContainerRow({ row }: { row: Row }) {
         {w ? (
           <>
             {formatBytes(w.memory_usage)}
-            {w.memory_limit > 0 ? <span className="text-muted-foreground"> de {formatBytes(w.memory_limit)}</span> : null}
+            {w.memory_limit > 0 ? <span className="text-muted-foreground"> {t("containers.of")} {formatBytes(w.memory_limit)}</span> : null}
           </>
         ) : (
           "—"
@@ -353,14 +355,14 @@ function ContainerRow({ row }: { row: Row }) {
       <TableCell className={status && status.restart_count > 3 ? "font-medium text-amber-600 tabular-nums" : "tabular-nums"}>
         {status?.restart_count ?? "—"}
       </TableCell>
-      <TableCell className="text-sm">{unstable && status ? instabilityReason(status) : "—"}</TableCell>
+      <TableCell className="text-sm">{unstable && status ? instabilityReason(t, status) : "—"}</TableCell>
       <TableCell>
         <div className="flex gap-3 text-xs">
           <Link to={`/metrics?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
-            Métricas
+            {t("containers.metricsLink")}
           </Link>
           <Link to={`/logs?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
-            Logs
+            {t("containers.logsLink")}
           </Link>
         </div>
       </TableCell>

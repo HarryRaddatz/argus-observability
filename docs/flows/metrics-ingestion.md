@@ -1,8 +1,8 @@
-# Fluxo: ingestão de métricas
+# Flow: metrics ingest
 
-O agent consulta o runtime a cada intervalo, normaliza pontos genéricos e envia em lote ao hub.
+The agent queries the runtime on an interval, normalizes generic points, and sends them to the hub in batches.
 
-## Sequência — coleta e persistência
+## Sequence — collect and persist
 
 ```mermaid
 sequenceDiagram
@@ -21,7 +21,7 @@ sequenceDiagram
   end
 ```
 
-## Formato de ponto
+## Point format
 
 ```json
 {
@@ -37,9 +37,9 @@ sequenceDiagram
 }
 ```
 
-O hub grava os pontos como chegam e deriva `memory.usage_pct` quando o lote traz uso e limite. Não há rollup.
+The hub stores points as they arrive and derives `memory.usage_pct` when the batch includes usage and limit. There is no rollup.
 
-## Consulta
+## Query
 
 ```mermaid
 sequenceDiagram
@@ -49,19 +49,19 @@ sequenceDiagram
 
   Client->>Hub: GET /api/v1/metrics/series?metric=cpu.usage&since=1h
   Hub->>Store: QueryMetricSeries
-  Store-->>Hub: series por container
+  Store-->>Hub: series by container
   Hub-->>Client: metric_name, series
 ```
 
-`GET /api/v1/query?metric=cpu.usage&since=1h` devolve a série achatada (`metric_name`, `points`). Não há filtro `host`.
+`GET /api/v1/query?metric=cpu.usage&since=1h` returns the flattened series (`metric_name`, `points`). There is no `host` filter.
 
-## Métricas do agent
+## Agent metrics
 
-| metric_name | Descrição |
+| metric_name | Description |
 |---|---|
-| `cpu.usage` | % de CPU do container |
+| `cpu.usage` | container CPU % |
 | `memory.usage` | bytes |
-| `memory.limit` | bytes do cgroup |
-| `memory.usage_pct` | derivada no hub |
+| `memory.limit` | cgroup bytes |
+| `memory.usage_pct` | derived on the hub |
 | `network.rx` / `network.tx` | bytes/s |
 | `block.read` / `block.write` | bytes/s |

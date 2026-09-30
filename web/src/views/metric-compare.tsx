@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { MultiSeriesChart } from "@/components/metrics/multi-series-chart"
 import { Button } from "@/components/ui/button"
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
 import { fetchMetricCatalog, fetchMetricSeries, type ContainerSeries, type MetricCatalogEntry, type WorkloadSnapshot } from "@/lib/api"
+import { localizeMetricLabel } from "@/lib/i18n-catalog"
 import { deleteView, loadSavedViews, matchesService, saveView, type SavedView } from "@/lib/observability"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +23,7 @@ function seriesContainer(s: ContainerSeries) {
 }
 
 export function MetricCompare({ since, group, workloads }: Props) {
+  const { t } = useTranslation()
   const [metric, setMetric] = useQueryState("metric", "memory.usage_pct")
   const [chartType, setChartType] = useQueryState("chart", "area")
   const [stat, setStat] = useQueryState("stat", "avg")
@@ -118,56 +121,56 @@ export function MetricCompare({ since, group, workloads }: Props) {
     () => (group || selected.length === 0 ? [...new Set(series.map(seriesContainer))] : selected),
     [group, selected, series],
   )
-  const metricLabel = catalog.find((c) => c.name === metric)?.label ?? metric
+  const metricLabel = localizeMetricLabel(t, metric, catalog.find((c) => c.name === metric)?.label ?? metric)
   const scope = group
-    ? "Containers do grupo"
+    ? t("metrics.groupContainers")
     : selected.length === 0
-      ? "Todos os containers"
+      ? t("metrics.allContainers")
       : selected.length === 1
-        ? "1 container"
-        : `${selected.length} containers`
+        ? t("metrics.oneContainer")
+        : t("metrics.nContainers", { count: selected.length })
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside className="space-y-5">
         <section className="space-y-2">
-          <h2 className="text-sm font-medium">Métrica</h2>
+          <h2 className="text-sm font-medium">{t("metrics.title")}</h2>
           <select
-            aria-label="Métrica"
+            aria-label={t("metrics.title")}
             className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
             value={metric}
             onChange={(e) => setMetric(e.target.value)}
           >
             {catalog.map((m) => (
               <option key={m.name} value={m.name}>
-                {m.label}
+                {localizeMetricLabel(t, m.name, m.label)}
               </option>
             ))}
           </select>
           <div className="flex flex-wrap gap-2">
-            <div role="group" aria-label="Resumo" className="flex gap-1">
+            <div role="group" aria-label={t("chart.summary")} className="flex gap-1">
               <Button size="sm" variant={stat === "avg" ? "default" : "outline"} aria-pressed={stat === "avg"} onClick={() => setStat("avg")}>
-                Média
+                {t("chart.avg")}
               </Button>
               <Button size="sm" variant={stat === "max" ? "default" : "outline"} aria-pressed={stat === "max"} onClick={() => setStat("max")}>
-                Pico
+                {t("chart.peak")}
               </Button>
             </div>
-            <div role="group" aria-label="Tipo de gráfico" className="flex gap-1">
+            <div role="group" aria-label={t("chart.chartType")} className="flex gap-1">
               <Button size="sm" variant={chartType === "area" ? "default" : "outline"} aria-pressed={chartType === "area"} onClick={() => setChartType("area")}>
-                Área
+                {t("chart.area")}
               </Button>
               <Button size="sm" variant={chartType === "line" ? "default" : "outline"} aria-pressed={chartType === "line"} onClick={() => setChartType("line")}>
-                Linha
+                {t("chart.line")}
               </Button>
             </div>
           </div>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium">Containers</h2>
+          <h2 className="text-sm font-medium">{t("nav.containers")}</h2>
           {group ? (
-            <p className="text-muted-foreground text-xs">Com um grupo selecionado, o gráfico mostra todos os containers dele.</p>
+            <p className="text-muted-foreground text-xs">{t("metrics.groupHint")}</p>
           ) : null}
           <ScrollArea className="h-48 rounded-md border">
             <ul className="space-y-1 p-1">
@@ -192,7 +195,7 @@ export function MetricCompare({ since, group, workloads }: Props) {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-sm font-medium">Visões salvas</h2>
+          <h2 className="text-sm font-medium">{t("views.title")}</h2>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -200,9 +203,9 @@ export function MetricCompare({ since, group, workloads }: Props) {
               handleSaveView()
             }}
           >
-            <Input aria-label="Nome da visão" placeholder="Nome da visão" value={viewName} onChange={(e) => setViewName(e.target.value)} />
+            <Input aria-label={t("views.name")} placeholder={t("views.name")} value={viewName} onChange={(e) => setViewName(e.target.value)} />
             <Button size="sm" type="submit" disabled={!viewName.trim()}>
-              Salvar
+              {t("views.saveShort")}
             </Button>
           </form>
           {savedViews.length > 0 ? (
@@ -215,13 +218,13 @@ export function MetricCompare({ since, group, workloads }: Props) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    aria-label={`Apagar a visão ${v.name}`}
+                    aria-label={t("views.delete", { name: v.name })}
                     onClick={() => {
                       deleteView(v.id)
                       setSavedViews(loadSavedViews())
                     }}
                   >
-                    Apagar
+                    {t("views.deleteShort")}
                   </Button>
                 </li>
               ))}
@@ -243,7 +246,7 @@ export function MetricCompare({ since, group, workloads }: Props) {
         />
         {openable.length > 0 ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            <span className="text-muted-foreground">Abrir um container:</span>
+            <span className="text-muted-foreground">{t("metrics.openContainer")}</span>
             {openable.map((name) => (
               <Link
                 key={name}

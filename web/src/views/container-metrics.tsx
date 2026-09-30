@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { MetricMeter } from "@/components/metrics/metric-meter"
 import { TimeSeriesChart } from "@/components/metrics/time-series-chart"
@@ -36,6 +37,7 @@ const EMPTY: Series = {
 }
 
 export function ContainerMetrics({ since, workloads, members }: Props) {
+  const { t } = useTranslation()
   const [selected] = useQueryState("container", "")
   const [service] = useQueryState("service", "")
   const [stat, setStat] = useQueryState("stat", "avg")
@@ -81,7 +83,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         setError(null)
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Não foi possível carregar as séries")
+        if (!cancelled) setError(e instanceof Error ? e.message : t("metrics.loadError"))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -89,7 +91,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
     return () => {
       cancelled = true
     }
-  }, [selected, since])
+  }, [selected, since, t])
 
   const summary = useMemo(() => {
     const pick = (pts: SeriesPoint[]) => {
@@ -102,16 +104,16 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
   }, [series, stat])
 
   const workload = workloads.find((w) => w.container === selected)
-  const statLabel = stat === "max" ? "pico" : "média"
+  const statLabel = stat === "max" ? t("metrics.statPeak") : t("metrics.statAvg")
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <aside className="shrink-0 space-y-2 lg:w-56">
-        <h2 className="text-sm font-medium">Container</h2>
+        <h2 className="text-sm font-medium">{t("common.container")}</h2>
         <ScrollArea className="h-[min(420px,55vh)] rounded-md border">
           <ul className="p-1">
             {containers.length === 0 ? (
-              <li className="text-muted-foreground p-3 text-sm">Nenhum container neste filtro.</li>
+              <li className="text-muted-foreground p-3 text-sm">{t("metrics.noContainer")}</li>
             ) : (
               containers.map((name) => (
                 <li key={name}>
@@ -140,28 +142,28 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
               <h2 className="text-lg font-medium">{selected}</h2>
               <div className="flex flex-wrap gap-3 text-sm">
                 <Link to={`/logs?container=${encodeURIComponent(selected)}&since=${since}`} className="text-primary hover:underline">
-                  Logs deste container
+                  {t("metrics.logsOf")}
                 </Link>
                 <Link
                   to={`/traces?service=${encodeURIComponent(workload?.service || selected)}&since=${since}`}
                   className="text-primary hover:underline"
                 >
-                  Traces do serviço
+                  {t("sloExtra.traces")}
                 </Link>
                 <Link
                   to={`/metrics?mode=compare&containers=${encodeURIComponent(selected)}&since=${since}`}
                   className="text-primary hover:underline"
                 >
-                  Comparar com outros
+                  {t("metrics.compareOthers")}
                 </Link>
               </div>
             </div>
-            <div role="group" aria-label="Resumo" className="flex gap-1">
+            <div role="group" aria-label={t("chart.summary")} className="flex gap-1">
               <Button size="sm" variant={stat === "avg" ? "default" : "outline"} aria-pressed={stat === "avg"} onClick={() => setStat("avg")}>
-                Média
+                {t("chart.avg")}
               </Button>
               <Button size="sm" variant={stat === "max" ? "default" : "outline"} aria-pressed={stat === "max"} onClick={() => setStat("max")}>
-                Pico
+                {t("chart.peak")}
               </Button>
             </div>
           </div>
@@ -178,13 +180,13 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         ) : (
           <>
             <div className="grid gap-4 lg:grid-cols-2">
-              <MetricMeter label={`CPU (${statLabel})`} value={summary.cpu} />
-              <MetricMeter label={`Memória (${statLabel})`} value={summary.memPct} />
+              <MetricMeter label={t("metrics.cpuStat", { stat: statLabel })} value={summary.cpu} />
+              <MetricMeter label={t("metrics.memStat", { stat: statLabel })} value={summary.memPct} />
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
-              <TimeSeriesChart title="CPU" points={series.cpu} loading={loading} unit="%" />
+              <TimeSeriesChart title={t("containers.cpu")} points={series.cpu} loading={loading} unit="%" />
               <TimeSeriesChart
-                title="Memória em relação ao limite"
+                title={t("metrics.memoryVsLimit")}
                 points={series.memPct}
                 loading={loading}
                 unit="%"
@@ -192,7 +194,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <TimeSeriesChart
-                title="Memória usada"
+                title={t("metrics.memoryUsed")}
                 points={series.mem}
                 loading={loading}
                 unit=" MiB"
@@ -200,30 +202,30 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
               />
               {series.netRx.length > 0 || series.netTx.length > 0 ? (
                 <>
-                  <TimeSeriesChart title="Rede recebida" points={series.netRx} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
-                  <TimeSeriesChart title="Rede enviada" points={series.netTx} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
+                  <TimeSeriesChart title={t("metrics.netRxBytes")} points={series.netRx} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
+                  <TimeSeriesChart title={t("metrics.netTxBytes")} points={series.netTx} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
                 </>
               ) : null}
               {series.blkRead.length > 0 || series.blkWrite.length > 0 ? (
                 <>
-                  <TimeSeriesChart title="Leitura em disco" points={series.blkRead} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
-                  <TimeSeriesChart title="Escrita em disco" points={series.blkWrite} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
+                  <TimeSeriesChart title={t("metrics.diskReadBytes")} points={series.blkRead} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
+                  <TimeSeriesChart title={t("metrics.diskWriteBytes")} points={series.blkWrite} loading={loading} unit=" B/s" transform={(v) => Math.round(v)} />
                 </>
               ) : null}
             </div>
             {series.httpLatency.length > 0 || series.httpErrors.length > 0 ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 <TimeSeriesChart
-                  title="Latência HTTP"
-                  description="Calculada dos logs"
+                  title={t("metrics.httpDuration")}
+                  description={t("metrics.httpLatencyLogs")}
                   points={series.httpLatency}
                   loading={loading}
                   unit=" ms"
                   transform={(v) => Math.round(v)}
                 />
                 <TimeSeriesChart
-                  title="Taxa de erro HTTP"
-                  description="Status 400 ou maior"
+                  title={t("metrics.httpErrorRate")}
+                  description={t("metrics.httpErrorStatus")}
                   points={series.httpErrors}
                   loading={loading}
                   unit="%"

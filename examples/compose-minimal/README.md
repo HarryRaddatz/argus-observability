@@ -1,48 +1,48 @@
-# Exemplo mínimo — Argus
+# Minimal example — Argus
 
-Stack reduzida para validar ingest e painel.
+Reduced stack to validate ingest and the panel.
 
-## Build local (default)
+## Local build (default)
 
-Na raiz do repositório:
+From the repository root:
 
 ```bash
 docker compose -f examples/compose-minimal/docker-compose.yml up -d --build
 ```
 
-## Imagens publicadas (GHCR)
+## Published images (GHCR)
 
-Após um [release](https://github.com/HarryRaddatz/argus-observability/releases) no GitHub:
+After a [release](https://github.com/HarryRaddatz/argus-observability/releases) on GitHub:
 
 ```bash
 docker compose -f examples/compose-minimal/docker-compose.published.yml pull
 docker compose -f examples/compose-minimal/docker-compose.published.yml up -d
 ```
 
-Versão específica:
+Specific version:
 
 ```bash
 ARGUS_VERSION=0.1.1 docker compose -f examples/compose-minimal/docker-compose.published.yml up -d
 ```
 
-| Serviço | URL |
+| Service | URL |
 |---|---|
-| Painel | http://localhost:3000 |
+| Panel | http://localhost:3000 |
 | Hub | http://localhost:8080/health |
 
-## Verificar ingest
+## Check ingest
 
 ```bash
 curl -s http://localhost:8080/health
 curl -s 'http://localhost:8080/api/v1/workloads?since=30m' | head -c 500
 ```
 
-## Parar
+## Stop
 
 ```bash
 docker compose -f examples/compose-minimal/docker-compose.yml down
-# ou
+# or
 docker compose -f examples/compose-minimal/docker-compose.published.yml down
 ```
 
-O compose de build referencia o contexto da raiz (`../../`) — clone o repo completo antes de subir.
+The build compose uses the root context (`../../`) — clone the full repo before you start it.

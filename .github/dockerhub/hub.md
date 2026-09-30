@@ -1,21 +1,21 @@
 # argus-hub
 
-Hub central do [Argus](https://github.com/HarryRaddatz/argus-observability): API REST, ingest de métricas, logs, eventos e traces OTLP, regras e SLOs. Persistência em SQLite.
+Central hub of [Argus](https://github.com/HarryRaddatz/argus-observability): REST API, ingest of metrics, logs, events and OTLP traces, rules and SLOs. SQLite persistence.
 
-Imagens: `linux/amd64`, `linux/arm64` · Base `alpine:3.24` · Licença MIT · [Documentação](https://harryraddatz.github.io/argus-observability/)
+Images: `linux/amd64`, `linux/arm64` · Base `alpine:3.24` · MIT license · [Documentation](https://harryraddatz.github.io/argus-observability/)
 
-Também publicada no GHCR: `ghcr.io/harryraddatz/argus-hub`.
+Also published on GHCR: `ghcr.io/harryraddatz/argus-hub`.
 
-## Uso rápido
+## Quick start
 
-A stack completa (hub, agent e painel) sobe com o compose do repositório:
+The full stack (hub, agent, and panel) comes up with the repository compose:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/HarryRaddatz/argus-observability/main/examples/compose-minimal/docker-compose.published.yml
 ARGUS_REGISTRY=docker.io/pseudohuery docker compose -f docker-compose.published.yml up -d
 ```
 
-Só o hub:
+Hub only:
 
 ```bash
 docker run -d --name argus-hub -p 8080:8080 \
@@ -28,37 +28,37 @@ curl -s http://localhost:8080/health
 
 ## Tags
 
-| Tag | Conteúdo |
+| Tag | Content |
 |---|---|
-| `X.Y.Z`, `vX.Y.Z` | Release exata (recomendado em produção) |
-| `X.Y` | Último patch da linha `X.Y` |
-| `X` | Última release da major `X` (a partir de `1.0`) |
-| `latest` | Última release estável |
+| `X.Y.Z`, `vX.Y.Z` | Exact release (recommended in production) |
+| `X.Y` | Latest patch of the `X.Y` line |
+| `X` | Latest release of major `X` (from `1.0`) |
+| `latest` | Latest stable release |
 
-Pre-releases (`X.Y.Z-rc.N`) não movem `latest`.
+Pre-releases (`X.Y.Z-rc.N`) do not move `latest`.
 
-## Configuração
+## Configuration
 
-| Variável | Default | Descrição |
+| Variable | Default | Description |
 |---|---|---|
-| `ARGUS_HUB_ADDR` | `:8080` | Endereço de escuta |
-| `ARGUS_STORE_PATH` | `./data/argus.db` (`/app/data`) | Caminho do arquivo SQLite; use `/data/argus.db` com um volume em `/data` |
-| `ARGUS_AGENT_TOKEN` | vazio | Token exigido no ingest; vazio desativa a autenticação |
-| `ARGUS_RETENTION_LOGS` | `168h` | Retenção de logs |
-| `ARGUS_RETENTION_METRICS` | `720h` | Retenção de métricas |
-| `ARGUS_RETENTION_EVENTS` | `720h` | Retenção de eventos |
-| `ARGUS_PURGE_INTERVAL` | `1h` | Intervalo do job de purge |
-| `ARGUS_PURGE_TIMEOUT` | `5s` | Timeout por execução de purge |
-| `ARGUS_INGEST_CONCURRENCY` | `8` | Requests de ingest simultâneos |
-| `ARGUS_INGEST_WAIT` | `2s` | Espera por vaga de ingest antes de `503` |
-| `ARGUS_MAX_BODY_BYTES` | `8388608` | Tamanho máximo do corpo de ingest |
+| `ARGUS_HUB_ADDR` | `:8080` | Listen address |
+| `ARGUS_STORE_PATH` | `./data/argus.db` (`/app/data`) | SQLite file path; use `/data/argus.db` with a volume on `/data` |
+| `ARGUS_AGENT_TOKEN` | empty | Token required on ingest; empty disables authentication |
+| `ARGUS_RETENTION_LOGS` | `168h` | Log retention |
+| `ARGUS_RETENTION_METRICS` | `720h` | Metric retention |
+| `ARGUS_RETENTION_EVENTS` | `720h` | Event retention |
+| `ARGUS_PURGE_INTERVAL` | `1h` | Purge job interval |
+| `ARGUS_PURGE_TIMEOUT` | `5s` | Timeout per purge run |
+| `ARGUS_INGEST_CONCURRENCY` | `8` | Concurrent ingest requests |
+| `ARGUS_INGEST_WAIT` | `2s` | Wait for an ingest slot before `503` |
+| `ARGUS_MAX_BODY_BYTES` | `8388608` | Max ingest body size |
 
-Referência completa: [configuração](https://harryraddatz.github.io/argus-observability/api/configuration/).
+Full reference: [configuration](https://harryraddatz.github.io/argus-observability/api/configuration/).
 
-As rotas de consulta não têm autenticação. Não exponha a porta `8080` à internet sem um proxy com autenticação na frente.
+Query routes have no authentication. Do not expose port `8080` to the internet without an authenticated proxy in front.
 
 ## Links
 
-- Código e issues: [GitHub](https://github.com/HarryRaddatz/argus-observability)
-- Novidades: [changelog](https://harryraddatz.github.io/argus-observability/changelog/)
-- Atualizar uma instância: [deploy](https://harryraddatz.github.io/argus-observability/deploy/)
+- Code and issues: [GitHub](https://github.com/HarryRaddatz/argus-observability)
+- What's new: [changelog](https://harryraddatz.github.io/argus-observability/changelog/)
+- Upgrade an instance: [deploy](https://harryraddatz.github.io/argus-observability/deploy/)

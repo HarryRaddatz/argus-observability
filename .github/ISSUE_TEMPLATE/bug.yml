@@ -1,31 +1,31 @@
 name: Bug
-description: Algo não funciona como documentado
+description: Something does not work as documented
 title: "[bug] "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Confira se o comportamento já está descrito em [docs](https://harryraddatz.github.io/argus-observability/).
-        Vulnerabilidade: use o [aviso privado](https://github.com/HarryRaddatz/argus-observability/security/advisories/new), não esta issue.
+        Check whether the behavior is already described in the [docs](https://harryraddatz.github.io/argus-observability/).
+        Vulnerability: use the [private advisory](https://github.com/HarryRaddatz/argus-observability/security/advisories/new), not this issue.
   - type: textarea
     id: what
     attributes:
-      label: O que aconteceu
-      description: Resultado observado.
+      label: What happened
+      description: Observed result.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: O que era esperado
+      label: What was expected
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: Como reproduzir
-      description: Passos, compose ou comando. Sem secrets nem hosts privados.
+      label: How to reproduce
+      description: Steps, compose, or command. No secrets or private hosts.
       placeholder: |
         1. docker compose up -d
         2. curl ...
@@ -34,12 +34,12 @@ body:
   - type: dropdown
     id: component
     attributes:
-      label: Componente
+      label: Component
       options:
         - hub
         - agent
         - web
-        - compose / imagens
+        - compose / images
         - docs
         - CI
     validations:
@@ -47,6 +47,6 @@ body:
   - type: input
     id: version
     attributes:
-      label: Versão
-      description: Tag (`v0.3.0`) ou SHA.
+      label: Version
+      description: Tag (`v0.3.0`) or SHA.
       placeholder: v0.3.0

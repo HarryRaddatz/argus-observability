@@ -4,17 +4,24 @@ import os
 import posixpath
 import re
 
-from mkdocs.structure.files import File
-
 REPO_URL = "https://github.com/HarryRaddatz/argus-observability"
 BRANCH = "main"
 DOCS_DIR = "docs"
 
 # Site page -> repository file used as its source.
+# Written into docs/ at build time so mkdocs-static-i18n can read them from disk.
 ROOT_PAGES = {
-    "index.md": "README.md",
     "changelog.md": "CHANGELOG.md",
     "contributing.md": "CONTRIBUTING.md",
+    "contributing.pt.md": "CONTRIBUTING.pt-BR.md",
+}
+
+SITE_FOR_ROOT = {
+    "README.md": "/",
+    "README.pt-BR.md": "/pt/",
+    "CONTRIBUTING.md": "/contributing/",
+    "CONTRIBUTING.pt-BR.md": "/pt/contributing/",
+    "CHANGELOG.md": "/changelog/",
 }
 
 LINK_RE = re.compile(r"(!?\[[^\]]*\]\()([^)\s]+)(\))")
@@ -34,15 +41,14 @@ def _in_docs(repo_path, is_dir):
 def on_config(config):
     global _repo_root
     _repo_root = os.path.dirname(os.path.abspath(config["config_file_path"]))
-    return config
-
-
-def on_files(files, config):
+    docs_dir = config["docs_dir"]
     for page, source in ROOT_PAGES.items():
+        dest = os.path.join(docs_dir, page)
         with open(os.path.join(_repo_root, source), encoding="utf-8") as fh:
             content = fh.read()
-        files.append(File.generated(config, page, content=content))
-    return files
+        with open(dest, "w", encoding="utf-8") as out:
+            out.write(content)
+    return config
 
 
 def on_page_markdown(markdown, page, config, files):
@@ -61,9 +67,8 @@ def on_page_markdown(markdown, page, config, files):
         repo_path = posixpath.normpath(posixpath.join(base_dir, path))
         is_dir = path.endswith("/") or os.path.isdir(os.path.join(_repo_root, repo_path))
 
-        if repo_path in ROOT_PAGES.values():
-            page_uri = next(k for k, v in ROOT_PAGES.items() if v == repo_path)
-            new = posixpath.relpath(page_uri, page_dir or ".")
+        if repo_path in SITE_FOR_ROOT:
+            new = SITE_FOR_ROOT[repo_path]
         elif _in_docs(repo_path, is_dir):
             if is_dir:
                 repo_path = posixpath.join(repo_path, "README.md")
