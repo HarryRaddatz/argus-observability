@@ -4,6 +4,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-01
+
 ### Added
 
 - CI: `govulncheck` and production `npm audit` on PRs, pushes, and a weekly schedule (#39)
@@ -115,6 +117,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
+[0.4.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.4.0
 [0.3.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.3.0
 [0.2.1]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.1
 [0.2.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.0
