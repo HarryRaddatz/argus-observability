@@ -6,6 +6,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- CI: `govulncheck` and production `npm audit` on PRs, pushes, and a weekly schedule (#39)
+- CI: Trivy on hub/agent/web images (SARIF; release scans before push), gitleaks on PR diffs, CodeQL for Go and JavaScript/TypeScript (#40)
+- CI: compose smoke after docker builds, covering the post-deploy checklist (#38)
 - Panel unit tests with Vitest and Testing Library; CI runs `npm test -- --run` (#37)
 - Go tests for hub HTTP ingest/queries and for `rules`, `slo`, `topology`, `groups`, and `bus`; CI runs `go test -race` and publishes coverage (#36)
 - Panel and docs in English by default, with Portuguese (`pt-BR` / `pt`) as a first-class locale; locale switcher persists in `localStorage` (#54)
@@ -19,6 +22,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- `argus-web` runtime image runs `apk upgrade` so Alpine packages in `nginx:1.30-alpine` pick up fixable HIGH/CRITICAL patches (#40)
 - Pages **build site** check runs on every PR so it can be required on `main` (#33)
 - Contributor docs: commits, PR text, new CHANGELOG entries, canonical docs, and API identifiers are English; Portuguese files are translations only
 - Issue chooser requires a form (bug, feature, docs, or task); pull request template has Why, What changes, How to validate, and a checklist
