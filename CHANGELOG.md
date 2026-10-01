@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Release workflow grants `security-events: write` to the reusable CI so Trivy can upload SARIF
+
 ## [0.4.0] - 2026-10-01
 
 ### Added
