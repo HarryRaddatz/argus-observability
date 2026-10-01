@@ -20,11 +20,19 @@ fail() {
   exit 1
 }
 
+on_exit() {
+  local rc=$?
+  if [[ $rc -ne 0 && ! -s "$LOG_FILE" ]]; then
+    dump_logs
+  fi
+}
+trap on_exit EXIT
+
 wait_http() {
   local url="$1" tries="${2:-30}"
   local i
   for i in $(seq 1 "$tries"); do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if curl -fsS --max-time 5 "$url" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -36,18 +44,31 @@ json_ok() {
   python3 -c 'import json,sys; json.load(sys.stdin)'
 }
 
+wait_json() {
+  local url="$1" tries="${2:-30}"
+  local i body
+  for i in $(seq 1 "$tries"); do
+    if body="$(curl -fsS --max-time 5 "$url" 2>/dev/null)" \
+      && printf '%s' "$body" | json_ok; then
+      return 0
+    fi
+    sleep 2
+  done
+  fail "timed out waiting for JSON from $url"
+}
+
 "${COMPOSE[@]}" up -d
 
-wait_http "$HUB/health" 30
-curl -fsS "$HUB/health" | json_ok || fail "hub /health is not JSON"
+wait_json "$HUB/health" 30
+wait_http "$PANEL/" 30
+wait_json "$PANEL/health" 30
 
-code="$(curl -fsS -o /dev/null -w '%{http_code}' "$PANEL/")"
+code="$(curl -fsS --max-time 5 -o /dev/null -w '%{http_code}' "$PANEL/" || true)"
 [[ "$code" == "200" ]] || fail "panel returned HTTP $code"
-curl -fsS "$PANEL/health" | json_ok || fail "panel /health is not JSON"
 
 workloads_ok=false
 for i in $(seq 1 12); do
-  body="$(curl -fsS "$HUB/api/v1/workloads?since=5m" || true)"
+  body="$(curl -fsS --max-time 5 "$HUB/api/v1/workloads?since=5m" || true)"
   if printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if isinstance(d,list) and len(d)>0 else 1)'; then
     workloads_ok=true
     break
@@ -56,7 +77,7 @@ for i in $(seq 1 12); do
 done
 [[ "$workloads_ok" == "true" ]] || fail "workloads stayed empty"
 
-curl -fsS "$HUB/api/v1/fleet/status" | json_ok || fail "fleet/status is not JSON"
+wait_json "$HUB/api/v1/fleet/status" 12
 
 agent_logs="$("${COMPOSE[@]}" logs --no-color argus-agent || true)"
 if printf '%s' "$agent_logs" | grep -qiE '401|unauthorized'; then

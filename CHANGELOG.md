@@ -33,6 +33,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- CI smoke retries hub and panel probes so a connection reset right after `compose up` does not fail the job
 - Escritas do hub falhavam com `context deadline exceeded` quando o SQLite estava grande e uma única conexão serializava leitura e ingestão
 
 ## [0.3.0] - 2026-09-29
