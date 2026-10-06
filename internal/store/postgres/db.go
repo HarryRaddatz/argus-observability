@@ -489,18 +489,33 @@ ORDER BY ts DESC
 	return out, nil
 }
 
-func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since time.Time, limit int) ([]model.Event, error) {
+func eventWhere(entityUID string, since time.Time) (string, []any) {
+	clause := `ts >= ?`
+	args := []any{since.UTC().Format(time.RFC3339Nano)}
+	if entityUID != "" {
+		clause += ` AND entity_uid=?`
+		args = append(args, entityUID)
+	}
+	return clause, args
+}
+
+func (s *Postgres) CountEvents(ctx context.Context, entityUID string, since time.Time) (int, error) {
+	clause, args := eventWhere(entityUID, since)
+	var n int
+	err := s.rdb.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE `+clause, args...).Scan(&n)
+	return n, err
+}
+
+func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since time.Time, limit, offset int) ([]model.Event, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	q := `SELECT id, type, ts, severity, source, entity_uid, labels_json, payload_json FROM events WHERE ts >= ?`
-	args := []any{since.UTC().Format(time.RFC3339Nano)}
-	if entityUID != "" {
-		q += ` AND entity_uid=?`
-		args = append(args, entityUID)
+	if offset < 0 {
+		offset = 0
 	}
-	q += ` ORDER BY ts DESC LIMIT ?`
-	args = append(args, limit)
+	clause, args := eventWhere(entityUID, since)
+	q := `SELECT id, type, ts, severity, source, entity_uid, labels_json, payload_json FROM events WHERE ` + clause + ` ORDER BY ts DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
 	rows, err := s.rdb.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
@@ -509,62 +524,76 @@ func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since time.
 	return scanEvents(rows)
 }
 
-func (s *Postgres) SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error) {
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 200
-	}
-	q := `SELECT ts, message, level, entity_uid, labels_json, fields_json FROM log_entries WHERE ts >= ?`
+func logWhere(filter model.LogSearchFilter) (string, []any) {
+	clause := `ts >= ?`
 	args := []any{filter.Since.UTC().Format(time.RFC3339Nano)}
-
 	if filter.Query != "" {
-		q += ` AND message ILIKE ?`
+		clause += ` AND message ILIKE ?`
 		args = append(args, fmt.Sprintf("%%%s%%", filter.Query))
 	}
 	if filter.EntityUID != "" {
-		q += ` AND entity_uid=?`
+		clause += ` AND entity_uid=?`
 		args = append(args, filter.EntityUID)
 	}
 	if filter.Container != "" {
-		q += ` AND entity_uid LIKE ?`
+		clause += ` AND entity_uid LIKE ?`
 		args = append(args, "%:"+filter.Container)
 	}
 	if filter.Level != "" && filter.Level != "all" {
-		q += ` AND level=?`
+		clause += ` AND level=?`
 		args = append(args, filter.Level)
 	}
 	if filter.Topic != "" && filter.Topic != "all" {
-		q += ` AND fields_json LIKE ?`
+		clause += ` AND fields_json LIKE ?`
 		args = append(args, fmt.Sprintf(`%%"topics":%%"%s"%%`, filter.Topic))
 	}
 	if filter.TraceID != "" {
 		patterns := insights.TraceSearchPatterns(filter.TraceID)
 		if len(patterns) > 0 {
-			q += ` AND (`
+			clause += ` AND (`
 			for i, p := range patterns {
 				if i > 0 {
-					q += ` OR `
+					clause += ` OR `
 				}
-				q += `(fields_json LIKE ? OR message LIKE ?)`
+				clause += `(fields_json LIKE ? OR message LIKE ?)`
 				args = append(args, p, p)
 			}
-			q += `)`
+			clause += `)`
 		}
 	}
 	if len(filter.Containers) > 0 {
-		q += ` AND (`
+		clause += ` AND (`
 		for i, c := range filter.Containers {
 			if i > 0 {
-				q += ` OR `
+				clause += ` OR `
 			}
-			q += `entity_uid LIKE ?`
+			clause += `entity_uid LIKE ?`
 			args = append(args, "%:"+c)
 		}
-		q += `)`
+		clause += `)`
 	}
+	return clause, args
+}
 
-	q += ` ORDER BY ts DESC LIMIT ?`
-	args = append(args, limit)
+func (s *Postgres) CountLogs(ctx context.Context, filter model.LogSearchFilter) (int, error) {
+	clause, args := logWhere(filter)
+	var n int
+	err := s.rdb.QueryRowContext(ctx, `SELECT count(*) FROM log_entries WHERE `+clause, args...).Scan(&n)
+	return n, err
+}
+
+func (s *Postgres) SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 200
+	}
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	clause, args := logWhere(filter)
+	q := `SELECT ts, message, level, entity_uid, labels_json, fields_json FROM log_entries WHERE ` + clause + ` ORDER BY ts DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
 	rows, err := s.rdb.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err

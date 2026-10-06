@@ -2,7 +2,6 @@ package hub
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,22 +22,23 @@ func (s *Server) handleListTraces(w http.ResponseWriter, r *http.Request) {
 			since = time.Now().UTC().Add(-d)
 		}
 	}
-	limit := 50
-	if raw := q.Get("limit"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil {
-			limit = n
-		}
-	}
-	list, err := s.store.ListTraces(r.Context(), model.TraceListFilter{
+	limit, offset := pageWindow(r, pageDefault)
+	page, err := s.store.ListTraces(r.Context(), model.TraceListFilter{
 		Since:   since,
 		Service: strings.TrimSpace(q.Get("service")),
 		Limit:   limit,
+		Offset:  offset,
 	})
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, list)
+	if page.Traces == nil {
+		page.Traces = []model.TraceSummary{}
+	}
+	writeJSON(w, http.StatusOK, model.ListPage{
+		Entries: page.Traces, Total: page.Total, Limit: limit, Offset: offset, Truncated: page.Truncated,
+	})
 }
 
 func (s *Server) handleGetTrace(w http.ResponseWriter, r *http.Request) {

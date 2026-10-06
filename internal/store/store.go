@@ -23,8 +23,10 @@ type Store interface {
 	QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error)
 	QueryHTTPServiceSummary(ctx context.Context, since time.Time) ([]model.HTTPServiceSummary, error)
 	ListWorkloads(ctx context.Context, since time.Time) ([]model.WorkloadSnapshot, error)
-	ListEvents(ctx context.Context, entityUID string, since time.Time, limit int) ([]model.Event, error)
+	ListEvents(ctx context.Context, entityUID string, since time.Time, limit, offset int) ([]model.Event, error)
+	CountEvents(ctx context.Context, entityUID string, since time.Time) (int, error)
 	SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error)
+	CountLogs(ctx context.Context, filter model.LogSearchFilter) (int, error)
 	CountLogTopics(ctx context.Context, since time.Time) ([]model.LogTopicCount, error)
 
 	UpsertFleetStatus(ctx context.Context, rows []model.ContainerFleetStatus) error
@@ -47,7 +49,7 @@ type Store interface {
 
 	WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error
 	GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error)
-	ListTraces(ctx context.Context, filter model.TraceListFilter) ([]model.TraceSummary, error)
+	ListTraces(ctx context.Context, filter model.TraceListFilter) (model.TracePage, error)
 
 	ListSLOs(ctx context.Context) ([]model.SLODefinition, error)
 	GetSLO(ctx context.Context, id string) (model.SLODefinition, error)
