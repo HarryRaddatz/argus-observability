@@ -223,6 +223,7 @@ jobs:
           push: false
           load: true
           tags: argus-${{ matrix.component }}:ci
+          build-args: ${{ matrix.component == 'web' && format('APK_REFRESH={0}', github.run_id) || '' }}
           cache-from: type=gha,scope=argus-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=argus-${{ matrix.component }}
 
