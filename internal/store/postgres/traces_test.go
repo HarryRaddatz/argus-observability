@@ -36,9 +36,13 @@ func TestListTracesMergesSpansAndLogs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour)})
+	page, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour)})
 	if err != nil {
 		t.Fatal(err)
+	}
+	got := page.Traces
+	if page.Total != 2 || page.Truncated {
+		t.Fatalf("page total=%d truncated=%v", page.Total, page.Truncated)
 	}
 	if len(got) != 2 {
 		t.Fatalf("want 2 traces, got %d: %+v", len(got), got)
@@ -60,10 +64,11 @@ func TestListTracesMergesSpansAndLogs(t *testing.T) {
 		t.Fatalf("log trace should use its earliest line and inferred service: %+v", fromLogs)
 	}
 
-	filtered, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour), Service: "orders-db"})
+	filteredPage, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour), Service: "orders-db"})
 	if err != nil {
 		t.Fatal(err)
 	}
+	filtered := filteredPage.Traces
 	if len(filtered) != 1 || filtered[0].TraceID != "aaaa1111" {
 		t.Fatalf("service filter should match any span of the trace: %+v", filtered)
 	}
@@ -78,11 +83,12 @@ func TestListTracesMergesSpansAndLogs(t *testing.T) {
 		}
 	}
 
-	limited, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour), Limit: 1})
+	limitedPage, err := st.ListTraces(ctx, model.TraceListFilter{Since: now.Add(-time.Hour), Limit: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(limited) != 1 || limited[0].TraceID != "aaaa1111" {
+	limited := limitedPage.Traces
+	if limitedPage.Total != 2 || len(limited) != 1 || limited[0].TraceID != "aaaa1111" {
 		t.Fatalf("limit should keep the most recent trace: %+v", limited)
 	}
 }

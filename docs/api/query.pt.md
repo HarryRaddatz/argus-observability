@@ -61,7 +61,9 @@ Resumo HTTP derivado de logs por serviço (`service` label).
 
 ## GET `/api/v1/logs/search`
 
-**Exemplo:** `GET /api/v1/logs/search?since=1h&container=stack-demo-api-1&q=error`
+**Exemplo:** `GET /api/v1/logs/search?since=1h&container=stack-demo-api-1&q=error&limit=50&offset=0`
+
+`limit` vale 50 e no máximo 200. `offset` vale 0. `total` conta todas as linhas do mesmo filtro, inclusive as que ficam fora desta janela.
 
 ```json
 {
@@ -73,13 +75,16 @@ Resumo HTTP derivado de logs por serviço (`service` label).
       "entity_uid": "container:stack-demo-api-1",
       "labels": { "container": "stack-demo-api-1" }
     }
-  ]
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0
 }
 ```
 
 ## GET `/api/v1/events`
 
-Timeline de eventos. Query: `since`, `entity_uid`.
+Timeline de eventos. Query: `since`, `entity_uid`, `limit`, `offset`. O corpo é o mesmo envelope da busca de logs (`entries`, `total`, `limit`, `offset`).
 
 ## GET `/api/v1/fleet/status`
 

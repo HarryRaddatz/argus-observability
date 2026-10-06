@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- Log search, events, and traces return a page (`entries`, `total`, `limit`, `offset`) instead of a silent cap. The panel pages those tables, and the containers chart states that it is the busiest slice of the same filtered list the table pages
+
 ## [0.5.0] - 2026-10-06
 
 ### Breaking

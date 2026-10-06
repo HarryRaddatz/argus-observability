@@ -1,3 +1,5 @@
+import { asPage, type ListPage } from "@/lib/page"
+
 const base = import.meta.env.VITE_API_BASE ?? ""
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -99,6 +101,8 @@ export type LogSearchParams = {
   topic?: string
   group?: string
   trace_id?: string
+  limit?: number
+  offset?: number
 }
 
 export type MetricCatalogEntry = {
@@ -187,22 +191,24 @@ export function listWorkloads(since = "30m") {
   return request<WorkloadSnapshot[]>(`/api/v1/workloads?since=${encodeURIComponent(since)}`).then(asArray)
 }
 
-export function listEvents(entityUID?: string, since = "24h") {
-  const q = new URLSearchParams({ since })
+export function listEvents(entityUID?: string, since = "24h", limit = 50, offset = 0) {
+  const q = new URLSearchParams({ since, limit: String(limit), offset: String(offset) })
   if (entityUID) q.set("entity_uid", entityUID)
-  return request<EventRow[]>(`/api/v1/events?${q}`).then(asArray)
+  return request<unknown>(`/api/v1/events?${q}`).then((data) => asPage<EventRow>(data))
 }
 
 export function searchLogs(params: LogSearchParams = {}) {
   const p = new URLSearchParams()
   p.set("since", params.since ?? "1h")
+  p.set("limit", String(params.limit ?? 50))
+  p.set("offset", String(params.offset ?? 0))
   if (params.q) p.set("q", params.q)
   if (params.level && params.level !== "all") p.set("level", params.level)
   if (params.container && params.container !== "all") p.set("container", params.container)
   if (params.topic && params.topic !== "all") p.set("topic", params.topic)
   if (params.group) p.set("group", params.group)
   if (params.trace_id) p.set("trace_id", params.trace_id)
-  return request<LogRow[]>(`/api/v1/logs/search?${p}`).then(asArray)
+  return request<unknown>(`/api/v1/logs/search?${p}`).then((data) => asPage<LogRow>(data))
 }
 
 export function listWorkloadGroups() {
@@ -352,10 +358,10 @@ export type TraceSummary = {
   error: boolean
 }
 
-export function fetchTraces(since = "1h", service?: string) {
-  const q = new URLSearchParams({ since })
+export function fetchTraces(since = "1h", service?: string, limit = 50, offset = 0): Promise<ListPage<TraceSummary>> {
+  const q = new URLSearchParams({ since, limit: String(limit), offset: String(offset) })
   if (service) q.set("service", service)
-  return request<TraceSummary[]>(`/api/v1/traces?${q}`).then(asArray)
+  return request<unknown>(`/api/v1/traces?${q}`).then((data) => asPage<TraceSummary>(data))
 }
 
 export function fetchTrace(traceId: string, since = "24h") {

@@ -38,6 +38,10 @@
     "value": "Value",
     "close": "Close",
     "menu": "Menu",
+    "pagerRange": "{{start}}–{{end}} of {{total}}",
+    "pagerPrev": "Previous page",
+    "pagerNext": "Next page",
+    "pagerTruncated": "This total stops at the scan cap. Older rows may exist.",
     "navPanel": "Panel navigation"
   },
   "overview": {
@@ -120,6 +124,7 @@
     "unstableBanner": "Showing only containers with issues.",
     "cpuTopTitle": "CPU of the eight busiest containers",
     "cpuTopDesc": "Last hour, stacked",
+    "cpuTopOf": "Last hour. {{shown}} busiest of {{total}}.",
     "gridShows": "The grid shows {{shown}} of {{total}} containers.",
     "seeAllTable": "See all in the table",
     "actions": "Actions",

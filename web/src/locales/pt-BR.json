@@ -38,6 +38,10 @@
     "value": "Valor",
     "close": "Fechar",
     "menu": "Menu",
+    "pagerRange": "{{start}}–{{end}} de {{total}}",
+    "pagerPrev": "Página anterior",
+    "pagerNext": "Próxima página",
+    "pagerTruncated": "Este total parou no limite da varredura. Pode haver linhas mais antigas.",
     "navPanel": "Navegação do painel"
   },
   "overview": {
@@ -120,6 +124,7 @@
     "unstableBanner": "Mostrando só containers com problema.",
     "cpuTopTitle": "CPU dos oito containers que mais consomem",
     "cpuTopDesc": "Última hora, empilhado",
+    "cpuTopOf": "Última hora. {{shown}} que mais usam CPU, de {{total}}.",
     "gridShows": "A grade mostra {{shown}} de {{total}} containers.",
     "seeAllTable": "Ver todos na tabela",
     "actions": "Ações",
