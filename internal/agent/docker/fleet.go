@@ -88,6 +88,7 @@ func (c *Collector) fleetRowFromContainer(ctx context.Context, it containerInfo,
 	if ins.State.Error != "" {
 		row.StatusText = ins.State.Error
 	}
+	row.Disposition = StopDisposition(row.State, row.ExitCode, row.OOMKilled)
 	return row
 }
 

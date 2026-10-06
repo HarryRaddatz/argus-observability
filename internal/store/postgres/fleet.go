@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/model"
@@ -18,8 +17,8 @@ func (s *Postgres) UpsertFleetStatus(ctx context.Context, rows []model.Container
 		return err
 	}
 	stmt, err := tx.PrepareContext(ctx, `
-INSERT INTO container_fleet (entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+INSERT INTO container_fleet (entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, disposition, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -31,7 +30,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 		}
 		if _, err := stmt.ExecContext(ctx,
 			r.EntityUID, r.Container, r.Service, r.State, r.Health,
-			r.RestartCount, r.ExitCode, oom, r.StatusText,
+			r.RestartCount, r.ExitCode, oom, r.StatusText, r.Disposition,
 			r.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		); err != nil {
 			return err
@@ -42,7 +41,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 func (s *Postgres) GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
-SELECT entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, updated_at
+SELECT entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, disposition, updated_at
 FROM container_fleet ORDER BY container ASC`)
 	if err != nil {
 		return nil, err
@@ -55,7 +54,7 @@ FROM container_fleet ORDER BY container ASC`)
 		var oom int
 		if err := rows.Scan(
 			&r.EntityUID, &r.Container, &r.Service, &r.State, &r.Health,
-			&r.RestartCount, &r.ExitCode, &oom, &r.StatusText, &tsStr,
+			&r.RestartCount, &r.ExitCode, &oom, &r.StatusText, &r.Disposition, &tsStr,
 		); err != nil {
 			return nil, err
 		}
@@ -67,35 +66,27 @@ FROM container_fleet ORDER BY container ASC`)
 }
 
 func (s *Postgres) CountFleetEvents(ctx context.Context, since time.Time) (model.FleetEventStats, error) {
-	rows, err := s.rdb.QueryContext(ctx, `
-SELECT type, payload_json FROM events WHERE ts >= ?
+	// One pass. FILTER keeps each count on its own rows, and the exit code
+	// stays in SQL instead of shipping every payload to the process.
+	row := s.rdb.QueryRowContext(ctx, `
+SELECT
+  count(*) FILTER (WHERE type = 'container.restart'),
+  count(*) FILTER (WHERE type = 'container.oom'),
+  count(*) FILTER (WHERE type = 'agent.disconnect'),
+  count(*) FILTER (WHERE type = 'container.die' AND (
+    payload_json::json->>'cause' = 'unexpected'
+    OR (
+      COALESCE(payload_json::json->>'cause', '') = ''
+      AND COALESCE(payload_json::json->>'exitCode', '') <> ''
+      AND COALESCE(payload_json::json->>'exitCode', '') NOT IN ('0', '130', '143')
+    )
+  ))
+FROM events
+WHERE ts >= ?
 `, since.UTC().Format(time.RFC3339Nano))
-	if err != nil {
+	var stats model.FleetEventStats
+	if err := row.Scan(&stats.Restarts24h, &stats.OOM24h, &stats.Disconnect24h, &stats.Failures24h); err != nil {
 		return model.FleetEventStats{}, err
 	}
-	defer rows.Close()
-	var stats model.FleetEventStats
-	for rows.Next() {
-		var typ, payloadJSON string
-		if err := rows.Scan(&typ, &payloadJSON); err != nil {
-			return model.FleetEventStats{}, err
-		}
-		switch typ {
-		case "container.restart":
-			stats.Restarts24h++
-		case "container.oom":
-			stats.OOM24h++
-		case "agent.disconnect":
-			stats.Disconnect24h++
-		case "container.die":
-			var payload map[string]any
-			_ = json.Unmarshal([]byte(payloadJSON), &payload)
-			if code, ok := payload["exitCode"].(string); ok && code != "0" && code != "" {
-				stats.Failures24h++
-			} else if code, ok := payload["exitCode"].(float64); ok && code != 0 {
-				stats.Failures24h++
-			}
-		}
-	}
-	return stats, rows.Err()
+	return stats, nil
 }

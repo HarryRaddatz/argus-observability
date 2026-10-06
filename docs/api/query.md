@@ -83,7 +83,7 @@ Event timeline. Query: `since`, `entity_uid`.
 
 ## GET `/api/v1/fleet/status`
 
-Aggregated operational state plus container list.
+Aggregated operational state plus container list. A container that is not running carries `disposition`: `intentional` (exit 0 or a stop signal), `unexpected` (any other exit), or `oom`.
 
 ## Workload groups
 

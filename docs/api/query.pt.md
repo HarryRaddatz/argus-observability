@@ -83,7 +83,7 @@ Timeline de eventos. Query: `since`, `entity_uid`.
 
 ## GET `/api/v1/fleet/status`
 
-Estado operacional agregado + lista de containers.
+Estado operacional agregado + lista de containers. Um container que não está rodando traz `disposition`: `intentional` (saída 0 ou sinal de parada), `unexpected` (qualquer outra saída) ou `oom`.
 
 ## Workload groups
 

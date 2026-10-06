@@ -68,7 +68,14 @@
     "metricsOf": "Métricas do container",
     "groupMetrics": "Métricas do grupo",
     "loadError": "Não foi possível carregar os problemas",
-    "themeGroup": "Grupo"
+    "themeGroup": "Grupo",
+    "downTitle": "Fora agora",
+    "downEmpty": "Nada está fora por falha.",
+    "intentionalTitle": "Parado de propósito",
+    "intentionalEmpty": "Nenhum container foi parado de propósito.",
+    "intentionalDetail": "Saída {{code}}. Alguém pediu a parada.",
+    "unexpectedDetail": "Saída {{code}}. O processo terminou sozinho.",
+    "oomDetail": "O kernel encerrou porque faltou memória."
   },
   "events": {
     "loadError": "Não foi possível carregar os eventos",
@@ -130,6 +137,9 @@
     "restarting": "Reiniciando",
     "exited": "Parado",
     "dead": "Morto",
+    "intentional": "Parado de propósito",
+    "unexpected": "Falhou",
+    "oom": "Sem memória",
     "paused": "Pausado",
     "created": "Criado"
   },
