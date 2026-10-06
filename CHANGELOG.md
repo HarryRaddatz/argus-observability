@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Fleet status records why a container is down (`disposition`: intentional stop, unexpected exit, or out of memory), and Problems lists those stops apart from failures
+
 ### Changed
 
 - Hub persistence is Postgres, selected with `ARGUS_STORE_DRIVER` and `ARGUS_STORE_DSN`. The embedded SQLite store is gone; existing SQLite files are not migrated. Additional drivers, including document stores, register on the same interface

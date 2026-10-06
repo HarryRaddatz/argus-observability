@@ -1,18 +1,21 @@
-import { useCallback, useState } from "react"
+import { useCallback, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePolling } from "@/hooks/use-polling"
-import { fetchActiveAlerts, fetchInsights, type ActiveAlert, type Insight } from "@/lib/api"
+import {
+  fetchActiveAlerts,
+  fetchFleetStatus,
+  fetchInsights,
+  type ActiveAlert,
+  type ContainerFleetStatus,
+  type Insight,
+} from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import { localizeAlertTitle } from "@/lib/i18n-catalog"
 import { severityLabel, severityVariant } from "@/lib/severity"
-
-const linkClass =
-  "border-input bg-background hover:bg-muted inline-flex h-7 items-center rounded-md border px-2.5 text-xs"
 
 type Props = {
   since: string
@@ -23,14 +26,16 @@ export function ProblemsNow({ since, group }: Props) {
   const { t } = useTranslation()
   const [alerts, setAlerts] = useState<ActiveAlert[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
+  const [fleet, setFleet] = useState<ContainerFleetStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    Promise.all([fetchActiveAlerts(), fetchInsights(since, group || undefined)])
-      .then(([a, i]) => {
+    Promise.all([fetchActiveAlerts(), fetchInsights(since, group || undefined), fetchFleetStatus()])
+      .then(([a, i, f]) => {
         setAlerts(a)
         setInsights(i.insights ?? [])
+        setFleet(f.containers ?? [])
         setError(null)
       })
       .catch((e) => setError(e instanceof Error ? e.message : t("problems.loadError")))
@@ -39,73 +44,138 @@ export function ProblemsNow({ since, group }: Props) {
 
   usePolling(load)
 
-  if (loading && alerts.length === 0 && insights.length === 0) {
+  if (loading && alerts.length === 0 && insights.length === 0 && fleet.length === 0) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full" />
+          <Skeleton key={i} className="h-14 w-full" />
         ))}
       </div>
     )
   }
 
+  const failed = fleet.filter((c) => c.disposition === "unexpected" || c.disposition === "oom")
+  const stopped = fleet.filter((c) => c.disposition === "intentional")
+
   return (
     <div className="space-y-8">
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? (
+        <p className="text-destructive text-sm" role="alert">
+          {error}
+        </p>
+      ) : null}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t("problemsExtra.alerts")}</h2>
+      <Section title={t("problems.downTitle")}>
+        {failed.length === 0 ? (
+          <Empty>{t("problems.downEmpty")}</Empty>
+        ) : (
+          <ul className="divide-y">
+            {failed.map((c) => (
+              <DownRow key={c.entity_uid} container={c} />
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title={t("problems.intentionalTitle")}>
+        {stopped.length === 0 ? (
+          <Empty>{t("problems.intentionalEmpty")}</Empty>
+        ) : (
+          <ul className="divide-y">
+            {stopped.map((c) => (
+              <DownRow key={c.entity_uid} container={c} />
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title={t("problemsExtra.alerts")}>
         {alerts.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("problems.noAlerts")}</p>
+          <Empty>{t("problems.noAlerts")}</Empty>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
+          <ul className="divide-y">
             {alerts.map((a) => (
-              <Card key={a.rule_id + a.entity_uid} className="border-destructive/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-sm">{localizeAlertTitle(t, a.rule_id, a.title)}</CardTitle>
-                    <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel(t, a.severity)}</Badge>
-                  </div>
-                  <CardDescription>
+              <li key={a.rule_id + a.entity_uid} className="flex items-baseline justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{localizeAlertTitle(t, a.rule_id, a.title)}</p>
+                  <p className="text-muted-foreground truncate text-sm">
                     {t("problems.since", { container: a.container, when: formatDateTime(a.fired_at) })}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <p className="text-muted-foreground">{a.summary}</p>
-                  {a.container ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Link to={`/logs?container=${encodeURIComponent(a.container)}`} className={linkClass}>
-                        {t("problems.logsOf")}
-                      </Link>
-                      <Link to={`/metrics?container=${encodeURIComponent(a.container)}`} className={linkClass}>
-                        {t("problems.metricsOf")}
-                      </Link>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+                    {a.summary ? ` ${a.summary}` : ""}
+                  </p>
+                  {a.container ? <RowLinks container={a.container} /> : null}
+                </div>
+                <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel(t, a.severity)}</Badge>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </section>
+      </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t("problemsExtra.insights")}</h2>
+      <Section title={t("problemsExtra.insights")}>
         {insights.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("problems.noInsights")}</p>
+          <Empty>{t("problems.noInsights")}</Empty>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <ul className="divide-y">
             {insights.map((ins) => (
-              <InsightCard key={ins.id} insight={ins} group={group} />
+              <InsightRow key={ins.id} insight={ins} group={group} />
             ))}
-          </div>
+          </ul>
         )}
-      </section>
+      </Section>
     </div>
   )
 }
 
-function InsightCard({ insight, group }: { insight: Insight; group: string }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section>
+      <h2 className="mb-2 text-sm font-medium">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return <p className="text-muted-foreground text-sm">{children}</p>
+}
+
+function DownRow({ container }: { container: ContainerFleetStatus }) {
+  const { t } = useTranslation()
+  const detail =
+    container.disposition === "oom"
+      ? t("problems.oomDetail")
+      : container.disposition === "intentional"
+        ? t("problems.intentionalDetail", { code: container.exit_code ?? 0 })
+        : t("problems.unexpectedDetail", { code: container.exit_code ?? 0 })
+  return (
+    <li className="flex items-baseline justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{container.container}</p>
+        <p className="text-muted-foreground text-sm">{detail}</p>
+        <RowLinks container={container.container} />
+      </div>
+      <Badge variant={container.disposition === "intentional" ? "outline" : "destructive"}>
+        {t(`state.${container.disposition}`)}
+      </Badge>
+    </li>
+  )
+}
+
+function RowLinks({ container }: { container: string }) {
+  const { t } = useTranslation()
+  return (
+    <p className="mt-1 flex gap-3 text-sm">
+      <Link className="underline-offset-4 hover:underline" to={`/logs?container=${encodeURIComponent(container)}`}>
+        {t("problems.logsOf")}
+      </Link>
+      <Link className="underline-offset-4 hover:underline" to={`/metrics?container=${encodeURIComponent(container)}`}>
+        {t("problems.metricsOf")}
+      </Link>
+    </p>
+  )
+}
+
+function InsightRow({ insight, group }: { insight: Insight; group: string }) {
   const { t } = useTranslation()
   const topic =
     insight.theme === "gc_thrashing"
@@ -115,48 +185,29 @@ function InsightCard({ insight, group }: { insight: Insight; group: string }) {
         : insight.theme === "error_spike"
           ? "error"
           : "performance"
-
   const logsLink = group
     ? `/logs?group=${encodeURIComponent(group)}&topic=${topic}`
     : `/logs?container=${encodeURIComponent(insight.container)}&topic=${topic}`
-  const metricsLink = group
-    ? `/metrics?mode=compare&group=${encodeURIComponent(group)}`
-    : `/metrics?container=${encodeURIComponent(insight.container)}`
-
   const themeKey = `insightTheme.${insight.theme}`
   const theme = t(themeKey)
   const themeLabel = theme === themeKey ? insight.theme : theme
 
   return (
-    <Card className={insight.severity === "critical" ? "border-destructive/40" : undefined}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base leading-snug">{insight.title}</CardTitle>
-          <Badge variant={severityVariant[insight.severity] ?? "outline"}>{severityLabel(t, insight.severity)}</Badge>
-        </div>
-        <CardDescription className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{themeLabel}</Badge>
-          <span>{insight.container}</span>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <p>{insight.summary}</p>
-        {insight.recommendations?.length ? (
-          <ul className="text-muted-foreground list-inside list-disc space-y-1">
-            {insight.recommendations.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-        ) : null}
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Link to={metricsLink} className={linkClass}>
-            {group ? t("problems.groupMetrics") : t("problems.metricsOf")}
-          </Link>
-          <Link to={logsLink} className={linkClass}>
+    <li className="flex items-baseline justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{insight.title}</p>
+        <p className="text-muted-foreground text-sm">
+          <span className="text-foreground">{themeLabel}</span>
+          {insight.container ? ` · ${insight.container}` : ""}
+          {insight.summary ? ` · ${insight.summary}` : ""}
+        </p>
+        <p className="mt-1 flex gap-3 text-sm">
+          <Link className="underline-offset-4 hover:underline" to={logsLink}>
             {t("problemsExtra.relatedLogs")}
           </Link>
-        </div>
-      </CardContent>
-    </Card>
+        </p>
+      </div>
+      <Badge variant={severityVariant[insight.severity] ?? "outline"}>{severityLabel(t, insight.severity)}</Badge>
+    </li>
   )
 }

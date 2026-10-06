@@ -22,10 +22,13 @@ export function stateLabel(t: TFunction, state: string): string {
 }
 
 export function isUnstable(status: ContainerFleetStatus): boolean {
+  if (status.disposition === "intentional") return false
   const state = status.state?.toLowerCase() ?? ""
   return (
     state === "restarting" ||
     state === "dead" ||
+    status.disposition === "unexpected" ||
+    status.disposition === "oom" ||
     status.health === "unhealthy" ||
     Boolean(status.oom_killed) ||
     status.restart_count > 3
@@ -34,7 +37,8 @@ export function isUnstable(status: ContainerFleetStatus): boolean {
 
 export function instabilityReason(t: TFunction, status: ContainerFleetStatus): string {
   const state = status.state?.toLowerCase() ?? ""
-  if (status.oom_killed) return t("unstable.oom")
+  if (status.disposition === "oom" || status.oom_killed) return t("unstable.oom")
+  if (status.disposition === "unexpected") return t("state.unexpected")
   if (state === "dead") return t("unstable.dead")
   if (state === "restarting") return t("unstable.restarting")
   if (status.health === "unhealthy") return t("unstable.unhealthy")

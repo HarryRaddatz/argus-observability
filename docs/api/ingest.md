@@ -125,7 +125,7 @@ One `Event`. Empty `id` gets a UUID; empty `ts` gets the hub time. The response 
 { "id": "3c1f0a2b-9d44-4e11-8a77-1b2c3d4e5f60" }
 ```
 
-Types the agent emits from Docker events: `container.start`, `container.die`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. The hub also publishes on the same internal bus endpoint (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
+Types the agent emits from Docker events: `container.start`, `container.die`, `container.stop`, `container.kill`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. A `container.die` payload includes `cause`: `intentional` (exit 0 or a stop signal) or `unexpected`. The hub also publishes on the same internal bus endpoint (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
 
 ## POST `/api/v1/topology/batch`
 

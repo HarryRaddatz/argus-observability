@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS container_fleet (
   exit_code INTEGER NOT NULL DEFAULT 0,
   oom_killed INTEGER NOT NULL DEFAULT 0,
   status_text TEXT NOT NULL DEFAULT '',
+  disposition TEXT NOT NULL DEFAULT '',
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_fleet_service ON container_fleet(service);
@@ -182,6 +183,9 @@ CREATE TABLE IF NOT EXISTS slos (
 `
 	_, err := s.db.Exec(schema)
 	if err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`ALTER TABLE container_fleet ADD COLUMN IF NOT EXISTS disposition TEXT NOT NULL DEFAULT ''`); err != nil {
 		return err
 	}
 	if err := s.seedDefaultGroups(); err != nil {

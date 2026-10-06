@@ -68,7 +68,14 @@
     "metricsOf": "Container metrics",
     "groupMetrics": "Group metrics",
     "loadError": "Could not load problems",
-    "themeGroup": "Group"
+    "themeGroup": "Group",
+    "downTitle": "Down now",
+    "downEmpty": "Nothing is down because it failed.",
+    "intentionalTitle": "Stopped on purpose",
+    "intentionalEmpty": "No container was stopped on purpose.",
+    "intentionalDetail": "Exit {{code}}. An operator stopped it.",
+    "unexpectedDetail": "Exit {{code}}. The process ended on its own.",
+    "oomDetail": "The kernel killed it because it ran out of memory."
   },
   "events": {
     "loadError": "Could not load events",
@@ -130,6 +137,9 @@
     "restarting": "Restarting",
     "exited": "Stopped",
     "dead": "Dead",
+    "intentional": "Stopped on purpose",
+    "unexpected": "Failed",
+    "oom": "Out of memory",
     "paused": "Paused",
     "created": "Created"
   },
