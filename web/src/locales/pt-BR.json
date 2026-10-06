@@ -124,7 +124,7 @@
     "unstableBanner": "Mostrando só containers com problema.",
     "cpuTopTitle": "CPU dos oito containers que mais consomem",
     "cpuTopDesc": "Última hora, empilhado",
-    "cpuTopOf": "Última hora. {{shown}} que mais usam CPU, de {{total}}.",
+    "cpuTopOf": "Última hora, média por minuto. {{shown}} que mais usam CPU, de {{total}}. 100% é um núcleo.",
     "gridShows": "A grade mostra {{shown}} de {{total}} containers.",
     "seeAllTable": "Ver todos na tabela",
     "actions": "Ações",
@@ -338,7 +338,8 @@
     "line": "Linha",
     "empty": "Sem dados no período.",
     "emptyHint": "Sem dados no período — tente ampliar o intervalo.",
-    "statLine": "{{label}}: {{value}}{{unit}}"
+    "statLine": "{{label}}: {{value}}{{unit}}",
+    "total": "Total"
   },
   "views": {
     "name": "Nome da visão",
