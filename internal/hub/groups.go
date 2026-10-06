@@ -10,7 +10,7 @@ import (
 
 	"github.com/HarryRaddatz/argus-observability/internal/groups"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
+	"github.com/HarryRaddatz/argus-observability/internal/store"
 )
 
 func (s *Server) registerGroupRoutes() {
@@ -76,7 +76,7 @@ func (s *Server) handleGetGroup(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	g, err := s.store.GetWorkloadGroup(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sqlite.ErrNotFound) {
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -100,7 +100,7 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	g, err := s.store.UpdateWorkloadGroup(r.Context(), id, in)
 	if err != nil {
-		if errors.Is(err, sqlite.ErrNotFound) {
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -113,7 +113,7 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if err := s.store.DeleteWorkloadGroup(r.Context(), id); err != nil {
-		if errors.Is(err, sqlite.ErrNotFound) {
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -127,7 +127,7 @@ func (s *Server) handleGroupSummary(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	g, err := s.store.GetWorkloadGroup(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, sqlite.ErrNotFound) {
+		if errors.Is(err, store.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

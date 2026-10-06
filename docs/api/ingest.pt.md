@@ -125,7 +125,7 @@ Um `Event`. `id` vazio recebe UUID; `ts` vazio recebe o horário do hub. A respo
 { "id": "3c1f0a2b-9d44-4e11-8a77-1b2c3d4e5f60" }
 ```
 
-Tipos que o agent emite a partir de eventos Docker: `container.start`, `container.die`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. O hub também publica no mesmo endpoint interno do bus (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
+Tipos que o agent emite a partir de eventos Docker: `container.start`, `container.die`, `container.stop`, `container.kill`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. O payload de `container.die` inclui `cause`: `intentional` (saída 0 ou sinal de parada) ou `unexpected`. O hub também publica no mesmo endpoint interno do bus (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
 
 ## POST `/v1/traces`
 

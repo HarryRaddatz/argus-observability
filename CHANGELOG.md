@@ -4,8 +4,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Fleet status records why a container is down (`disposition`: intentional stop, unexpected exit, or out of memory), and Problems lists those stops apart from failures
+
+### Changed
+
+- Hub persistence is Postgres, selected with `ARGUS_STORE_DRIVER` and `ARGUS_STORE_DSN`. The embedded SQLite store is gone; existing SQLite files are not migrated. Additional drivers, including document stores, register on the same interface
+
 ### Fixed
 
+- Hub dependencies pick up the fixed `pgx` and `golang.org/x/text` releases so the vulnerability scan can pass
+- The web image refreshes Alpine packages on each CI build, so a cached layer cannot keep an old `pcre2`
 - Release workflow grants `security-events: write` to the reusable CI so Trivy can upload SARIF
 
 ## [0.4.0] - 2026-10-01

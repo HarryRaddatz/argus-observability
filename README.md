@@ -4,7 +4,7 @@
 
 Observability for Docker hosts and workloads: metrics, logs, events, traces, and a web panel.
 
-A central hub plus a light agent per host. Pluggable persistence (SQLite by default).
+A central hub plus a light agent per host. Pluggable persistence; Postgres is the built-in driver.
 
 [Português](README.pt-BR.md)
 
@@ -16,7 +16,8 @@ Requirements: Docker Engine with Compose v2.
 git clone https://github.com/HarryRaddatz/argus-observability.git
 cd argus-observability
 cp .env.example .env
-# Set ARGUS_AGENT_TOKEN if you want ingest authentication
+# Point ARGUS_STORE_DSN at Postgres. The minimal example starts one:
+#   docker compose -f examples/compose-minimal/docker-compose.yml up -d --build
 docker compose up -d --build
 ```
 

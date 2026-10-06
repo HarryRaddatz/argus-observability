@@ -9,7 +9,8 @@ Recreate containers after changing `.env` (`docker compose up -d --force-recreat
 | Variable | Description | Default | Required | Example |
 |---|---|---|---|---|
 | `ARGUS_HUB_ADDR` | HTTP bind address | `:8080` | no | `:8080` |
-| `ARGUS_STORE_PATH` | SQLite file | `./data/argus.db` | no | `/data/argus.db` |
+| `ARGUS_STORE_DRIVER` | Store driver. `postgres` is built in. A document driver registers with `factory.Register` and is selected by name | `postgres` | no | `postgres` |
+| `ARGUS_STORE_DSN` | Driver connection string. Required for `postgres` | empty | yes | `postgres://argus:change-me@postgres:5432/argus?sslmode=disable` |
 | `ARGUS_AGENT_TOKEN` | Bearer required on ingest routes. Empty disables the check | empty | no | `change-me` |
 | `ARGUS_RETENTION_LOGS` | Max age of `log_entries` | `168h` | no | `168h` |
 | `ARGUS_RETENTION_METRICS` | Max age of `metric_points` | `720h` | no | `720h` |
@@ -22,9 +23,11 @@ Recreate containers after changing `.env` (`docker compose up -d --force-recreat
 
 Agents on other hosts: `argus-web` also listens on port `8081`, which only proxies ingest POSTs and `/health` to the hub. Publish that port on the reverse proxy (not `80`, and not the hub directly: hub GET routes have no auth) and set `ARGUS_AGENT_TOKEN` on the hub. Each agent needs its own `ARGUS_AGENT_ID` and `ARGUS_HOST_ID`.
 
-SQLite opens in WAL, with a serialized writer and a read pool: panel and SLO queries do not block ingest. Purge also removes `log_patterns` (log retention) and `topology_edges` (metric retention) by `last_seen`.
+The hub opens one driver for every table. Postgres is the relational driver. Another backend, including a document store, implements `store.Store` and registers under its own name; `ARGUS_STORE_DRIVER` selects it. There is no embedded database and no migration from a previous file.
 
-An invalid duration falls back to the default. Compose and `.env.example` point SQLite at `/data/argus.db`.
+Purge also removes `log_patterns` (log retention) and `topology_edges` (metric retention) by `last_seen`.
+
+An invalid duration falls back to the default. An empty `ARGUS_STORE_DSN` makes the hub exit at startup.
 
 ## Agent
 
@@ -44,6 +47,14 @@ The agent also reads variables that `.env.example` does not yet list:
 | `ARGUS_FLEET_INTERVAL` | Fleet snapshot interval | `60s` | no | `60s` |
 | `ARGUS_NAME_PREFIX` | Only containers whose name starts with the prefix. Empty collects all | empty | no | `stack-` |
 | `DOCKER_HOST` | Docker Unix socket. `unix://` only | `unix:///var/run/docker.sock` | no | `unix:///var/run/docker.sock` |
+| `ARGUS_EBPF` | Enable the kernel collector (`1`, `true`, `yes`, `on`) | off | no | `1` |
+| `ARGUS_EBPF_INTERVAL` | Kernel collection window | `30s` | no | `30s` |
+
+### Kernel collector
+
+With `ARGUS_EBPF` on, the agent attaches two kernel tracepoints (`sock/inet_sock_set_state` and `tcp/tcp_retransmit_skb`) and reports observed dependencies plus connection counts, instead of relying on applications to log them. See [ingest.md](ingest.md).
+
+The agent container needs `cap_bpf`, `cap_perfmon` and `cap_sys_admin` (Docker drops the cgroup-level permission that the fine-grained capabilities rely on), a read-only mount of `/sys/kernel/tracing`, and the host kernel must expose BTF. When either is missing the agent logs the reason once and keeps running on the log-derived pipeline. With the flag off, the agent needs no extra privileges and behaves exactly as before.
 
 ## Host identifier
 

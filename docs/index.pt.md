@@ -1,6 +1,6 @@
 # Argus
 
-<p class="lead">Observabilidade de hosts e workloads Docker: métricas, logs, eventos, traces e painel web. Hub central e um agent leve por host. Persistência em SQLite no default.</p>
+<p class="lead">Observabilidade de hosts e workloads Docker: métricas, logs, eventos, traces e painel web. Hub central e um agent leve por host. Persistência em Postgres no default.</p>
 
 [Deploy](deploy.md){ .md-button .md-button--primary }
 [API](api/README.md){ .md-button }

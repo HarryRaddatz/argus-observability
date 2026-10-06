@@ -5,6 +5,12 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+# The committed object is little-endian CO-RE and works on both architectures.
+# Rebuild it here so the image never ships a stale program.
+RUN apk add --no-cache clang llvm linux-headers libbpf-dev && \
+    clang -O2 -g -Wall -Werror -target bpf -c internal/agent/kernel/bpf/l4.bpf.c \
+      -o internal/agent/kernel/bpf/l4.bpf.o && \
+    llvm-strip -g internal/agent/kernel/bpf/l4.bpf.o
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /argus-agent ./cmd/agent
 
 FROM alpine:3.24

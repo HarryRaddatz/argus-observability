@@ -42,6 +42,7 @@ type Store interface {
 	RecordLogPatterns(ctx context.Context, entries []model.LogEntry) error
 	ListLogPatterns(ctx context.Context, since time.Time, limit int) ([]model.LogPattern, error)
 	RecordTopologyEdges(ctx context.Context, entries []model.LogEntry) error
+	RecordTopologyLinks(ctx context.Context, links []model.TopologyLink) error
 	GetTopology(ctx context.Context, since time.Time) (model.TopologyGraph, error)
 
 	WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error

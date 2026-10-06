@@ -334,7 +334,17 @@ function ContainerRow({ row }: { row: Row }) {
   return (
     <TableRow className={unstable ? "bg-destructive/5" : undefined}>
       <TableCell className="font-medium">{row.container}</TableCell>
-      <TableCell>{state ? <Badge variant={stateVariant(state)}>{stateLabel(t, state)}</Badge> : "—"}</TableCell>
+      <TableCell>
+        {status?.disposition ? (
+          <Badge variant={status.disposition === "intentional" ? "outline" : "destructive"}>
+            {stateLabel(t, status.disposition)}
+          </Badge>
+        ) : state ? (
+          <Badge variant={stateVariant(state)}>{stateLabel(t, state)}</Badge>
+        ) : (
+          "—"
+        )}
+      </TableCell>
       <TableCell className="tabular-nums">
         {w ? (
           <Badge variant={w.cpu_usage > 80 ? "destructive" : "secondary"}>{formatPercent(w.cpu_usage)}</Badge>

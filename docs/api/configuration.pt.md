@@ -9,7 +9,8 @@ Recrie os containers depois de alterar `.env` (`docker compose up -d --force-rec
 | Variável | Descrição | Default | Obrigatória | Exemplo |
 |---|---|---|---|---|
 | `ARGUS_HUB_ADDR` | Endereço de bind HTTP | `:8080` | não | `:8080` |
-| `ARGUS_STORE_PATH` | Arquivo SQLite | `./data/argus.db` | não | `/data/argus.db` |
+| `ARGUS_STORE_DRIVER` | Driver do store. `postgres` vem pronto. Um driver de documento se registra em `factory.Register` e é escolhido pelo nome | `postgres` | não | `postgres` |
+| `ARGUS_STORE_DSN` | String de conexão do driver. Obrigatória para `postgres` | vazio | sim | `postgres://argus:change-me@postgres:5432/argus?sslmode=disable` |
 | `ARGUS_AGENT_TOKEN` | Bearer exigido nas rotas de ingest. Vazio desliga a checagem | vazio | não | `change-me` |
 | `ARGUS_RETENTION_LOGS` | Idade máxima de `log_entries` | `168h` | não | `168h` |
 | `ARGUS_RETENTION_METRICS` | Idade máxima de `metric_points` | `720h` | não | `720h` |
@@ -22,9 +23,11 @@ Recrie os containers depois de alterar `.env` (`docker compose up -d --force-rec
 
 Agents em outros hosts: o `argus-web` escuta também na porta `8081`, que só repassa ao hub os POST de ingest e `/health`. Publique essa porta no reverse proxy (não a `80`, nem o hub direto: as rotas GET do hub não têm auth) e use `ARGUS_AGENT_TOKEN` no hub. Cada agent precisa de `ARGUS_AGENT_ID` e `ARGUS_HOST_ID` próprios.
 
-O SQLite abre em WAL, com um escritor serializado e um pool de leitura: consultas do painel e do SLO não bloqueiam a ingestão. O purge também remove `log_patterns` (retenção de logs) e `topology_edges` (retenção de métricas) pelo `last_seen`.
+O hub abre um driver para todas as tabelas. Postgres é o driver relacional. Outro backend, inclusive um banco de documentos, implementa `store.Store` e se registra com o próprio nome; `ARGUS_STORE_DRIVER` escolhe qual. Não há banco embutido nem migração de um arquivo anterior.
 
-Duração inválida cai no default. O compose e o `.env.example` apontam o SQLite para `/data/argus.db`.
+O purge também remove `log_patterns` (retenção de logs) e `topology_edges` (retenção de métricas) pelo `last_seen`.
+
+Duração inválida cai no default. `ARGUS_STORE_DSN` vazio faz o hub encerrar na subida.
 
 ## Agent
 

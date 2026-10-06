@@ -14,7 +14,7 @@ Seven destinations in the menu (`web/src/lib/navigation.ts`). Filters, groupings
 | Metrics | `/metrics` | Series of one container or comparison across containers | `mode=container` (default) or `mode=compare` |
 | Logs | `/logs` | Line search and repeated patterns with the same filters | `mode=lines` (default) or `mode=patterns` |
 | Traces | `/traces` | Recent traces by service and range; waterfall of the open trace | `trace_id` opens the detail |
-| Topology | `/topology` | Service dependencies inferred from logs | — |
+| Topology | `/topology` | Service dependencies, observed from the kernel when available and inferred from logs otherwise | — |
 
 The screen has a single title (`PageHeader`), the same as the menu name. The top bar only has the menu button. The first focusable element is the "Skip to content" link (`#main`), and the menu sits in a `nav` landmark with `aria-label` from the locale.
 

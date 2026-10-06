@@ -18,7 +18,6 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/rules"
 	"github.com/HarryRaddatz/argus-observability/internal/slo"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -154,8 +153,8 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// ingest limita escritas simultâneas no SQLite (escritor único): acima do limite
-// o agente recebe 503 + Retry-After em vez de empilhar requests até o timeout.
+// ingest limits concurrent writes. Above the limit the agent gets 503 and
+// Retry-After instead of queueing requests until they time out.
 func (s *Server) ingest(next http.HandlerFunc) http.HandlerFunc {
 	return s.auth(func(w http.ResponseWriter, r *http.Request) {
 		wait := time.NewTimer(s.cfg.IngestWait)
@@ -387,7 +386,7 @@ func (s *Server) handleMetricSeries(w http.ResponseWriter, r *http.Request) {
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -469,7 +468,7 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -534,7 +533,7 @@ func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		g, err := s.store.GetWorkloadGroup(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -581,6 +580,9 @@ func (s *Server) handleMetricsCatalog(w http.ResponseWriter, _ *http.Request) {
 		{"name": "network.tx", "label": "Rede TX", "unit": "B/s"},
 		{"name": "block.read", "label": "Disco leitura", "unit": "B/s"},
 		{"name": "block.write", "label": "Disco escrita", "unit": "B/s"},
+		{"name": "net.connections.out", "label": "Conexões de saída", "unit": "conn"},
+		{"name": "net.connections.in", "label": "Conexões de entrada", "unit": "conn"},
+		{"name": "net.retransmits", "label": "Retransmissões TCP", "unit": "pkt"},
 	})
 }
 

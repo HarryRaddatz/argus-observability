@@ -134,6 +134,7 @@ export type ContainerFleetStatus = {
   exit_code?: number
   oom_killed?: boolean
   status_text?: string
+  disposition?: string
   updated_at?: string
 }
 
