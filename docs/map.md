@@ -10,7 +10,7 @@ Doc legend: **ok** = exists · **stub** = draft · **gap** = missing · **fix** 
 | Pillar | Description | Doc issue |
 |---|---|---|
 | Ingest | Agent → hub (metrics, logs, fleet, events) | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
-| Store | Pluggable SQLite, retention, purge | `flows/metrics-ingestion.md` |
+| Store | Pluggable driver, Postgres by default, retention, purge | `flows/metrics-ingestion.md` |
 | Query | Series, logs, insights | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
 | Derived observability | HTTP metrics, patterns, topology, traces, SLOs | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
 | UI | shadcn panel in `web/` | `flows/ui-panel.md` (ok) |
@@ -26,6 +26,7 @@ Doc legend: **ok** = exists · **stub** = draft · **gap** = missing · **fix** 
 | Logs | POST | `/api/v1/logs/batch` | `handleLogsBatch` | `flows/log-streaming.md` ok |
 | Fleet | POST | `/api/v1/fleet/batch` | `internal/hub/fleet.go` | [ingest.md](api/ingest.md) ok |
 | Events | POST | `/api/v1/events` | `handleEventIngest` | [ingest.md](api/ingest.md) ok |
+| Topology (kernel) | POST | `/api/v1/topology/batch` | `internal/hub/topology.go` | [ingest.md](api/ingest.md) ok |
 
 Collection: `internal/agent/docker/` · send: `internal/agent/client.go`
 
@@ -90,37 +91,39 @@ flowchart LR
 | Rules | `internal/rules/engine.go` | loop 30s |
 | SLO | `internal/slo/evaluator.go` | loop 60s |
 
-## Data model (SQLite)
+## Data model (Postgres)
 
 | Table | Package | Retention |
 |---|---|---|
-| `agents` | `sqlite.go` | — |
-| `metric_points` | `sqlite.go` | `ARGUS_RETENTION_METRICS` |
-| `log_entries` | `sqlite.go` | `ARGUS_RETENTION_LOGS` |
-| `events` | `sqlite.go` | `ARGUS_RETENTION_EVENTS` |
+| `agents` | `postgres/db.go` | — |
+| `metric_points` | `postgres/db.go` | `ARGUS_RETENTION_METRICS` |
+| `log_entries` | `postgres/db.go` | `ARGUS_RETENTION_LOGS` |
+| `events` | `postgres/db.go` | `ARGUS_RETENTION_EVENTS` |
 | `container_fleet` | `fleet.go` | snapshot |
 | `workload_groups` | `groups.go` | — |
 | `log_patterns` | `patterns.go` | with logs |
 | `topology_edges` | `patterns.go` | with logs |
+| `topology_links` | `patterns.go` | with metrics |
 | `trace_spans` | `traces.go` | with logs |
 | `slos` | `traces.go` | — |
 
-Interface: `internal/store/store.go` · implementation: `internal/store/sqlite/`
+Interface: `internal/store/store.go` · driver selection: `internal/store/factory` · Postgres: `internal/store/postgres/`
 
 ## Configuration (env)
 
 | Variable | Component | Doc |
 |---|---|---|
 | `ARGUS_HUB_ADDR` | hub | [configuration.md](api/configuration.md) ok |
-| `ARGUS_STORE_PATH` | hub | ok |
+| `ARGUS_STORE_DRIVER`, `ARGUS_STORE_DSN` | hub | ok |
 | `ARGUS_AGENT_TOKEN` | hub + agent | ok |
 | `ARGUS_RETENTION_LOGS`, `ARGUS_RETENTION_METRICS`, `ARGUS_RETENTION_EVENTS` | hub | ok |
 | `ARGUS_PURGE_INTERVAL`, `ARGUS_PURGE_TIMEOUT` | hub | ok |
 | `ARGUS_HUB_URL` | agent | ok |
 | `ARGUS_AGENT_ID`, `ARGUS_HOST_ID` | agent | ok · generic host id (operator label, not an inventory) |
 | `ARGUS_COLLECT_INTERVAL` | agent | ok |
+| `ARGUS_EBPF`, `ARGUS_EBPF_INTERVAL` | agent | ok |
 
-Not in `.env.example`, but read by the binary and described on the same page: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL`, `ARGUS_NAME_PREFIX`, `DOCKER_HOST`, `VITE_API_BASE`, `VITE_HUB_PROXY`.
+Not in `.env.example`, but read by the binary and described on the same page: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL`, `ARGUS_NAME_PREFIX`, `DOCKER_HOST`, `VITE_API_BASE`, `VITE_HUB_PROXY`. `ARGUS_EBPF` and `ARGUS_EBPF_INTERVAL` are in `.env.example`.
 
 See `.env.example` · task [#16](https://github.com/HarryRaddatz/argus-observability/issues/16).
 

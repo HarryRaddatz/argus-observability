@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -9,11 +9,7 @@ import (
 )
 
 func TestPurgeRemovesOldLogsAndMetrics(t *testing.T) {
-	st, err := Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.Close()
+	st := openTest(t)
 
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -66,11 +62,7 @@ func TestPurgeRemovesOldLogsAndMetrics(t *testing.T) {
 }
 
 func TestPurgeRespectsContextTimeout(t *testing.T) {
-	st, err := Open(":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.Close()
+	st := openTest(t)
 
 	ctx := context.Background()
 	base := time.Now().UTC().Add(-365 * 24 * time.Hour)
@@ -88,7 +80,7 @@ func TestPurgeRespectsContextTimeout(t *testing.T) {
 	pctx, cancel := context.WithTimeout(ctx, 1*time.Nanosecond)
 	defer cancel()
 	time.Sleep(2 * time.Millisecond)
-	_, err = st.Purge(pctx, time.Now().UTC(), time.Now().UTC(), time.Now().UTC())
+	_, err := st.Purge(pctx, time.Now().UTC(), time.Now().UTC(), time.Now().UTC())
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}

@@ -1,6 +1,6 @@
 # argus-hub
 
-Central hub of [Argus](https://github.com/HarryRaddatz/argus-observability): REST API, ingest of metrics, logs, events and OTLP traces, rules and SLOs. SQLite persistence.
+Central hub of [Argus](https://github.com/HarryRaddatz/argus-observability): REST API, ingest of metrics, logs, events and OTLP traces, rules and SLOs. Postgres persistence.
 
 Images: `linux/amd64`, `linux/arm64` · Base `alpine:3.24` · MIT license · [Documentation](https://harryraddatz.github.io/argus-observability/)
 
@@ -19,8 +19,8 @@ Hub only:
 
 ```bash
 docker run -d --name argus-hub -p 8080:8080 \
-  -e ARGUS_STORE_PATH=/data/argus.db \
-  -v argus_data:/data \
+  -e ARGUS_STORE_DRIVER=postgres \
+  -e ARGUS_STORE_DSN=postgres://argus:change-me@postgres:5432/argus?sslmode=disable \
   pseudohuery/argus-hub:latest
 
 curl -s http://localhost:8080/health
@@ -42,7 +42,8 @@ Pre-releases (`X.Y.Z-rc.N`) do not move `latest`.
 | Variable | Default | Description |
 |---|---|---|
 | `ARGUS_HUB_ADDR` | `:8080` | Listen address |
-| `ARGUS_STORE_PATH` | `./data/argus.db` (`/app/data`) | SQLite file path; use `/data/argus.db` with a volume on `/data` |
+| `ARGUS_STORE_DRIVER` | `postgres` | Store driver. A registered document driver is selected by name |
+| `ARGUS_STORE_DSN` | empty | Connection string for the selected driver |
 | `ARGUS_AGENT_TOKEN` | empty | Token required on ingest; empty disables authentication |
 | `ARGUS_RETENTION_LOGS` | `168h` | Log retention |
 | `ARGUS_RETENTION_METRICS` | `720h` | Metric retention |

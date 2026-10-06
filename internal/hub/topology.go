@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -9,7 +10,37 @@ import (
 
 func (s *Server) registerTopologyRoutes() {
 	s.mux.HandleFunc("GET /api/v1/topology", s.handleTopology)
+	s.mux.HandleFunc("POST /api/v1/topology/batch", s.ingest(s.handleTopologyBatch))
 	s.mux.HandleFunc("GET /api/v1/alerts/active", s.handleActiveAlerts)
+}
+
+// handleTopologyBatch stores dependencies observed by an agent. These carry the
+// kernel origin and take precedence over edges inferred from log text.
+func (s *Server) handleTopologyBatch(w http.ResponseWriter, r *http.Request) {
+	var links []model.TopologyLink
+	if err := json.NewDecoder(r.Body).Decode(&links); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if len(links) == 0 {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+	now := time.Now().UTC()
+	for i := range links {
+		if links[i].TS.IsZero() {
+			links[i].TS = now
+		}
+		if links[i].Kind == "" {
+			links[i].Kind = "tcp"
+		}
+	}
+	if err := s.store.RecordTopologyLinks(r.Context(), links); err != nil {
+		s.logger.Error("record topology links", "err", err)
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {

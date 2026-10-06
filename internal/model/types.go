@@ -221,11 +221,31 @@ type TopologyNode struct {
 	Label string `json:"label"`
 }
 
+// Topology edge origins. Observed edges come from kernel instrumentation on an
+// agent; inferred ones are extracted from log text and may be false positives.
+const (
+	TopologyOriginKernel = "kernel"
+	TopologyOriginLog    = "log"
+)
+
 type TopologyEdge struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 	Kind   string `json:"kind"`
 	Count  int    `json:"count"`
+	Origin string `json:"origin,omitempty"`
+	Port   uint16 `json:"port,omitempty"`
+}
+
+// TopologyLink is an observed dependency reported by an agent, as opposed to
+// an edge inferred from log text.
+type TopologyLink struct {
+	Source string    `json:"source"`
+	Target string    `json:"target"`
+	Kind   string    `json:"kind"`
+	Port   uint16    `json:"port,omitempty"`
+	Count  uint64    `json:"count"`
+	TS     time.Time `json:"ts"`
 }
 
 type TopologyGraph struct {

@@ -59,11 +59,19 @@ func (c *Collector) Close() error {
 }
 
 type containerSummary struct {
-	ID     string            `json:"Id"`
-	Names  []string          `json:"Names"`
-	Labels map[string]string `json:"Labels"`
-	State  string            `json:"State"`
-	Status string            `json:"Status"`
+	ID              string            `json:"Id"`
+	Names           []string          `json:"Names"`
+	Labels          map[string]string `json:"Labels"`
+	State           string            `json:"State"`
+	Status          string            `json:"Status"`
+	NetworkSettings networkSettings   `json:"NetworkSettings"`
+}
+
+type networkSettings struct {
+	Networks map[string]struct {
+		IPAddress         string `json:"IPAddress"`
+		GlobalIPv6Address string `json:"GlobalIPv6Address"`
+	} `json:"Networks"`
 }
 
 func (c containerSummary) primaryName() string {

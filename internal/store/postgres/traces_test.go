@@ -1,8 +1,7 @@
-package sqlite
+package postgres
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,11 +9,7 @@ import (
 )
 
 func TestListTracesMergesSpansAndLogs(t *testing.T) {
-	st, err := Open(filepath.Join(t.TempDir(), "test.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.Close()
+	st := openTest(t)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Millisecond)
 

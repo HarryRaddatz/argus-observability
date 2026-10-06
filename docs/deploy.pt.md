@@ -8,18 +8,7 @@ Versões disponíveis: [GitHub Releases](https://github.com/HarryRaddatz/argus-o
 
 1. Leia a seção da versão no [CHANGELOG.md](../CHANGELOG.md). Em mudança **major**, procure por *Breaking* e ajuste `.env` antes de subir.
 2. Confira se o `.env` tem as variáveis novas listadas em [.env.example](../.env.example).
-3. O banco SQLite fica no volume `argus_data`. `docker compose down` preserva o volume; **não** use `down -v`.
-
-Backup opcional do banco (hub parado evita arquivo inconsistente):
-
-```bash
-docker compose stop argus-hub
-docker run --rm -v argus_argus_data:/data -v "$PWD":/backup alpine \
-  cp /data/argus.db /backup/argus-$(date +%Y%m%d).db
-docker compose start argus-hub
-```
-
-O nome do volume segue `<projeto>_argus_data`; confirme com `docker volume ls`.
+3. O hub guarda os dados no Postgres indicado por `ARGUS_STORE_DSN`. `docker compose down` não apaga esse banco. Faça um dump com as ferramentas do próprio Postgres antes de uma atualização major.
 
 ## Opção A — imagens publicadas (GHCR)
 
@@ -94,4 +83,4 @@ docker compose -f examples/compose-minimal/docker-compose.published.yml up -d --
 
 No build local: `git checkout v0.1.0 && docker compose up -d --build --force-recreate`.
 
-Se a versão nova alterou o schema SQLite, restaure o backup feito antes do deploy.
+Se a versão nova alterou o schema do banco, restaure o dump feito antes do deploy.

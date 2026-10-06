@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 )
 
-func (s *SQLite) UpsertFleetStatus(ctx context.Context, rows []model.ContainerFleetStatus) error {
+func (s *Postgres) UpsertFleetStatus(ctx context.Context, rows []model.ContainerFleetStatus) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	return tx.Commit()
 }
 
-func (s *SQLite) GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error) {
+func (s *Postgres) GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT entity_uid, container, service, state, health, restart_count, exit_code, oom_killed, status_text, updated_at
 FROM container_fleet ORDER BY container ASC`)
@@ -66,7 +66,7 @@ FROM container_fleet ORDER BY container ASC`)
 	return out, rows.Err()
 }
 
-func (s *SQLite) CountFleetEvents(ctx context.Context, since time.Time) (model.FleetEventStats, error) {
+func (s *Postgres) CountFleetEvents(ctx context.Context, since time.Time) (model.FleetEventStats, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT type, payload_json FROM events WHERE ts >= ?
 `, since.UTC().Format(time.RFC3339Nano))

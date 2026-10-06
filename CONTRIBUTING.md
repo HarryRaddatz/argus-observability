@@ -77,7 +77,7 @@ Follow [semver](https://semver.org/). While the version is `0.x`, breaking chang
 |---|---|---|
 | Fix without changing the contract | patch | `0.1.0` → `0.1.1` |
 | New feature, route, or optional env | minor | `0.1.1` → `0.2.0` |
-| Removed/renamed route, incompatible payload, new required env, incompatible SQLite schema | major (minor on `0.x`) | `1.4.2` → `2.0.0` |
+| Removed/renamed route, incompatible payload, new required env, incompatible database schema | major (minor on `0.x`) | `1.4.2` → `2.0.0` |
 
 Breaking changes go in the CHANGELOG under `### Breaking`, with the migration step for operators.
 

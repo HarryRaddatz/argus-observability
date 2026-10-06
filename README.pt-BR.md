@@ -4,7 +4,7 @@
 
 Observabilidade de hosts e workloads Docker: métricas, logs, eventos, traces e painel web.
 
-Hub central + agent leve por host. Persistência plugável (SQLite no default).
+Hub central + agent leve por host. Persistência plugável; Postgres é o driver incluso.
 
 [English](README.md)
 

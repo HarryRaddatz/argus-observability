@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
+	"os"
 	"testing"
 	"time"
 
@@ -16,12 +16,16 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/rules"
 	"github.com/HarryRaddatz/argus-observability/internal/slo"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
+	"github.com/HarryRaddatz/argus-observability/internal/store/postgres"
 )
 
 func testServer(t *testing.T, token string) (*Server, store.Store) {
 	t.Helper()
-	st, err := sqlite.Open(filepath.Join(t.TempDir(), "hub.db"))
+	dsn := os.Getenv("ARGUS_STORE_DSN")
+	if dsn == "" {
+		t.Skip("ARGUS_STORE_DSN is not set")
+	}
+	st, err := postgres.OpenIsolated(dsn, postgres.SchemaName("hub_"+t.Name()))
 	if err != nil {
 		t.Fatal(err)
 	}

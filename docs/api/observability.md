@@ -44,13 +44,13 @@ Normalized log-message patterns, most frequent first (up to 50).
 
 ## GET `/api/v1/topology`
 
-Dependency graph inferred from logs (`TopologyGraph` in `internal/model/types.go`).
+Dependency graph (`TopologyGraph` in `internal/model/types.go`). It merges edges observed by the kernel collector with edges inferred from logs. When both describe the same pair, the observed edge wins.
 
 | Parameter | Default | Description |
 |---|---|---|
 | `since` | `24h` | Window (`time.ParseDuration`). Invalid value keeps the default |
 
-`kind` observed in inference: `http`, `amqp`. Empty lists come as `[]`, not `null`.
+`origin` is `kernel` for observed edges and `log` for inferred ones. Observed edges also carry `port`. `kind` is `http`, `postgres`, `redis`, `amqp`, `mongodb`, `kafka` or `tcp` for observed edges, and `http` or `amqp` for inferred ones. Empty lists come as `[]`, not `null`.
 
 **Example:** `GET /api/v1/topology?since=24h`
 
@@ -65,7 +65,9 @@ Dependency graph inferred from logs (`TopologyGraph` in `internal/model/types.go
       "source": "checkout",
       "target": "demo-api",
       "kind": "http",
-      "count": 12
+      "count": 12,
+      "origin": "kernel",
+      "port": 8080
     }
   ]
 }

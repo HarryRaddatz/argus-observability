@@ -1,6 +1,18 @@
 name: argus-minimal
 
 services:
+  argus-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus
+      POSTGRES_DB: argus
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   argus-hub:
     build:
       context: ../..
@@ -9,9 +21,11 @@ services:
       - "8080:8080"
     environment:
       ARGUS_HUB_ADDR: ":8080"
-      ARGUS_STORE_PATH: /data/argus.db
-    volumes:
-      - argus_data:/data
+      ARGUS_STORE_DRIVER: postgres
+      ARGUS_STORE_DSN: postgres://argus:argus@argus-postgres:5432/argus?sslmode=disable
+    depends_on:
+      argus-postgres:
+        condition: service_healthy
 
   argus-agent:
     build:
@@ -22,6 +36,13 @@ services:
       ARGUS_HOST_ID: demo-host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Tracepoint attachment reads the tracefs events directory.
+      - /sys/kernel/tracing:/sys/kernel/tracing:ro
+    # Only needed when ARGUS_EBPF is enabled.
+    cap_add:
+      - BPF
+      - PERFMON
+      - SYS_ADMIN
     depends_on:
       - argus-hub
 
@@ -33,6 +54,3 @@ services:
       - "3000:80"
     depends_on:
       - argus-hub
-
-volumes:
-  argus_data:

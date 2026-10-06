@@ -104,6 +104,17 @@ func (c *Client) SendFleet(ctx context.Context, rows []model.ContainerFleetStatu
 	return c.post(ctx, "/api/v1/fleet/batch", body, nil)
 }
 
+func (c *Client) SendTopology(ctx context.Context, links []model.TopologyLink) error {
+	if len(links) == 0 {
+		return nil
+	}
+	body, err := json.Marshal(links)
+	if err != nil {
+		return err
+	}
+	return c.post(ctx, "/api/v1/topology/batch", body, nil)
+}
+
 func (c *Client) post(ctx context.Context, path string, body []byte, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.HubURL+path, bytes.NewReader(body))
 	if err != nil {

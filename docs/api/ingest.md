@@ -127,6 +127,31 @@ One `Event`. Empty `id` gets a UUID; empty `ts` gets the hub time. The response 
 
 Types the agent emits from Docker events: `container.start`, `container.die`, `container.oom`, `container.restart`, `container.pause`, `container.unpause`, `container.destroy`, `container.rename`. The hub also publishes on the same internal bus endpoint (`agent.register`, `alert.fired`, `metric.threshold`, `alert.resolved`, `slo.budget_low`).
 
+## POST `/api/v1/topology/batch`
+
+Dependencies the agent observed from kernel tracepoints, rather than inferred from log text. Enabled with `ARGUS_EBPF`. Handler: `internal/hub/topology.go`.
+
+```json
+[
+  {
+    "source": "gateway",
+    "target": "payments",
+    "kind": "http",
+    "port": 8080,
+    "count": 42,
+    "ts": "2026-09-04T12:00:00Z"
+  }
+]
+```
+
+`source` and `target` are service names when the peer is a local container, or the raw address otherwise. `kind` comes from the listening port (`http`, `postgres`, `redis`, `amqp`, `mongodb`, `kafka`, and `tcp` as the fallback). `count` is the number of new connections in the collection window and accumulates in the store.
+
+**Response** `202` with no body. An empty body is `202`. Invalid JSON is `400`.
+
+`GET /api/v1/topology` merges these with edges inferred from logs. When both describe the same pair, the observed edge wins and carries `origin: "kernel"` plus the port. Inferred edges carry `origin: "log"`.
+
+The same collection window also sends `net.connections.out`, `net.connections.in` and `net.retransmits` through `POST /api/v1/metrics/batch`, labelled `source=ebpf`.
+
 ## POST `/v1/traces`
 
 The hub's only OTLP route. JSON (`application/json`), body up to 4 MiB. Handler: `internal/hub/otlp.go`. Parser: `internal/otel/ingest.go`.

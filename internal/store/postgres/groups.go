@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *SQLite) ListWorkloadGroups(ctx context.Context) ([]model.WorkloadGroup, error) {
+func (s *Postgres) ListWorkloadGroups(ctx context.Context) ([]model.WorkloadGroup, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at
 FROM workload_groups ORDER BY name ASC`)
@@ -22,7 +22,7 @@ FROM workload_groups ORDER BY name ASC`)
 	return scanWorkloadGroups(rows)
 }
 
-func (s *SQLite) GetWorkloadGroup(ctx context.Context, id string) (model.WorkloadGroup, error) {
+func (s *Postgres) GetWorkloadGroup(ctx context.Context, id string) (model.WorkloadGroup, error) {
 	row := s.rdb.QueryRowContext(ctx, `
 SELECT id, name, kind, description, label_key, label_value, containers_json, created_at, updated_at
 FROM workload_groups WHERE id=?`, id)
@@ -33,7 +33,7 @@ FROM workload_groups WHERE id=?`, id)
 	return g, err
 }
 
-func (s *SQLite) CreateWorkloadGroup(ctx context.Context, in model.WorkloadGroupInput) (model.WorkloadGroup, error) {
+func (s *Postgres) CreateWorkloadGroup(ctx context.Context, in model.WorkloadGroupInput) (model.WorkloadGroup, error) {
 	now := time.Now().UTC()
 	id := uuid.NewString()
 	containersJSON, err := json.Marshal(in.Containers)
@@ -52,7 +52,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	return s.GetWorkloadGroup(ctx, id)
 }
 
-func (s *SQLite) UpdateWorkloadGroup(ctx context.Context, id string, in model.WorkloadGroupInput) (model.WorkloadGroup, error) {
+func (s *Postgres) UpdateWorkloadGroup(ctx context.Context, id string, in model.WorkloadGroupInput) (model.WorkloadGroup, error) {
 	containersJSON, err := json.Marshal(in.Containers)
 	if err != nil {
 		return model.WorkloadGroup{}, err
@@ -74,7 +74,7 @@ WHERE id=?`,
 	return s.GetWorkloadGroup(ctx, id)
 }
 
-func (s *SQLite) DeleteWorkloadGroup(ctx context.Context, id string) error {
+func (s *Postgres) DeleteWorkloadGroup(ctx context.Context, id string) error {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM workload_groups WHERE id=?`, id)
 	if err != nil {
 		return err

@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- Hub persistence is Postgres, selected with `ARGUS_STORE_DRIVER` and `ARGUS_STORE_DSN`. The embedded SQLite store is gone; existing SQLite files are not migrated. Additional drivers, including document stores, register on the same interface
+
 ### Fixed
 
 - Release workflow grants `security-events: write` to the reusable CI so Trivy can upload SARIF

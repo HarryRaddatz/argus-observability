@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 )
 
-func (s *SQLite) QueryHTTPServiceSummary(ctx context.Context, since time.Time) ([]model.HTTPServiceSummary, error) {
+func (s *Postgres) QueryHTTPServiceSummary(ctx context.Context, since time.Time) ([]model.HTTPServiceSummary, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT metric_name, value, labels_json FROM metric_points
 WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts >= ?

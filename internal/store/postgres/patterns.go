@@ -1,7 +1,8 @@
-package sqlite
+package postgres
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/insights"
@@ -9,7 +10,10 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/topology"
 )
 
-func (s *SQLite) RecordLogPatterns(ctx context.Context, entries []model.LogEntry) error {
+// topologyEdgeLimit caps the graph returned to the panel.
+const topologyEdgeLimit = 200
+
+func (s *Postgres) RecordLogPatterns(ctx context.Context, entries []model.LogEntry) error {
 	if len(entries) == 0 {
 		return nil
 	}
@@ -23,7 +27,7 @@ func (s *SQLite) RecordLogPatterns(ctx context.Context, entries []model.LogEntry
 INSERT INTO log_patterns (pattern_key, pattern, container, service, count, last_seen, sample)
 VALUES (?, ?, ?, ?, 1, ?, ?)
 ON CONFLICT(pattern_key, container) DO UPDATE SET
-  count = count + 1,
+  count = log_patterns.count + 1,
   last_seen = excluded.last_seen,
   sample = CASE WHEN length(excluded.sample) > 0 THEN excluded.sample ELSE sample END
 `)
@@ -65,7 +69,7 @@ type LogPatternRow struct {
 	Sample     string    `json:"sample"`
 }
 
-func (s *SQLite) ListLogPatterns(ctx context.Context, since time.Time, limit int) ([]model.LogPattern, error) {
+func (s *Postgres) ListLogPatterns(ctx context.Context, since time.Time, limit int) ([]model.LogPattern, error) {
 	rows, err := s.listLogPatterns(ctx, since, limit)
 	if err != nil {
 		return nil, err
@@ -77,7 +81,7 @@ func (s *SQLite) ListLogPatterns(ctx context.Context, since time.Time, limit int
 	return out, nil
 }
 
-func (s *SQLite) listLogPatterns(ctx context.Context, since time.Time, limit int) ([]LogPatternRow, error) {
+func (s *Postgres) listLogPatterns(ctx context.Context, since time.Time, limit int) ([]LogPatternRow, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -103,7 +107,7 @@ ORDER BY count DESC LIMIT ?
 	return out, rows.Err()
 }
 
-func (s *SQLite) RecordTopologyEdges(ctx context.Context, entries []model.LogEntry) error {
+func (s *Postgres) RecordTopologyEdges(ctx context.Context, entries []model.LogEntry) error {
 	if len(entries) == 0 {
 		return nil
 	}
@@ -117,7 +121,7 @@ func (s *SQLite) RecordTopologyEdges(ctx context.Context, entries []model.LogEnt
 INSERT INTO topology_edges (source, target, kind, count, last_seen)
 VALUES (?, ?, ?, 1, ?)
 ON CONFLICT(source, target, kind) DO UPDATE SET
-  count = count + 1,
+  count = topology_edges.count + 1,
   last_seen = excluded.last_seen
 `)
 	if err != nil {
@@ -157,23 +161,115 @@ type TopologyResponse struct {
 	Edges []TopologyEdgeRow `json:"edges"`
 }
 
-func (s *SQLite) GetTopology(ctx context.Context, since time.Time) (model.TopologyGraph, error) {
-	resp, err := s.queryTopology(ctx, since)
+// RecordTopologyLinks stores dependencies observed by an agent. Counts arrive
+// as per-window increments, so they accumulate on conflict.
+func (s *Postgres) RecordTopologyLinks(ctx context.Context, links []model.TopologyLink) error {
+	if len(links) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO topology_links (source, target, kind, port, count, last_seen)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(source, target, port) DO UPDATE SET
+  kind = excluded.kind,
+  count = topology_links.count + excluded.count,
+  last_seen = excluded.last_seen
+`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, link := range links {
+		if link.Source == "" || link.Target == "" || link.Count == 0 {
+			continue
+		}
+		if _, err := stmt.ExecContext(ctx, link.Source, link.Target, link.Kind, link.Port,
+			link.Count, link.TS.UTC().Format(time.RFC3339Nano)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// GetTopology merges dependencies observed by an agent with the ones inferred
+// from log text. When both describe the same pair the observed edge wins: it
+// carries the port and cannot be a false positive from a URL inside a message.
+func (s *Postgres) GetTopology(ctx context.Context, since time.Time) (model.TopologyGraph, error) {
+	observed, err := s.queryTopologyLinks(ctx, since)
 	if err != nil {
 		return model.TopologyGraph{}, err
 	}
-	nodes := make([]model.TopologyNode, len(resp.Nodes))
-	for i, n := range resp.Nodes {
-		nodes[i] = model.TopologyNode(n)
+	inferred, err := s.queryTopology(ctx, since)
+	if err != nil {
+		return model.TopologyGraph{}, err
 	}
-	edges := make([]model.TopologyEdge, len(resp.Edges))
-	for i, e := range resp.Edges {
-		edges[i] = model.TopologyEdge(e)
+
+	edges := make([]model.TopologyEdge, 0, len(observed)+len(inferred.Edges))
+	seen := make(map[string]struct{}, len(observed))
+	for _, edge := range observed {
+		seen[edge.Source+"\x00"+edge.Target] = struct{}{}
+		edges = append(edges, edge)
 	}
+	for _, row := range inferred.Edges {
+		if _, ok := seen[row.Source+"\x00"+row.Target]; ok {
+			continue
+		}
+		edges = append(edges, model.TopologyEdge{
+			Source: row.Source,
+			Target: row.Target,
+			Kind:   row.Kind,
+			Count:  row.Count,
+			Origin: model.TopologyOriginLog,
+		})
+	}
+	sort.SliceStable(edges, func(i, j int) bool { return edges[i].Count > edges[j].Count })
+	if len(edges) > topologyEdgeLimit {
+		edges = edges[:topologyEdgeLimit]
+	}
+
+	nodeSet := map[string]struct{}{}
+	for _, edge := range edges {
+		nodeSet[edge.Source] = struct{}{}
+		nodeSet[edge.Target] = struct{}{}
+	}
+	nodes := make([]model.TopologyNode, 0, len(nodeSet))
+	for id := range nodeSet {
+		nodes = append(nodes, model.TopologyNode{ID: id, Label: id})
+	}
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
+
 	return model.TopologyGraph{Nodes: nodes, Edges: edges}, nil
 }
 
-func (s *SQLite) queryTopology(ctx context.Context, since time.Time) (TopologyResponse, error) {
+func (s *Postgres) queryTopologyLinks(ctx context.Context, since time.Time) ([]model.TopologyEdge, error) {
+	rows, err := s.rdb.QueryContext(ctx, `
+SELECT source, target, kind, port, count FROM topology_links
+WHERE last_seen >= ? ORDER BY count DESC LIMIT 200
+`, since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []model.TopologyEdge
+	for rows.Next() {
+		edge := model.TopologyEdge{Origin: model.TopologyOriginKernel}
+		if err := rows.Scan(&edge.Source, &edge.Target, &edge.Kind, &edge.Port, &edge.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, edge)
+	}
+	return out, rows.Err()
+}
+
+func (s *Postgres) queryTopology(ctx context.Context, since time.Time) (TopologyResponse, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT source, target, kind, count FROM topology_edges
 WHERE last_seen >= ? ORDER BY count DESC LIMIT 200
