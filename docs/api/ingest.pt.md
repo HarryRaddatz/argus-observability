@@ -131,7 +131,7 @@ Tipos que o agent emite a partir de eventos Docker: `container.start`, `containe
 
 Única rota OTLP do hub. JSON (`application/json`), corpo até 4 MiB. Handler: `internal/hub/otlp.go`. Parser: `internal/otel/ingest.go`.
 
-Não há `POST /v1/logs` nem `POST /v1/metrics`. Protobuf OTLP não é aceito.
+Não há `POST /v1/logs` nem `POST /v1/metrics`. Protobuf OTLP não é aceito. Os clientes em `transports/` enviam esse corpo JSON. A repetição do mesmo `X-Argus-Batch-Id` é confirmada e não é gravada de novo.
 
 O parser lê `resourceSpans[].resource.attributes` (`service.name`, `container.id` ou `container.name`) e `scopeSpans[].spans`. IDs em hex de 32 caracteres, UUID ou base64. `startTimeUnixNano` e `endTimeUnixNano` são strings decimais. `kind` é o inteiro OTLP (1 internal, 2 server, 3 client, 4 producer, 5 consumer). `status.code` 1 vira `ok`, 2 vira `error`.
 

@@ -22,7 +22,12 @@
     "15m": "15 min",
     "1h": "1 hour",
     "6h": "6 hours",
-    "24h": "24 hours"
+    "24h": "24 hours",
+    "custom": "Custom",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "rangeInvalid": "End must be after the start, within 24 hours."
   },
   "common": {
     "group": "Group",
@@ -124,7 +129,7 @@
     "unstableBanner": "Showing only containers with issues.",
     "cpuTopTitle": "CPU of the eight busiest containers",
     "cpuTopDesc": "Last hour, stacked",
-    "cpuTopOf": "Last hour, averaged each minute. {{shown}} busiest of {{total}}. 100% is one core.",
+    "cpuTopOf": "Averaged each minute. {{shown}} busiest of {{total}}. 100% is one core.",
     "gridShows": "The grid shows {{shown}} of {{total}} containers.",
     "seeAllTable": "See all in the table",
     "actions": "Actions",

@@ -1,6 +1,6 @@
 # Query API
 
-Rotas GET de consulta. Parâmetro `since` aceita duração Go (`30m`, `1h`, `24h`).
+Rotas GET de consulta. Com `ARGUS_AGENT_TOKEN` definido elas exigem `Authorization: Bearer`, a mesma checagem da ingestão. `/health` continua aberto. O parâmetro `since` aceita uma duração Go (`30m`, `1h`, `24h`) ou uma janela fechada `início..fim` (RFC3339, no máximo 24 horas).
 
 ## GET `/health`
 

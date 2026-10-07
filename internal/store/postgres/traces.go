@@ -16,11 +16,21 @@ func (s *Postgres) WriteTraceSpans(ctx context.Context, spans []model.TraceSpan)
 	if len(spans) == 0 {
 		return nil
 	}
+	if tx := txFrom(ctx); tx != nil {
+		return insertTraceSpans(ctx, tx, spans)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := insertTraceSpans(ctx, tx, spans); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func insertTraceSpans(ctx context.Context, tx *boundTx, spans []model.TraceSpan) error {
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO trace_spans (trace_id, span_id, parent_span_id, name, service, container, entity_uid,
   start_ts, end_ts, duration_ms, status, kind, source, attributes_json)
@@ -55,7 +65,7 @@ ON CONFLICT(trace_id, span_id) DO UPDATE SET
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Postgres) GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error) {
@@ -111,6 +121,15 @@ func (s *Postgres) ListTraces(ctx context.Context, filter model.TraceListFilter)
 		limit = 200
 	}
 	since := filter.Since.UTC().Format(time.RFC3339Nano)
+	spanQ := `SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, status
+FROM trace_spans WHERE start_ts >= ?`
+	spanArgs := []any{since}
+	if !filter.Until.IsZero() {
+		spanQ += ` AND start_ts <= ?`
+		spanArgs = append(spanArgs, filter.Until.UTC().Format(time.RFC3339Nano))
+	}
+	spanQ += ` ORDER BY start_ts DESC LIMIT ?`
+	spanArgs = append(spanArgs, traceListScanLimit)
 
 	byKey := map[string]*model.TraceSummary{}
 	services := map[string]map[string]struct{}{}
@@ -125,10 +144,7 @@ func (s *Postgres) ListTraces(ctx context.Context, filter model.TraceListFilter)
 		services[key][svc] = struct{}{}
 	}
 
-	spanRows, err := s.rdb.QueryContext(ctx, `
-SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, status
-FROM trace_spans WHERE start_ts >= ?
-ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
+	spanRows, err := s.rdb.QueryContext(ctx, spanQ, spanArgs...)
 	if err != nil {
 		return model.TracePage{}, err
 	}
@@ -173,12 +189,19 @@ ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	}
 	spanRows.Close()
 
-	logRows, err := s.rdb.QueryContext(ctx, `
+	logQ := `
 SELECT ts, message, level, entity_uid, labels_json,
   COALESCE(fields_json::json->>'trace_id', fields_json::json->>'traceId', '')
 FROM log_entries
-WHERE ts >= ? AND (fields_json LIKE '%"trace_id"%' OR fields_json LIKE '%"traceId"%')
-ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
+WHERE ts >= ? AND (fields_json LIKE '%"trace_id"%' OR fields_json LIKE '%"traceId"%')`
+	logArgs := []any{since}
+	if !filter.Until.IsZero() {
+		logQ += ` AND ts <= ?`
+		logArgs = append(logArgs, filter.Until.UTC().Format(time.RFC3339Nano))
+	}
+	logQ += ` ORDER BY ts DESC LIMIT ?`
+	logArgs = append(logArgs, traceListScanLimit)
+	logRows, err := s.rdb.QueryContext(ctx, logQ, logArgs...)
 	if err != nil {
 		return model.TracePage{}, err
 	}

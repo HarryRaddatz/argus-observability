@@ -10,21 +10,21 @@ import (
 )
 
 func (s *Server) registerTraceRoutes() {
-	s.mux.HandleFunc("GET /api/v1/traces", s.handleListTraces)
-	s.mux.HandleFunc("GET /api/v1/traces/{trace_id}", s.handleGetTrace)
+	s.mux.HandleFunc("GET /api/v1/traces", s.auth(s.handleListTraces))
+	s.mux.HandleFunc("GET /api/v1/traces/{trace_id}", s.auth(s.handleGetTrace))
 }
 
 func (s *Server) handleListTraces(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := q.Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	limit, offset := pageWindow(r, pageDefault)
 	page, err := s.store.ListTraces(r.Context(), model.TraceListFilter{
 		Since:   since,
+		Until:   until,
 		Service: strings.TrimSpace(q.Get("service")),
 		Limit:   limit,
 		Offset:  offset,
@@ -59,15 +59,15 @@ func (s *Server) handleGetTrace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	since := time.Now().UTC().Add(-24 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, 24*time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	logs, err := s.store.SearchLogs(r.Context(), model.LogSearchFilter{
 		TraceID: traceID,
 		Since:   since,
+		Until:   until,
 		Limit:   500,
 	})
 	if err != nil {

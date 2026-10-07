@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -11,7 +12,7 @@ import (
 
 func (s *Server) registerFleetRoutes() {
 	s.mux.HandleFunc("POST /api/v1/fleet/batch", s.ingest(s.handleFleetBatch))
-	s.mux.HandleFunc("GET /api/v1/fleet/status", s.handleFleetStatus)
+	s.mux.HandleFunc("GET /api/v1/fleet/status", s.auth(s.handleFleetStatus))
 }
 
 func (s *Server) handleFleetBatch(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +25,9 @@ func (s *Server) handleFleetBatch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
-	if err := s.store.UpsertFleetStatus(r.Context(), rows); err != nil {
-		s.logger.Error("upsert fleet", "err", err)
-		http.Error(w, "store error", http.StatusInternalServerError)
+	if !s.applyIngest(w, r, http.StatusAccepted, func(ctx context.Context) error {
+		return s.store.UpsertFleetStatus(ctx, rows)
+	}) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)

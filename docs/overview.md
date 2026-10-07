@@ -57,14 +57,15 @@ Common labels: `host`, `runtime`, `container`, `namespace`, `pod`, `service`.
 ```mermaid
 stateDiagram-v2
   [*] --> Starting
-  Starting --> Connected: hub OK
-  Starting --> Backoff: failure
-  Backoff --> Starting: retry
-  Connected --> Backpressure: buffer full
-  Backpressure --> Connected: buffer drained
-  Connected --> Disconnected: hub lost
-  Disconnected --> Backoff
+  Starting --> Connected: register ok
+  Connected --> Retrying: 429, 5xx, or network
+  Retrying --> Connected: 2xx
+  Retrying --> Spooling: five attempts failed
+  Spooling --> Connected: oldest batch accepted
+  Connected --> Connected: 401, 403, or other 4xx drops that batch
 ```
+
+Register and heartbeat are not written to the spool. A full spool drops the oldest batch (`ARGUS_BUFFER_MAX_BYTES`).
 
 ## Next flows
 

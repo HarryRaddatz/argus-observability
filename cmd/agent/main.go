@@ -34,11 +34,13 @@ func main() {
 	defer collector.Close()
 
 	cli := agent.NewClient(agent.Config{
-		HubURL:     hubURL,
-		AgentToken: token,
-		AgentID:    agentID,
-		HostID:     hostID,
-		Interval:   interval,
+		HubURL:         hubURL,
+		AgentToken:     token,
+		AgentID:        agentID,
+		HostID:         hostID,
+		Interval:       interval,
+		BufferDir:      env("ARGUS_BUFFER_DIR", "/var/lib/argus/buffer"),
+		BufferMaxBytes: int64Env("ARGUS_BUFFER_MAX_BYTES", 64<<20),
 	}, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -304,4 +306,22 @@ func durationEnv(key string, fallback time.Duration) time.Duration {
 		}
 	}
 	return fallback
+}
+
+func int64Env(key string, fallback int64) int64 {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	var n int64
+	for _, ch := range v {
+		if ch < '0' || ch > '9' {
+			return fallback
+		}
+		n = n*10 + int64(ch-'0')
+	}
+	if n <= 0 {
+		return fallback
+	}
+	return n
 }
