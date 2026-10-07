@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
 import { GroupSelect } from "@/components/filters/group-select"
+import { ListPager } from "@/components/list-pager"
 import { PageHeader } from "@/components/layout/page-header"
 import { ContainerMetricCard } from "@/components/metrics/container-metric-card"
 import { StatCard } from "@/components/metrics/stat-card"
@@ -30,6 +31,7 @@ import {
 } from "@/lib/api"
 import { instabilityReason, isUnstable, stateLabel, stateVariant } from "@/lib/container-state"
 import { formatBytes, formatPercent } from "@/lib/format"
+import { PAGE_SIZE, pageIndex, pageSlice } from "@/lib/page"
 import { GroupsPanel } from "@/views/groups-panel"
 
 const GRID_LIMIT = 40
@@ -46,6 +48,14 @@ export function ContainersPage() {
   const [group, setGroup] = useQueryState("group", "")
   const [panel, setPanel] = useQueryState("panel", "")
   const [filter, setFilter] = useQueryState("filter", "")
+  const [pageRaw, setPage] = useQueryState("page", "1")
+  const filterKey = `${group}|${filter}`
+  const filterSeen = useRef(filterKey)
+  useEffect(() => {
+    if (filterSeen.current === filterKey) return
+    filterSeen.current = filterKey
+    setPage("1")
+  }, [filterKey, setPage])
 
   const [workloads, setWorkloads] = useState<WorkloadSnapshot[]>([])
   const [fleet, setFleet] = useState<FleetStatusResponse | null>(null)
@@ -146,6 +156,7 @@ export function ContainersPage() {
     return cpuSeries.filter((s) => top.includes(s.container))
   }, [rows, cpuSeries])
 
+  const tablePage = useMemo(() => pageSlice(rows, pageIndex(pageRaw), PAGE_SIZE), [rows, pageRaw])
   const gridRows = rows.filter((r) => r.workload).slice(0, GRID_LIMIT)
   const allContainers = useMemo(() => workloads.map((w) => w.container).sort(), [workloads])
 
@@ -207,7 +218,10 @@ export function ContainersPage() {
         <div className="space-y-4">
           <StackedAreaChart
             title={t("containers.cpuTopTitle")}
-            description={t("containers.cpuTopDesc")}
+            description={t("containers.cpuTopOf", {
+              shown: stackedCpu.length,
+              total: rows.filter((r) => r.workload).length,
+            })}
             series={stackedCpu}
             loading={loading}
             unit="%"
@@ -266,11 +280,19 @@ export function ContainersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((r) => <ContainerRow key={r.container} row={r} />)
+                  tablePage.rows.map((r) => <ContainerRow key={r.container} row={r} />)
                 )}
               </TableBody>
             </Table>
           </ScrollArea>
+          <ListPager
+            start={tablePage.start}
+            end={tablePage.end}
+            total={tablePage.total}
+            page={tablePage.page}
+            pageSize={PAGE_SIZE}
+            onPage={(n) => setPage(String(n))}
+          />
 
           {fleet && fleet.services.length > 0 && !group ? (
             <section className="space-y-2">

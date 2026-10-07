@@ -437,7 +437,13 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 			since = time.Now().UTC().Add(-d)
 		}
 	}
-	events, err := s.store.ListEvents(r.Context(), entityUID, since, 200)
+	limit, offset := pageWindow(r, pageDefault)
+	total, err := s.store.CountEvents(r.Context(), entityUID, since)
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	events, err := s.store.ListEvents(r.Context(), entityUID, since, limit, offset)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
@@ -445,7 +451,9 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 	if events == nil {
 		events = []model.Event{}
 	}
-	writeJSON(w, http.StatusOK, events)
+	writeJSON(w, http.StatusOK, model.ListPage{
+		Entries: events, Total: total, Limit: limit, Offset: offset,
+	})
 }
 
 func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
@@ -463,8 +471,8 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 		Topic:     r.URL.Query().Get("topic"),
 		TraceID:   r.URL.Query().Get("trace_id"),
 		Since:     since,
-		Limit:     200,
 	}
+	filter.Limit, filter.Offset = pageWindow(r, pageDefault)
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
@@ -477,6 +485,11 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 		}
 		filter.Containers = names
 	}
+	total, err := s.store.CountLogs(r.Context(), filter)
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
 	logs, err := s.store.SearchLogs(r.Context(), filter)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
@@ -485,7 +498,9 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 	if logs == nil {
 		logs = []model.LogEntry{}
 	}
-	writeJSON(w, http.StatusOK, logs)
+	writeJSON(w, http.StatusOK, model.ListPage{
+		Entries: logs, Total: total, Limit: filter.Limit, Offset: filter.Offset,
+	})
 }
 
 func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {

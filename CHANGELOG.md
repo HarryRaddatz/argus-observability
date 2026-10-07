@@ -4,13 +4,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- Log search, events, and traces return a page (`entries`, `total`, `limit`, `offset`) instead of a silent cap. The panel pages those tables, and the containers chart states that it is the busiest slice of the same filtered list the table pages
+- The containers CPU chart averages each minute. A single scrape was being drawn as the whole minute, so the stack and the tooltip showed a spike instead of the minute
+
+## [0.5.0] - 2026-10-06
+
+### Breaking
+
+- The embedded SQLite store is gone. The hub requires `ARGUS_STORE_DSN` (Postgres). Existing SQLite files are not migrated
+
 ### Added
 
+- Optional kernel collector (`ARGUS_EBPF=1`) reports L4 dependencies, connection counts, and retransmits. Log-derived HTTP stays when the collector cannot load
 - Fleet status records why a container is down (`disposition`: intentional stop, unexpected exit, or out of memory), and Problems lists those stops apart from failures
 
 ### Changed
 
-- Hub persistence is Postgres, selected with `ARGUS_STORE_DRIVER` and `ARGUS_STORE_DSN`. The embedded SQLite store is gone; existing SQLite files are not migrated. Additional drivers, including document stores, register on the same interface
+- Hub persistence is a driver selected with `ARGUS_STORE_DRIVER` (Postgres when unset). Additional drivers, including document stores, register on the same interface
 
 ### Fixed
 
@@ -132,6 +144,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
+[0.5.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.5.0
 [0.4.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.4.0
 [0.3.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.3.0
 [0.2.1]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.2.1

@@ -102,7 +102,7 @@ const traceListScanLimit = 5000
 
 // ListTraces returns recent traces from OTLP spans and from log lines that carry a trace id.
 // A trace present in both sources is reported once, from its OTLP spans.
-func (s *Postgres) ListTraces(ctx context.Context, filter model.TraceListFilter) ([]model.TraceSummary, error) {
+func (s *Postgres) ListTraces(ctx context.Context, filter model.TraceListFilter) (model.TracePage, error) {
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 50
@@ -130,13 +130,15 @@ SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, sta
 FROM trace_spans WHERE start_ts >= ?
 ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	if err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
+	spanScanned := 0
 	for spanRows.Next() {
+		spanScanned++
 		var traceID, parent, name, service, container, startStr, endStr, status string
 		if err := spanRows.Scan(&traceID, &parent, &name, &service, &container, &startStr, &endStr, &status); err != nil {
 			spanRows.Close()
-			return nil, err
+			return model.TracePage{}, err
 		}
 		start, _ := time.Parse(time.RFC3339Nano, startStr)
 		end, _ := time.Parse(time.RFC3339Nano, endStr)
@@ -167,7 +169,7 @@ ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	}
 	if err := spanRows.Err(); err != nil {
 		spanRows.Close()
-		return nil, err
+		return model.TracePage{}, err
 	}
 	spanRows.Close()
 
@@ -178,13 +180,15 @@ FROM log_entries
 WHERE ts >= ? AND (fields_json LIKE '%"trace_id"%' OR fields_json LIKE '%"traceId"%')
 ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 	if err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
+	logScanned := 0
 	defer logRows.Close()
 	for logRows.Next() {
+		logScanned++
 		var tsStr, message, level, entityUID, labelsJSON, traceID string
 		if err := logRows.Scan(&tsStr, &message, &level, &entityUID, &labelsJSON, &traceID); err != nil {
-			return nil, err
+			return model.TracePage{}, err
 		}
 		key := traceKey(traceID)
 		if key == "" {
@@ -223,7 +227,7 @@ ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 		addService(key, service)
 	}
 	if err := logRows.Err(); err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
 
 	out := make([]model.TraceSummary, 0, len(byKey))
@@ -239,10 +243,23 @@ ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 		out = append(out, *sum)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartTS.After(out[j].StartTS) })
+	total := len(out)
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > total {
+		offset = total
+	}
+	out = out[offset:]
 	if len(out) > limit {
 		out = out[:limit]
 	}
-	return out, nil
+	return model.TracePage{
+		Traces:    out,
+		Total:     total,
+		Truncated: spanScanned == traceListScanLimit || logScanned == traceListScanLimit,
+	}, nil
 }
 
 func traceKey(traceID string) string {

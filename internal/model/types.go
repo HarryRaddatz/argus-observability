@@ -125,6 +125,7 @@ type LogSearchFilter struct {
 	TraceID    string
 	Since      time.Time
 	Limit      int
+	Offset     int
 }
 
 type LogTopicCount struct {
@@ -308,6 +309,25 @@ type TraceListFilter struct {
 	Since   time.Time
 	Service string
 	Limit   int
+	Offset  int
+}
+
+// TracePage is one window of the trace list. Total counts traces inside the
+// scan. Truncated is set when that scan hit its cap, so Total may be low.
+type TracePage struct {
+	Traces    []TraceSummary
+	Total     int
+	Truncated bool
+}
+
+// ListPage is the JSON envelope for a paged query. Entries is the window.
+// Total is the full match count for the same filters.
+type ListPage struct {
+	Entries   any  `json:"entries"`
+	Total     int  `json:"total"`
+	Limit     int  `json:"limit"`
+	Offset    int  `json:"offset"`
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 type SLODefinition struct {
