@@ -21,4 +21,4 @@ Não abra issue pública nem PR com PoC de exploração.
 
 Resposta esperada em até **7 dias**. Correção publicada no `CHANGELOG.md` na seção `Security`.
 
-Rotas de consulta do hub não têm autenticação. Não exponha a porta do hub à internet sem um proxy autenticado na frente — ver [configuração](docs/api/configuration.md).
+Com `ARGUS_AGENT_TOKEN` definido, as rotas de consulta exigem o mesmo Bearer da ingestão. `/health` continua aberto. Não exponha a porta do hub à internet; quem apresenta o token ao hub é o proxy do painel. Ver [configuração](docs/api/configuration.md).

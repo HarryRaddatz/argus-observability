@@ -1,6 +1,6 @@
 # Query API
 
-GET query routes. The `since` parameter accepts a Go duration (`30m`, `1h`, `24h`).
+GET query routes. When `ARGUS_AGENT_TOKEN` is set they require `Authorization: Bearer`, the same check as ingest. `/health` stays open. The `since` parameter accepts a Go duration (`30m`, `1h`, `24h`) or a closed window `start..end` (RFC3339, at most 24 hours).
 
 ## GET `/health`
 

@@ -101,14 +101,14 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/v1/metrics/batch", s.ingest(s.handleMetricsBatch))
 	s.mux.HandleFunc("POST /api/v1/logs/batch", s.ingest(s.handleLogsBatch))
 	s.mux.HandleFunc("POST /api/v1/events", s.ingest(s.handleEventIngest))
-	s.mux.HandleFunc("GET /api/v1/query", s.handleQuery)
-	s.mux.HandleFunc("GET /api/v1/metrics/series", s.handleMetricSeries)
-	s.mux.HandleFunc("GET /api/v1/workloads", s.handleWorkloads)
-	s.mux.HandleFunc("GET /api/v1/events", s.handleListEvents)
-	s.mux.HandleFunc("GET /api/v1/logs/search", s.handleSearchLogs)
-	s.mux.HandleFunc("GET /api/v1/insights", s.handleInsights)
-	s.mux.HandleFunc("GET /api/v1/metrics/catalog", s.handleMetricsCatalog)
-	s.mux.HandleFunc("GET /api/v1/metrics/http/summary", s.handleHTTPSummary)
+	s.mux.HandleFunc("GET /api/v1/query", s.auth(s.handleQuery))
+	s.mux.HandleFunc("GET /api/v1/metrics/series", s.auth(s.handleMetricSeries))
+	s.mux.HandleFunc("GET /api/v1/workloads", s.auth(s.handleWorkloads))
+	s.mux.HandleFunc("GET /api/v1/events", s.auth(s.handleListEvents))
+	s.mux.HandleFunc("GET /api/v1/logs/search", s.auth(s.handleSearchLogs))
+	s.mux.HandleFunc("GET /api/v1/insights", s.auth(s.handleInsights))
+	s.mux.HandleFunc("GET /api/v1/metrics/catalog", s.auth(s.handleMetricsCatalog))
+	s.mux.HandleFunc("GET /api/v1/metrics/http/summary", s.auth(s.handleHTTPSummary))
 	s.registerGroupRoutes()
 	s.registerFleetRoutes()
 	s.registerPatternRoutes()
@@ -138,6 +138,8 @@ func withCORS(origin string, next http.Handler) http.Handler {
 	})
 }
 
+// auth is the Bearer check shared by ingest and query routes.
+// An empty ARGUS_AGENT_TOKEN disables it. /health stays open.
 func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.cfg.AgentToken == "" {
@@ -284,9 +286,9 @@ func (s *Server) handleMetricsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	points = append(points, deriveMemoryPct(points)...)
-	if err := s.store.WriteMetrics(r.Context(), points); err != nil {
-		s.logger.Error("write metrics", "err", err)
-		http.Error(w, "store error", http.StatusInternalServerError)
+	if !s.applyIngest(w, r, http.StatusAccepted, func(ctx context.Context) error {
+		return s.store.WriteMetrics(ctx, points)
+	}) {
 		return
 	}
 	s.checkResourcePressure(points)
@@ -311,15 +313,16 @@ func (s *Server) handleLogsBatch(w http.ResponseWriter, r *http.Request) {
 	for i := range entries {
 		derived = append(derived, insights.DeriveMetricsFromLog(entries[i])...)
 	}
-	if err := s.store.WriteLogs(r.Context(), entries); err != nil {
-		s.logger.Error("write logs", "err", err)
-		http.Error(w, "store error", http.StatusInternalServerError)
-		return
-	}
-	if len(derived) > 0 {
-		if err := s.store.WriteMetrics(r.Context(), derived); err != nil {
-			s.logger.Error("write derived metrics", "err", err)
+	if !s.applyIngest(w, r, http.StatusAccepted, func(ctx context.Context) error {
+		if err := s.store.WriteLogs(ctx, entries); err != nil {
+			return err
 		}
+		if len(derived) == 0 {
+			return nil
+		}
+		return s.store.WriteMetrics(ctx, derived)
+	}) {
+		return
 	}
 	select {
 	case s.patternQueue <- append([]model.LogEntry(nil), entries...):
@@ -327,6 +330,27 @@ func (s *Server) handleLogsBatch(w http.ResponseWriter, r *http.Request) {
 		s.logger.Warn("log patterns queue full", "dropped", len(entries))
 	}
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func requestBatchID(r *http.Request) string {
+	return strings.TrimSpace(r.Header.Get("X-Argus-Batch-Id"))
+}
+
+// applyIngest commits fn once for this batch id. A repeat is acknowledged and fn does not run.
+func (s *Server) applyIngest(w http.ResponseWriter, r *http.Request, duplicateStatus int, fn func(context.Context) error) bool {
+	applied, err := s.store.ApplyBatch(r.Context(), requestBatchID(r), fn)
+	if err != nil {
+		if s.logger != nil {
+			s.logger.Error("ingest batch", "err", err)
+		}
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return false
+	}
+	if !applied {
+		w.WriteHeader(duplicateStatus)
+		return false
+	}
+	return true
 }
 
 func (s *Server) handleEventIngest(w http.ResponseWriter, r *http.Request) {
@@ -341,7 +365,14 @@ func (s *Server) handleEventIngest(w http.ResponseWriter, r *http.Request) {
 	if evt.TS.IsZero() {
 		evt.TS = time.Now().UTC()
 	}
-	s.bus.Publish(evt)
+	if !s.applyIngest(w, r, http.StatusAccepted, func(ctx context.Context) error {
+		return s.store.WriteEvents(ctx, []model.Event{evt})
+	}) {
+		return
+	}
+	if s.bus != nil {
+		s.bus.Publish(evt)
+	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"id": evt.ID})
 }
 
@@ -351,16 +382,24 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "metric required", http.StatusBadRequest)
 		return
 	}
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	points, err := s.store.QueryMetrics(r.Context(), metric, nil, since)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
+	}
+	if !until.IsZero() {
+		trimmed := make([]model.SeriesPoint, 0, len(points))
+		for _, p := range points {
+			if !p.TS.After(until) {
+				trimmed = append(trimmed, p)
+			}
+		}
+		points = trimmed
 	}
 	writeJSON(w, http.StatusOK, model.QuerySeries{MetricName: metric, Points: points})
 }
@@ -372,13 +411,12 @@ func (s *Server) handleMetricSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	container := r.URL.Query().Get("container")
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
-	series, err := s.store.QueryMetricSeries(r.Context(), metric, container, since)
+	series, err := s.store.QueryMetricSeries(r.Context(), metric, container, since, until)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
@@ -412,11 +450,10 @@ func (s *Server) handleMetricSeries(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleWorkloads(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().UTC().Add(-15 * time.Minute)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, 15*time.Minute)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	workloads, err := s.store.ListWorkloads(r.Context(), since)
 	if err != nil {
@@ -431,19 +468,18 @@ func (s *Server) handleWorkloads(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 	entityUID := r.URL.Query().Get("entity_uid")
-	since := time.Now().UTC().Add(-24 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, 24*time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	limit, offset := pageWindow(r, pageDefault)
-	total, err := s.store.CountEvents(r.Context(), entityUID, since)
+	total, err := s.store.CountEvents(r.Context(), entityUID, since, until)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
-	events, err := s.store.ListEvents(r.Context(), entityUID, since, limit, offset)
+	events, err := s.store.ListEvents(r.Context(), entityUID, since, until, limit, offset)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
@@ -457,11 +493,10 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().UTC().Add(-15 * time.Minute)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, until, winErr := requestWindow(r, 15*time.Minute)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	filter := model.LogSearchFilter{
 		Query:     r.URL.Query().Get("q"),
@@ -471,6 +506,7 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 		Topic:     r.URL.Query().Get("topic"),
 		TraceID:   r.URL.Query().Get("trace_id"),
 		Since:     since,
+		Until:     until,
 	}
 	filter.Limit, filter.Offset = pageWindow(r, pageDefault)
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
@@ -504,11 +540,10 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	workloads, err := s.store.ListWorkloads(r.Context(), since)
 	if err != nil {
@@ -602,11 +637,10 @@ func (s *Server) handleMetricsCatalog(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleHTTPSummary(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	summary, err := s.store.QueryHTTPServiceSummary(r.Context(), since)
 	if err != nil {

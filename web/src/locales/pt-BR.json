@@ -22,7 +22,12 @@
     "15m": "15 min",
     "1h": "1 hora",
     "6h": "6 horas",
-    "24h": "24 horas"
+    "24h": "24 horas",
+    "custom": "Intervalo",
+    "from": "De",
+    "to": "Até",
+    "apply": "Aplicar",
+    "rangeInvalid": "O fim tem que ser depois do início, em até 24 horas."
   },
   "common": {
     "group": "Grupo",
@@ -124,7 +129,7 @@
     "unstableBanner": "Mostrando só containers com problema.",
     "cpuTopTitle": "CPU dos oito containers que mais consomem",
     "cpuTopDesc": "Última hora, empilhado",
-    "cpuTopOf": "Última hora, média por minuto. {{shown}} que mais usam CPU, de {{total}}. 100% é um núcleo.",
+    "cpuTopOf": "Média por minuto. {{shown}} que mais usam CPU, de {{total}}. 100% é um núcleo.",
     "gridShows": "A grade mostra {{shown}} de {{total}} containers.",
     "seeAllTable": "Ver todos na tabela",
     "actions": "Ações",

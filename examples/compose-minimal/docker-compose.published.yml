@@ -58,5 +58,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    environment:
+      ARGUS_AGENT_TOKEN: ${ARGUS_AGENT_TOKEN:-}
     depends_on:
       - argus-hub

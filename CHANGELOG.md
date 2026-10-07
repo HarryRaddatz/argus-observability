@@ -4,10 +4,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Python, Node.js, and Java transports that POST spans to the hub as OTLP JSON, with `traceparent` and `X-Correlation-Id`
+
+### Security
+
+- Query routes require the same Bearer token as ingest when `ARGUS_AGENT_TOKEN` is set. The panel proxy adds that header. `/health` stays open
+
 ### Changed
 
+- The agent retries a hub POST on 429, 5xx, and connection or timeout errors, with jittered exponential backoff capped at 8s. 401, 403, and other 4xx fail immediately
+- After those retries a telemetry batch is stored on disk and replayed, oldest first, before a newer batch. A permanent 4xx during replay drops that batch. A corrupt file is skipped
+- Each telemetry batch carries one `X-Argus-Batch-Id` from the first attempt through replay. The hub records that id in the same transaction as the write, so a lost response does not store the batch twice
 - Log search, events, and traces return a page (`entries`, `total`, `limit`, `offset`) instead of a silent cap. The panel pages those tables, and the containers chart states that it is the busiest slice of the same filtered list the table pages
 - The containers CPU chart averages each minute. A single scrape was being drawn as the whole minute, so the stack and the tooltip showed a spike instead of the minute
+- Charts use the same time-range control as logs, including a start and an end of at most 24 hours
 
 ## [0.5.0] - 2026-10-06
 

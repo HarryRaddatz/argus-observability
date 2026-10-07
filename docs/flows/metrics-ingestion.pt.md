@@ -6,20 +6,30 @@ O agent consulta o runtime a cada intervalo, normaliza pontos genéricos e envia
 
 ```mermaid
 sequenceDiagram
-  participant Runtime as Runtime API
   participant Agent
+  participant Spool
   participant Hub
   participant Store
 
   loop tick interval
-    Agent->>Runtime: stats host + workloads
-    Runtime-->>Agent: cpu, mem, net, disk
-    Agent->>Agent: attach entity_uid + labels
+    Agent->>Agent: batch_id
     Agent->>Hub: POST /api/v1/metrics/batch
-    Hub->>Store: insert metric_points
-    Hub-->>Agent: 202 accepted
+    Note over Agent,Hub: Bearer e X-Argus-Batch-Id
+    alt 2xx e id novo
+      Hub->>Store: metric_points e ingest_batches
+      Hub-->>Agent: 202
+    else batch_id já gravado
+      Hub-->>Agent: 202 sem linhas novas
+    else 429, 5xx ou rede
+      Agent->>Agent: até cinco tentativas
+      Agent->>Spool: guarda batch_id e corpo
+    else 401, 403 ou outro 4xx
+      Hub-->>Agent: falha, sem spool
+    end
   end
 ```
+
+No tick seguinte o agent reenvia o spool, do mais antigo para o mais novo, antes do lote novo. Cada replay tem o próprio timeout. Registro e heartbeat não entram no spool.
 
 ## Formato de ponto
 
@@ -48,6 +58,7 @@ sequenceDiagram
   participant Store
 
   Client->>Hub: GET /api/v1/metrics/series?metric=cpu.usage&since=1h
+  Note over Client,Hub: Bearer quando ARGUS_AGENT_TOKEN está definido
   Hub->>Store: QueryMetricSeries
   Store-->>Hub: series por container
   Hub-->>Client: metric_name, series

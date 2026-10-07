@@ -11,7 +11,7 @@ Recreate containers after changing `.env` (`docker compose up -d --force-recreat
 | `ARGUS_HUB_ADDR` | HTTP bind address | `:8080` | no | `:8080` |
 | `ARGUS_STORE_DRIVER` | Store driver. `postgres` is built in. A document driver registers with `factory.Register` and is selected by name | `postgres` | no | `postgres` |
 | `ARGUS_STORE_DSN` | Driver connection string. Required for `postgres` | empty | yes | `postgres://argus:change-me@postgres:5432/argus?sslmode=disable` |
-| `ARGUS_AGENT_TOKEN` | Bearer required on ingest routes. Empty disables the check | empty | no | `change-me` |
+| `ARGUS_AGENT_TOKEN` | Bearer required on ingest and query routes. Empty disables the check. The panel proxy sends the same value | empty | no | `change-me` |
 | `ARGUS_RETENTION_LOGS` | Max age of `log_entries` | `168h` | no | `168h` |
 | `ARGUS_RETENTION_METRICS` | Max age of `metric_points` | `720h` | no | `720h` |
 | `ARGUS_RETENTION_EVENTS` | Max age of `events` | `720h` | no | `720h` |
@@ -21,7 +21,7 @@ Recreate containers after changing `.env` (`docker compose up -d --force-recreat
 | `ARGUS_INGEST_WAIT` | Max wait for an ingest slot; then `503` with `Retry-After: 5` | `2s` | no | `2s` |
 | `ARGUS_MAX_BODY_BYTES` | Max body size of an ingest request | `8388608` | no | `8388608` |
 
-Agents on other hosts: `argus-web` also listens on port `8081`, which only proxies ingest POSTs and `/health` to the hub. Publish that port on the reverse proxy (not `80`, and not the hub directly: hub GET routes have no auth) and set `ARGUS_AGENT_TOKEN` on the hub. Each agent needs its own `ARGUS_AGENT_ID` and `ARGUS_HOST_ID`.
+Agents on other hosts: `argus-web` also listens on port `8081`, which only proxies ingest POSTs and `/health` to the hub. Publish that port on the reverse proxy (not `80`, and not the hub directly) and set `ARGUS_AGENT_TOKEN` on the hub and on the panel. Each agent needs its own `ARGUS_AGENT_ID` and `ARGUS_HOST_ID`.
 
 The hub opens one driver for every table. Postgres is the relational driver. Another backend, including a document store, implements `store.Store` and registers under its own name; `ARGUS_STORE_DRIVER` selects it. There is no embedded database and no migration from a previous file.
 
@@ -49,6 +49,8 @@ The agent also reads variables that `.env.example` does not yet list:
 | `DOCKER_HOST` | Docker Unix socket. `unix://` only | `unix:///var/run/docker.sock` | no | `unix:///var/run/docker.sock` |
 | `ARGUS_EBPF` | Enable the kernel collector (`1`, `true`, `yes`, `on`) | off | no | `1` |
 | `ARGUS_EBPF_INTERVAL` | Kernel collection window | `30s` | no | `30s` |
+| `ARGUS_BUFFER_DIR` | Directory of batches kept after the hub retries fail. Survives a process restart | `/var/lib/argus/buffer` | no | `/var/lib/argus/buffer` |
+| `ARGUS_BUFFER_MAX_BYTES` | Max size of that directory. The oldest batch is dropped when a new one does not fit | `67108864` | no | `67108864` |
 
 ### Kernel collector
 
@@ -77,6 +79,8 @@ The production panel talks to the hub through the container proxy. These variabl
 |---|---|---|---|---|
 | `VITE_API_BASE` | API prefix in the browser. Empty uses the same origin (Vite proxy) | empty | no | `` |
 | `VITE_HUB_PROXY` | Development proxy upstream (`/api` and `/health`) | `http://127.0.0.1:8080` | no | `http://127.0.0.1:8080` |
+
+`npm run dev` forwards `ARGUS_AGENT_TOKEN` on `/api` when it is set, the same way the panel container does. The browser does not receive the token.
 
 Neither is in `.env.example`.
 

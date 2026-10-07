@@ -156,7 +156,7 @@ The same collection window also sends `net.connections.out`, `net.connections.in
 
 The hub's only OTLP route. JSON (`application/json`), body up to 4 MiB. Handler: `internal/hub/otlp.go`. Parser: `internal/otel/ingest.go`.
 
-There is no `POST /v1/logs` or `POST /v1/metrics`. OTLP protobuf is not accepted.
+There is no `POST /v1/logs` or `POST /v1/metrics`. OTLP protobuf is not accepted. The clients in `transports/` send this JSON body. A repeat of the same `X-Argus-Batch-Id` is acknowledged and not written again.
 
 The parser reads `resourceSpans[].resource.attributes` (`service.name`, `container.id` or `container.name`) and `scopeSpans[].spans`. IDs as 32-character hex, UUID, or base64. `startTimeUnixNano` and `endTimeUnixNano` are decimal strings. `kind` is the OTLP integer (1 internal, 2 server, 3 client, 4 producer, 5 consumer). `status.code` 1 becomes `ok`, 2 becomes `error`.
 

@@ -11,7 +11,7 @@ Recrie os containers depois de alterar `.env` (`docker compose up -d --force-rec
 | `ARGUS_HUB_ADDR` | Endereço de bind HTTP | `:8080` | não | `:8080` |
 | `ARGUS_STORE_DRIVER` | Driver do store. `postgres` vem pronto. Um driver de documento se registra em `factory.Register` e é escolhido pelo nome | `postgres` | não | `postgres` |
 | `ARGUS_STORE_DSN` | String de conexão do driver. Obrigatória para `postgres` | vazio | sim | `postgres://argus:change-me@postgres:5432/argus?sslmode=disable` |
-| `ARGUS_AGENT_TOKEN` | Bearer exigido nas rotas de ingest. Vazio desliga a checagem | vazio | não | `change-me` |
+| `ARGUS_AGENT_TOKEN` | Bearer exigido na ingestão e nas rotas de consulta. Vazio desliga a checagem. O proxy do painel envia o mesmo valor | vazio | não | `change-me` |
 | `ARGUS_RETENTION_LOGS` | Idade máxima de `log_entries` | `168h` | não | `168h` |
 | `ARGUS_RETENTION_METRICS` | Idade máxima de `metric_points` | `720h` | não | `720h` |
 | `ARGUS_RETENTION_EVENTS` | Idade máxima de `events` | `720h` | não | `720h` |
@@ -21,7 +21,7 @@ Recrie os containers depois de alterar `.env` (`docker compose up -d --force-rec
 | `ARGUS_INGEST_WAIT` | Espera máxima por vaga de ingest; depois responde `503` com `Retry-After: 5` | `2s` | não | `2s` |
 | `ARGUS_MAX_BODY_BYTES` | Tamanho máximo do corpo de um request de ingest | `8388608` | não | `8388608` |
 
-Agents em outros hosts: o `argus-web` escuta também na porta `8081`, que só repassa ao hub os POST de ingest e `/health`. Publique essa porta no reverse proxy (não a `80`, nem o hub direto: as rotas GET do hub não têm auth) e use `ARGUS_AGENT_TOKEN` no hub. Cada agent precisa de `ARGUS_AGENT_ID` e `ARGUS_HOST_ID` próprios.
+Agents em outros hosts: o `argus-web` escuta também na porta `8081`, que só repassa ao hub os POST de ingest e `/health`. Publique essa porta no reverse proxy (não a `80`, nem o hub direto) e use `ARGUS_AGENT_TOKEN` no hub e no painel. Cada agent precisa de `ARGUS_AGENT_ID` e `ARGUS_HOST_ID` próprios.
 
 O hub abre um driver para todas as tabelas. Postgres é o driver relacional. Outro backend, inclusive um banco de documentos, implementa `store.Store` e se registra com o próprio nome; `ARGUS_STORE_DRIVER` escolhe qual. Não há banco embutido nem migração de um arquivo anterior.
 
@@ -47,6 +47,8 @@ O agent também lê variáveis que o `.env.example` ainda não lista:
 | `ARGUS_FLEET_INTERVAL` | Intervalo do snapshot de fleet | `60s` | não | `60s` |
 | `ARGUS_NAME_PREFIX` | Só containers cujo nome começa com o prefixo. Vazio coleta todos | vazio | não | `stack-` |
 | `DOCKER_HOST` | Socket Unix do Docker. Só `unix://` | `unix:///var/run/docker.sock` | não | `unix:///var/run/docker.sock` |
+| `ARGUS_BUFFER_DIR` | Diretório dos lotes guardados quando o retry ao hub falha. Sobrevive a um restart do processo | `/var/lib/argus/buffer` | não | `/var/lib/argus/buffer` |
+| `ARGUS_BUFFER_MAX_BYTES` | Tamanho máximo desse diretório. O lote mais antigo sai quando um novo não cabe | `67108864` | não | `67108864` |
 
 ## Identificador de host
 

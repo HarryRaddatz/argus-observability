@@ -56,7 +56,7 @@ Pre-releases (`X.Y.Z-rc.N`) do not move `latest`.
 
 Full reference: [configuration](https://harryraddatz.github.io/argus-observability/api/configuration/).
 
-Query routes have no authentication. Do not expose port `8080` to the internet without an authenticated proxy in front.
+Query routes use the same Bearer token as ingest when `ARGUS_AGENT_TOKEN` is set. `/health` stays open. Do not expose port `8080` to the internet; put the panel in front of it.
 
 ## Links
 

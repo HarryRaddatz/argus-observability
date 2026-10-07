@@ -126,22 +126,22 @@ func TestMetricsBatchAndQueries(t *testing.T) {
 		t.Fatalf("ingest status %d body %s", rec.Code, rec.Body.String())
 	}
 
-	work := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/workloads", nil, nil)
+	work := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/workloads", nil, auth)
 	if work.Code != http.StatusOK {
 		t.Fatalf("workloads %d %s", work.Code, work.Body.String())
 	}
 
-	series := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/metrics/series?metric=cpu.usage&since=2h", nil, nil)
+	series := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/metrics/series?metric=cpu.usage&since=2h", nil, auth)
 	if series.Code != http.StatusOK {
 		t.Fatalf("series %d %s", series.Code, series.Body.String())
 	}
 
-	logs := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/logs/search?since=1h", nil, nil)
+	logs := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/logs/search?since=1h", nil, auth)
 	if logs.Code != http.StatusOK {
 		t.Fatalf("logs %d %s", logs.Code, logs.Body.String())
 	}
 
-	fleet := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/fleet/status", nil, nil)
+	fleet := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/fleet/status", nil, auth)
 	if fleet.Code != http.StatusOK {
 		t.Fatalf("fleet %d %s", fleet.Code, fleet.Body.String())
 	}
@@ -162,8 +162,30 @@ func TestLogsSearchAfterIngest(t *testing.T) {
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("ingest %d %s", rec.Code, rec.Body.String())
 	}
-	search := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/logs/search?q=ready&since=1h", nil, nil)
+	search := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/logs/search?q=ready&since=1h", nil, auth)
 	if search.Code != http.StatusOK {
 		t.Fatalf("search %d %s", search.Code, search.Body.String())
+	}
+}
+
+func TestQueryRequiresToken(t *testing.T) {
+	s := &Server{
+		cfg:          Config{AgentToken: "secret"},
+		mux:          http.NewServeMux(),
+		ingestSlots:  make(chan struct{}, 1),
+		patternQueue: make(chan []model.LogEntry, 1),
+	}
+	s.routes()
+	rec := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/metrics/catalog", nil, nil)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status %d", rec.Code)
+	}
+	ok := doJSON(t, s.Handler(), http.MethodGet, "/api/v1/metrics/catalog", nil, map[string]string{"Authorization": "Bearer secret"})
+	if ok.Code != http.StatusOK {
+		t.Fatalf("catalog %d %s", ok.Code, ok.Body.String())
+	}
+	health := doJSON(t, s.Handler(), http.MethodGet, "/health", nil, nil)
+	if health.Code != http.StatusOK {
+		t.Fatalf("health %d", health.Code)
 	}
 }

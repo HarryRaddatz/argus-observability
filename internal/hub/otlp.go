@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"io"
 	"net/http"
 
@@ -26,8 +27,9 @@ func (s *Server) handleOTLPTraces(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if err := s.store.WriteTraceSpans(r.Context(), spans); err != nil {
-		http.Error(w, "store error", http.StatusInternalServerError)
+	if !s.applyIngest(w, r, http.StatusOK, func(ctx context.Context) error {
+		return s.store.WriteTraceSpans(ctx, spans)
+	}) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
