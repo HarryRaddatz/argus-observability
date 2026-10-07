@@ -21,4 +21,4 @@ Do not open a public issue or a PR with an exploit PoC.
 
 Expected response within **7 days**. The fix is published in `CHANGELOG.md` under `Security`.
 
-Hub query routes have no authentication. Do not expose the hub port to the internet without an authenticated proxy in front — see [configuration](docs/api/configuration.md).
+When `ARGUS_AGENT_TOKEN` is set, query routes require the same Bearer token as ingest. `/health` stays open. Do not expose the hub port to the internet; the panel proxy is what presents the token to the hub. See [configuration](docs/api/configuration.md).

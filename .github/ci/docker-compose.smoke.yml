@@ -50,6 +50,8 @@ services:
   argus-web:
     image: argus-web:ci
     pull_policy: never
+    environment:
+      ARGUS_AGENT_TOKEN: ""
     ports:
       - "3000:80"
     depends_on:

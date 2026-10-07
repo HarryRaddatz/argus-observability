@@ -57,14 +57,15 @@ Labels comuns: `host`, `runtime`, `container`, `namespace`, `pod`, `service`.
 ```mermaid
 stateDiagram-v2
   [*] --> Starting
-  Starting --> Connected: hub OK
-  Starting --> Backoff: falha
-  Backoff --> Starting: retry
-  Connected --> Backpressure: buffer cheio
-  Backpressure --> Connected: buffer normalizado
-  Connected --> Disconnected: hub perdido
-  Disconnected --> Backoff
+  Starting --> Connected: registro ok
+  Connected --> Retrying: 429, 5xx ou rede
+  Retrying --> Connected: 2xx
+  Retrying --> Spooling: cinco tentativas falharam
+  Spooling --> Connected: lote mais antigo aceito
+  Connected --> Connected: 401, 403 ou outro 4xx descarta esse lote
 ```
+
+Registro e heartbeat não vão para o spool. Spool cheio descarta o lote mais antigo (`ARGUS_BUFFER_MAX_BYTES`).
 
 ## Próximos fluxos
 

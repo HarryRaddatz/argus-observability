@@ -27,7 +27,7 @@ Legenda doc: **ok** = existe · **stub** = esboço · **gap** = falta escrever �
 | Fleet | POST | `/api/v1/fleet/batch` | `internal/hub/fleet.go` | [ingest.md](api/ingest.md) ok |
 | Eventos | POST | `/api/v1/events` | `handleEventIngest` | [ingest.md](api/ingest.md) ok |
 
-Coleta: `internal/agent/docker/` · envio: `internal/agent/client.go`
+Coleta: `internal/agent/docker/` · envio: `internal/agent/client.go` · retry: `internal/agent/retry.go` · spool: `internal/agent/buffer.go`
 
 ## Consulta e painel
 
@@ -98,6 +98,7 @@ flowchart LR
 | `metric_points` | `postgres/db.go` | `ARGUS_RETENTION_METRICS` |
 | `log_entries` | `postgres/db.go` | `ARGUS_RETENTION_LOGS` |
 | `events` | `postgres/db.go` | `ARGUS_RETENTION_EVENTS` |
+| `ingest_batches` | `postgres/batch.go` | id de um lote já gravado |
 | `container_fleet` | `fleet.go` | snapshot |
 | `workload_groups` | `groups.go` | — |
 | `log_patterns` | `patterns.go` | com logs |
@@ -119,6 +120,7 @@ Interface: `internal/store/store.go` · seleção de driver: `internal/store/fac
 | `ARGUS_HUB_URL` | agent | ok |
 | `ARGUS_AGENT_ID`, `ARGUS_HOST_ID` | agent | ok · host id genérico (rótulo do operador, não um inventário) |
 | `ARGUS_COLLECT_INTERVAL` | agent | ok |
+| `ARGUS_BUFFER_DIR`, `ARGUS_BUFFER_MAX_BYTES` | agent | ok |
 
 Fora do `.env.example`, mas lidas pelo binário e descritas na mesma página: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL`, `ARGUS_NAME_PREFIX`, `DOCKER_HOST`, `VITE_API_BASE`, `VITE_HUB_PROXY`.
 

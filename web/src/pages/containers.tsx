@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
 import { GroupSelect } from "@/components/filters/group-select"
+import { TimeRangePicker } from "@/components/filters/time-range-picker"
 import { ListPager } from "@/components/list-pager"
 import { PageHeader } from "@/components/layout/page-header"
 import { ContainerMetricCard } from "@/components/metrics/container-metric-card"
@@ -49,6 +50,7 @@ export function ContainersPage() {
   const [panel, setPanel] = useQueryState("panel", "")
   const [filter, setFilter] = useQueryState("filter", "")
   const [pageRaw, setPage] = useQueryState("page", "1")
+  const [since, setSince] = useQueryState("since", "1h")
   const filterKey = `${group}|${filter}`
   const filterSeen = useRef(filterKey)
   useEffect(() => {
@@ -70,8 +72,8 @@ export function ContainersPage() {
     Promise.all([
       listWorkloads("30m"),
       fetchFleetStatus(),
-      fetchMetricSeries("cpu.usage", "1h"),
-      fetchMetricSeries("memory.usage_pct", "1h"),
+      fetchMetricSeries("cpu.usage", since),
+      fetchMetricSeries("memory.usage_pct", since),
     ])
       .then(([wl, fl, cpu, mem]) => {
         setWorkloads(wl)
@@ -82,7 +84,7 @@ export function ContainersPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : t("containers.loadError")))
       .finally(() => setLoading(false))
-  }, [t])
+  }, [since, t])
 
   usePolling(load)
 
@@ -167,6 +169,7 @@ export function ContainersPage() {
         actions={
           <>
             <GroupSelect value={group} onChange={setGroup} groups={groups} />
+            <TimeRangePicker value={since} onChange={setSince} />
             <Button size="sm" variant="outline" onClick={() => setPanel("groups")}>
               {t("containers.manageGroups")}
             </Button>

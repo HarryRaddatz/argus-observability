@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -9,9 +10,9 @@ import (
 )
 
 func (s *Server) registerTopologyRoutes() {
-	s.mux.HandleFunc("GET /api/v1/topology", s.handleTopology)
+	s.mux.HandleFunc("GET /api/v1/topology", s.auth(s.handleTopology))
 	s.mux.HandleFunc("POST /api/v1/topology/batch", s.ingest(s.handleTopologyBatch))
-	s.mux.HandleFunc("GET /api/v1/alerts/active", s.handleActiveAlerts)
+	s.mux.HandleFunc("GET /api/v1/alerts/active", s.auth(s.handleActiveAlerts))
 }
 
 // handleTopologyBatch stores dependencies observed by an agent. These carry the
@@ -35,20 +36,19 @@ func (s *Server) handleTopologyBatch(w http.ResponseWriter, r *http.Request) {
 			links[i].Kind = "tcp"
 		}
 	}
-	if err := s.store.RecordTopologyLinks(r.Context(), links); err != nil {
-		s.logger.Error("record topology links", "err", err)
-		http.Error(w, "store error", http.StatusInternalServerError)
+	if !s.applyIngest(w, r, http.StatusAccepted, func(ctx context.Context) error {
+		return s.store.RecordTopologyLinks(ctx, links)
+	}) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
 func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().UTC().Add(-24 * time.Hour)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, 24*time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	graph, err := s.store.GetTopology(r.Context(), since)
 	if err != nil {

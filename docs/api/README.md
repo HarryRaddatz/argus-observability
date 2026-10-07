@@ -15,13 +15,13 @@ Shared contracts: `internal/model/types.go`
 
 ## Authentication
 
-Ingest routes require a header when `ARGUS_AGENT_TOKEN` is set:
+Ingest and query routes require a header when `ARGUS_AGENT_TOKEN` is set:
 
 ```
 Authorization: Bearer <token>
 ```
 
-GET queries are open by default (no auth).
+`/health` stays open. An empty token disables the check. The panel proxy adds the header; the browser does not see the token.
 
 ## Base URL
 

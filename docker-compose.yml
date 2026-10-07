@@ -41,6 +41,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Tracepoint attachment reads the tracefs events directory.
       - /sys/kernel/tracing:/sys/kernel/tracing:ro
+      - argus-agent-buffer:/var/lib/argus/buffer
     group_add:
       - "989"
     # Kernel collector (ARGUS_EBPF). Harmless while the flag is off.
@@ -64,6 +65,11 @@ services:
     cpus: "0.10"
     ports:
       - "3000:80"
+    environment:
+      ARGUS_AGENT_TOKEN: ${ARGUS_AGENT_TOKEN:-}
     depends_on:
       - argus-hub
+
+volumes:
+  argus-agent-buffer:
 

@@ -28,7 +28,7 @@ Doc legend: **ok** = exists · **stub** = draft · **gap** = missing · **fix** 
 | Events | POST | `/api/v1/events` | `handleEventIngest` | [ingest.md](api/ingest.md) ok |
 | Topology (kernel) | POST | `/api/v1/topology/batch` | `internal/hub/topology.go` | [ingest.md](api/ingest.md) ok |
 
-Collection: `internal/agent/docker/` · send: `internal/agent/client.go`
+Collection: `internal/agent/docker/` · send: `internal/agent/client.go` · retry: `internal/agent/retry.go` · spool: `internal/agent/buffer.go`
 
 ## Query and panel
 
@@ -99,6 +99,7 @@ flowchart LR
 | `metric_points` | `postgres/db.go` | `ARGUS_RETENTION_METRICS` |
 | `log_entries` | `postgres/db.go` | `ARGUS_RETENTION_LOGS` |
 | `events` | `postgres/db.go` | `ARGUS_RETENTION_EVENTS` |
+| `ingest_batches` | `postgres/batch.go` | id of a batch already written |
 | `container_fleet` | `fleet.go` | snapshot |
 | `workload_groups` | `groups.go` | — |
 | `log_patterns` | `patterns.go` | with logs |
@@ -122,6 +123,7 @@ Interface: `internal/store/store.go` · driver selection: `internal/store/factor
 | `ARGUS_AGENT_ID`, `ARGUS_HOST_ID` | agent | ok · generic host id (operator label, not an inventory) |
 | `ARGUS_COLLECT_INTERVAL` | agent | ok |
 | `ARGUS_EBPF`, `ARGUS_EBPF_INTERVAL` | agent | ok |
+| `ARGUS_BUFFER_DIR`, `ARGUS_BUFFER_MAX_BYTES` | agent | ok |
 
 Not in `.env.example`, but read by the binary and described on the same page: `ARGUS_LOG_INTERVAL`, `ARGUS_FLEET_INTERVAL`, `ARGUS_NAME_PREFIX`, `DOCKER_HOST`, `VITE_API_BASE`, `VITE_HUB_PROXY`. `ARGUS_EBPF` and `ARGUS_EBPF_INTERVAL` are in `.env.example`.
 

@@ -8,9 +8,9 @@ import (
 )
 
 func (s *Server) registerSLORoutes() {
-	s.mux.HandleFunc("GET /api/v1/slos", s.handleListSLOs)
-	s.mux.HandleFunc("GET /api/v1/slos/status", s.handleListSLOStatuses)
-	s.mux.HandleFunc("GET /api/v1/slos/{id}/status", s.handleSLOStatus)
+	s.mux.HandleFunc("GET /api/v1/slos", s.auth(s.handleListSLOs))
+	s.mux.HandleFunc("GET /api/v1/slos/status", s.auth(s.handleListSLOStatuses))
+	s.mux.HandleFunc("GET /api/v1/slos/{id}/status", s.auth(s.handleSLOStatus))
 }
 
 func (s *Server) handleListSLOStatuses(w http.ResponseWriter, r *http.Request) {

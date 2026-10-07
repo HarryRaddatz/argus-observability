@@ -167,11 +167,21 @@ func (s *Postgres) RecordTopologyLinks(ctx context.Context, links []model.Topolo
 	if len(links) == 0 {
 		return nil
 	}
+	if tx := txFrom(ctx); tx != nil {
+		return insertTopologyLinks(ctx, tx, links)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := insertTopologyLinks(ctx, tx, links); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func insertTopologyLinks(ctx context.Context, tx *boundTx, links []model.TopologyLink) error {
 
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO topology_links (source, target, kind, port, count, last_seen)
@@ -195,7 +205,7 @@ ON CONFLICT(source, target, port) DO UPDATE SET
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // GetTopology merges dependencies observed by an agent with the ones inferred

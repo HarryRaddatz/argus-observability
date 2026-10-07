@@ -15,13 +15,13 @@ Contratos compartilhados: `internal/model/types.go`
 
 ## Autenticação
 
-Rotas de ingest exigem header quando `ARGUS_AGENT_TOKEN` está configurado:
+Rotas de ingest e de consulta exigem o header quando `ARGUS_AGENT_TOKEN` está configurado:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Consultas GET são abertas por default (sem auth).
+`/health` continua aberto. Token vazio desliga a checagem. O proxy do painel adiciona o header; o browser não vê o token.
 
 ## Base URL
 

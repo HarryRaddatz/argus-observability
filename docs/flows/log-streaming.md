@@ -15,7 +15,8 @@ sequenceDiagram
     Agent->>Runtime: logs stdout/stderr
     Runtime-->>Agent: line + metadata
     Agent->>Hub: POST /api/v1/logs/batch
-    Hub->>Store: insert log_entries
+    Note over Agent,Hub: same batch_id, retry, and spool as metrics
+    Hub->>Store: log_entries and ingest_batches
     Hub-->>Agent: 202
   end
 ```
