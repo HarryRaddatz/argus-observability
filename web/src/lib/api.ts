@@ -297,7 +297,7 @@ export function fetchLogPatterns(params: LogPatternParams = {}) {
 
 export type TopologyGraph = {
   nodes: { id: string; label: string }[]
-  edges: { source: string; target: string; kind: string; count: number }[]
+  edges: { source: string; target: string; kind: string; count: number; origin?: string; port?: number }[]
 }
 
 export function fetchTopology(since = "24h") {
