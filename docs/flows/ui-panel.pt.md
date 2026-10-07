@@ -90,7 +90,7 @@ Visão geral, Problemas, Containers e Logs (padrões) atualizam a cada 30 s; Log
 
 ## Sequência — topologia
 
-A tela chama uma rota. `since` da URL (default `24h`) vai na query. Nó e aresta abrem Logs com o mesmo período (`web/src/pages/topology.tsx`).
+A tela carrega a topologia e o fleet, os workloads, o resumo HTTP e os alertas ativos que já existem. `focus` na URL seleciona um serviço. Um incidente futuro pode usar o mesmo parâmetro. O caminho mostra só quem chama a seleção e de quem ela depende (`web/src/pages/topology.tsx`).
 
 ```mermaid
 sequenceDiagram
@@ -98,8 +98,12 @@ sequenceDiagram
   participant Hub
 
   Browser->>Hub: GET /api/v1/topology?since=24h
-  Hub-->>Browser: nodes, edges
-  Browser->>Browser: link /logs?container=alvo&since=24h
+  Browser->>Hub: GET /api/v1/fleet/status
+  Browser->>Hub: GET /api/v1/workloads?since=24h
+  Browser->>Hub: GET /api/v1/metrics/http/summary?since=24h
+  Browser->>Hub: GET /api/v1/alerts/active
+  Hub-->>Browser: nós, arestas e o status que casar
+  Browser->>Browser: ordena serviços e mostra o caminho selecionado
 ```
 
 ## Sequência — grupos
