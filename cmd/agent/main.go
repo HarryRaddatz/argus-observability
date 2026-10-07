@@ -5,11 +5,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/agent"
 	"github.com/HarryRaddatz/argus-observability/internal/agent/docker"
+	"github.com/HarryRaddatz/argus-observability/internal/agent/kernel"
 	"github.com/HarryRaddatz/argus-observability/internal/model"
 )
 
@@ -53,6 +55,11 @@ func main() {
 	go runLogCollector(ctx, logger, collector, cli, logState, logInterval)
 	go runFleetCollector(ctx, logger, collector, cli, fleetInterval)
 	go runEventStream(ctx, logger, collector, cli)
+
+	if boolEnv("ARGUS_EBPF") {
+		startKernelCollector(ctx, logger, collector, cli, hostID,
+			durationEnv("ARGUS_EBPF_INTERVAL", 30*time.Second))
+	}
 
 	ticker := time.NewTicker(interval)
 	heartbeat := time.NewTicker(30 * time.Second)
@@ -176,6 +183,81 @@ func runFleetCollector(
 	}
 }
 
+// startKernelCollector enables the eBPF source. Failing to load is not fatal:
+// the agent keeps reporting the log-derived signals instead.
+func startKernelCollector(
+	ctx context.Context,
+	logger *slog.Logger,
+	collector *docker.Collector,
+	cli *agent.Client,
+	hostID string,
+	interval time.Duration,
+) {
+	kcol, err := kernel.Load()
+	if err != nil {
+		logger.Warn("kernel collector disabled, falling back to log-derived signals", "err", err)
+		return
+	}
+	for _, reason := range kcol.Degraded() {
+		logger.Warn("kernel collector partially attached", "detail", reason)
+	}
+	logger.Info("kernel collector attached", "interval", interval.String())
+
+	go func() {
+		defer kcol.Close()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				runKernelCollect(ctx, logger, kcol, collector, cli, hostID)
+			}
+		}
+	}()
+}
+
+func runKernelCollect(
+	ctx context.Context,
+	logger *slog.Logger,
+	kcol *kernel.Collector,
+	collector *docker.Collector,
+	cli *agent.Client,
+	hostID string,
+) {
+	flows, err := kcol.Flows()
+	if err != nil {
+		logger.Warn("read kernel flows", "err", err)
+		return
+	}
+	if len(flows) == 0 {
+		return
+	}
+
+	ictx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	index, err := collector.WorkloadIndex(ictx)
+	cancel()
+	if err != nil {
+		logger.Warn("workload index", "err", err)
+		return
+	}
+
+	sample := kernel.BuildSample(flows, index, hostID, time.Now().UTC())
+	sctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if err := cli.SendTopology(sctx, sample.Links); err != nil {
+		logger.Warn("send topology", "err", err)
+	}
+	if err := cli.SendMetrics(sctx, sample.Metrics); err != nil {
+		logger.Warn("send kernel metrics", "err", err)
+	}
+	stats := kcol.Stats()
+	logger.Info("kernel sample sent",
+		"links", len(sample.Links), "metrics", len(sample.Metrics),
+		"kernel_events", stats.Events, "map_errors", stats.MapErrors)
+}
+
 func runEventStream(ctx context.Context, logger *slog.Logger, collector *docker.Collector, cli *agent.Client) {
 	err := collector.StreamEvents(ctx, func(evt model.Event) error {
 		sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -204,6 +286,15 @@ func hostname() string {
 		return "unknown"
 	}
 	return h
+}
+
+func boolEnv(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func durationEnv(key string, fallback time.Duration) time.Duration {

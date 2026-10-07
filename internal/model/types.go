@@ -46,7 +46,7 @@ type AgentSession struct {
 }
 
 type QuerySeries struct {
-	MetricName string       `json:"metric_name"`
+	MetricName string        `json:"metric_name"`
 	Points     []SeriesPoint `json:"points"`
 }
 
@@ -107,12 +107,12 @@ type WorkloadGroupInput struct {
 }
 
 type WorkloadGroupSummary struct {
-	Group         WorkloadGroup      `json:"group"`
-	MemberCount   int                `json:"member_count"`
-	AvgCPU        float64            `json:"avg_cpu"`
-	AvgMemoryPct  float64            `json:"avg_memory_pct"`
-	TotalMemory   float64            `json:"total_memory"`
-	Members       []WorkloadSnapshot `json:"members"`
+	Group        WorkloadGroup      `json:"group"`
+	MemberCount  int                `json:"member_count"`
+	AvgCPU       float64            `json:"avg_cpu"`
+	AvgMemoryPct float64            `json:"avg_memory_pct"`
+	TotalMemory  float64            `json:"total_memory"`
+	Members      []WorkloadSnapshot `json:"members"`
 }
 
 type LogSearchFilter struct {
@@ -125,6 +125,7 @@ type LogSearchFilter struct {
 	TraceID    string
 	Since      time.Time
 	Limit      int
+	Offset     int
 }
 
 type LogTopicCount struct {
@@ -152,16 +153,19 @@ type Insight struct {
 }
 
 type ContainerFleetStatus struct {
-	Container    string    `json:"container"`
-	EntityUID    string    `json:"entity_uid"`
-	Service      string    `json:"service"`
-	State        string    `json:"state"`
-	Health       string    `json:"health,omitempty"`
-	RestartCount int       `json:"restart_count"`
-	ExitCode     int       `json:"exit_code,omitempty"`
-	OOMKilled    bool      `json:"oom_killed,omitempty"`
-	StatusText   string    `json:"status_text,omitempty"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	Container    string `json:"container"`
+	EntityUID    string `json:"entity_uid"`
+	Service      string `json:"service"`
+	State        string `json:"state"`
+	Health       string `json:"health,omitempty"`
+	RestartCount int    `json:"restart_count"`
+	ExitCode     int    `json:"exit_code,omitempty"`
+	OOMKilled    bool   `json:"oom_killed,omitempty"`
+	StatusText   string `json:"status_text,omitempty"`
+	// Disposition is why a container is down: intentional, unexpected, or oom.
+	// Empty while it is running.
+	Disposition string    `json:"disposition,omitempty"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ServiceReplicaStatus struct {
@@ -173,9 +177,9 @@ type ServiceReplicaStatus struct {
 }
 
 type FleetEventStats struct {
-	Restarts24h  int `json:"restarts_24h"`
-	Failures24h  int `json:"failures_24h"`
-	OOM24h       int `json:"oom_24h"`
+	Restarts24h   int `json:"restarts_24h"`
+	Failures24h   int `json:"failures_24h"`
+	OOM24h        int `json:"oom_24h"`
 	Disconnect24h int `json:"disconnect_24h"`
 }
 
@@ -221,11 +225,31 @@ type TopologyNode struct {
 	Label string `json:"label"`
 }
 
+// Topology edge origins. Observed edges come from kernel instrumentation on an
+// agent; inferred ones are extracted from log text and may be false positives.
+const (
+	TopologyOriginKernel = "kernel"
+	TopologyOriginLog    = "log"
+)
+
 type TopologyEdge struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 	Kind   string `json:"kind"`
 	Count  int    `json:"count"`
+	Origin string `json:"origin,omitempty"`
+	Port   uint16 `json:"port,omitempty"`
+}
+
+// TopologyLink is an observed dependency reported by an agent, as opposed to
+// an edge inferred from log text.
+type TopologyLink struct {
+	Source string    `json:"source"`
+	Target string    `json:"target"`
+	Kind   string    `json:"kind"`
+	Port   uint16    `json:"port,omitempty"`
+	Count  uint64    `json:"count"`
+	TS     time.Time `json:"ts"`
 }
 
 type TopologyGraph struct {
@@ -285,6 +309,25 @@ type TraceListFilter struct {
 	Since   time.Time
 	Service string
 	Limit   int
+	Offset  int
+}
+
+// TracePage is one window of the trace list. Total counts traces inside the
+// scan. Truncated is set when that scan hit its cap, so Total may be low.
+type TracePage struct {
+	Traces    []TraceSummary
+	Total     int
+	Truncated bool
+}
+
+// ListPage is the JSON envelope for a paged query. Entries is the window.
+// Total is the full match count for the same filters.
+type ListPage struct {
+	Entries   any  `json:"entries"`
+	Total     int  `json:"total"`
+	Limit     int  `json:"limit"`
+	Offset    int  `json:"offset"`
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 type SLODefinition struct {

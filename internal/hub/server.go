@@ -18,7 +18,6 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/rules"
 	"github.com/HarryRaddatz/argus-observability/internal/slo"
 	"github.com/HarryRaddatz/argus-observability/internal/store"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -154,8 +153,8 @@ func (s *Server) auth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// ingest limita escritas simultâneas no SQLite (escritor único): acima do limite
-// o agente recebe 503 + Retry-After em vez de empilhar requests até o timeout.
+// ingest limits concurrent writes. Above the limit the agent gets 503 and
+// Retry-After instead of queueing requests until they time out.
 func (s *Server) ingest(next http.HandlerFunc) http.HandlerFunc {
 	return s.auth(func(w http.ResponseWriter, r *http.Request) {
 		wait := time.NewTimer(s.cfg.IngestWait)
@@ -387,7 +386,7 @@ func (s *Server) handleMetricSeries(w http.ResponseWriter, r *http.Request) {
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -438,7 +437,13 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 			since = time.Now().UTC().Add(-d)
 		}
 	}
-	events, err := s.store.ListEvents(r.Context(), entityUID, since, 200)
+	limit, offset := pageWindow(r, pageDefault)
+	total, err := s.store.CountEvents(r.Context(), entityUID, since)
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
+	events, err := s.store.ListEvents(r.Context(), entityUID, since, limit, offset)
 	if err != nil {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
@@ -446,7 +451,9 @@ func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
 	if events == nil {
 		events = []model.Event{}
 	}
-	writeJSON(w, http.StatusOK, events)
+	writeJSON(w, http.StatusOK, model.ListPage{
+		Entries: events, Total: total, Limit: limit, Offset: offset,
+	})
 }
 
 func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
@@ -464,12 +471,12 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 		Topic:     r.URL.Query().Get("topic"),
 		TraceID:   r.URL.Query().Get("trace_id"),
 		Since:     since,
-		Limit:     200,
 	}
+	filter.Limit, filter.Offset = pageWindow(r, pageDefault)
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -477,6 +484,11 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filter.Containers = names
+	}
+	total, err := s.store.CountLogs(r.Context(), filter)
+	if err != nil {
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
 	}
 	logs, err := s.store.SearchLogs(r.Context(), filter)
 	if err != nil {
@@ -486,7 +498,9 @@ func (s *Server) handleSearchLogs(w http.ResponseWriter, r *http.Request) {
 	if logs == nil {
 		logs = []model.LogEntry{}
 	}
-	writeJSON(w, http.StatusOK, logs)
+	writeJSON(w, http.StatusOK, model.ListPage{
+		Entries: logs, Total: total, Limit: filter.Limit, Offset: filter.Offset,
+	})
 }
 
 func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
@@ -534,7 +548,7 @@ func (s *Server) handleInsights(w http.ResponseWriter, r *http.Request) {
 	if groupID := r.URL.Query().Get("group"); groupID != "" {
 		g, err := s.store.GetWorkloadGroup(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}
@@ -581,6 +595,9 @@ func (s *Server) handleMetricsCatalog(w http.ResponseWriter, _ *http.Request) {
 		{"name": "network.tx", "label": "Rede TX", "unit": "B/s"},
 		{"name": "block.read", "label": "Disco leitura", "unit": "B/s"},
 		{"name": "block.write", "label": "Disco escrita", "unit": "B/s"},
+		{"name": "net.connections.out", "label": "Conexões de saída", "unit": "conn"},
+		{"name": "net.connections.in", "label": "Conexões de entrada", "unit": "conn"},
+		{"name": "net.retransmits", "label": "Retransmissões TCP", "unit": "pkt"},
 	})
 }
 

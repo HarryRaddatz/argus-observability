@@ -12,22 +12,16 @@ import (
 
 	"github.com/HarryRaddatz/argus-observability/internal/bus"
 	"github.com/HarryRaddatz/argus-observability/internal/hub"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
+	"github.com/HarryRaddatz/argus-observability/internal/store/factory"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	addr := env("ARGUS_HUB_ADDR", ":8080")
-	dbPath := env("ARGUS_STORE_PATH", "./data/argus.db")
 	token := os.Getenv("ARGUS_AGENT_TOKEN")
 
-	if err := os.MkdirAll("./data", 0o755); err != nil {
-		logger.Error("mkdir data", "err", err)
-		os.Exit(1)
-	}
-
-	st, err := sqlite.Open(dbPath)
+	st, err := factory.Open(context.Background(), os.Getenv("ARGUS_STORE_DRIVER"), os.Getenv("ARGUS_STORE_DSN"))
 	if err != nil {
 		logger.Error("open store", "err", err)
 		os.Exit(1)

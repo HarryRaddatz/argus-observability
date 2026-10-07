@@ -1,12 +1,25 @@
 name: argus-smoke
 
 services:
+  argus-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus
+      POSTGRES_DB: argus
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   argus-hub:
     image: argus-hub:ci
     pull_policy: never
     environment:
       ARGUS_HUB_ADDR: ":8080"
-      ARGUS_STORE_PATH: /data/argus.db
+      ARGUS_STORE_DRIVER: postgres
+      ARGUS_STORE_DSN: postgres://argus:argus@argus-postgres:5432/argus?sslmode=disable
       ARGUS_RETENTION_LOGS: "72h"
       ARGUS_RETENTION_METRICS: "168h"
       ARGUS_RETENTION_EVENTS: "720h"
@@ -14,10 +27,11 @@ services:
       ARGUS_PURGE_TIMEOUT: "30s"
       ARGUS_INGEST_CONCURRENCY: "8"
       GOMEMLIMIT: "160MiB"
-    volumes:
-      - argus_smoke_data:/data
     ports:
       - "8080:8080"
+    depends_on:
+      argus-postgres:
+        condition: service_healthy
 
   argus-agent:
     image: argus-agent:ci
@@ -51,6 +65,3 @@ services:
           echo '{"level":"info","msg":"smoke","method":"GET","path":"/health","status":200}'
           sleep 1
         done
-
-volumes:
-  argus_smoke_data:

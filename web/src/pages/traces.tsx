@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
+import { ListPager } from "@/components/list-pager"
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
 import { fetchTrace, fetchTraces, type TraceDetail, type TraceSummary } from "@/lib/api"
+import { pageIndex, type ListPage } from "@/lib/page"
 import { localeBcp47 } from "@/i18n"
 
 function formatClock(ts: string, lng: string) {
@@ -85,22 +87,33 @@ type ListProps = {
 
 function TraceList({ since, service, onService, onOpen }: ListProps) {
   const { t, i18n } = useTranslation()
-  const [rows, setRows] = useState<TraceSummary[]>([])
+  const [pageRaw, setPage] = useQueryState("page", "1")
+  const page = pageIndex(pageRaw)
+  const filterKey = `${since}|${service}`
+  const filterSeen = useRef(filterKey)
+  useEffect(() => {
+    if (filterSeen.current === filterKey) return
+    filterSeen.current = filterKey
+    setPage("1")
+  }, [filterKey, setPage])
+  const [result, setResult] = useState<ListPage<TraceSummary>>({ entries: [], total: 0, limit: 50, offset: 0, truncated: false })
   const [services, setServices] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
-    fetchTraces(since, service || undefined)
+    fetchTraces(since, service || undefined, 50, (page - 1) * 50)
       .then((r) => {
-        setRows(r)
+        setResult(r)
         setError(null)
-        if (!service) setServices([...new Set(r.map((row) => row.service).filter(Boolean))].sort())
+        if (!service && page === 1) {
+          setServices([...new Set(r.entries.map((row) => row.service).filter(Boolean))].sort())
+        }
       })
       .catch((e) => setError(e instanceof Error ? e.message : t("traces.loadError")))
       .finally(() => setLoading(false))
-  }, [since, service, t])
+  }, [since, service, page, t])
 
   useEffect(() => {
     load()
@@ -144,20 +157,20 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && rows.length === 0 ? (
+            {loading && result.entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
-            ) : rows.length === 0 ? (
+            ) : result.entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-muted-foreground text-center">
                   {t("traces.empty")}
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => (
+              result.entries.map((row) => (
                 <TableRow key={row.trace_id} className={row.error ? "bg-destructive/5" : undefined}>
                   <TableCell className="whitespace-nowrap font-mono text-xs">{formatClock(row.start_ts, i18n.language)}</TableCell>
                   <TableCell className="text-sm">
@@ -197,6 +210,15 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
           </TableBody>
         </Table>
       </ScrollArea>
+      <ListPager
+        start={result.total === 0 ? 0 : result.offset + 1}
+        end={result.offset + result.entries.length}
+        total={result.total}
+        page={page}
+        pageSize={result.limit || 50}
+        truncated={result.truncated}
+        onPage={(n) => setPage(String(n))}
+      />
     </section>
   )
 }

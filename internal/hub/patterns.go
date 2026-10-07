@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/HarryRaddatz/argus-observability/internal/model"
-	"github.com/HarryRaddatz/argus-observability/internal/store/sqlite"
+	"github.com/HarryRaddatz/argus-observability/internal/store"
 )
 
 const patternLimit = 50
@@ -35,7 +35,7 @@ func (s *Server) handleLogPatterns(w http.ResponseWriter, r *http.Request) {
 	if groupID != "" {
 		names, err := s.resolveGroupContainers(r.Context(), groupID)
 		if err != nil {
-			if errors.Is(err, sqlite.ErrNotFound) {
+			if errors.Is(err, store.ErrNotFound) {
 				http.Error(w, "group not found", http.StatusNotFound)
 				return
 			}

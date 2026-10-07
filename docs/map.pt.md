@@ -10,7 +10,7 @@ Legenda doc: **ok** = existe · **stub** = esboço · **gap** = falta escrever �
 | Pilar | Descrição | Issue doc |
 |---|---|---|
 | Ingest | Agent → hub (métricas, logs, fleet, eventos) | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
-| Store | SQLite plugável, retenção, purge | `flows/metrics-ingestion.md` |
+| Store | Driver plugável, Postgres no default, retenção, purge | `flows/metrics-ingestion.md` |
 | Query | Séries, logs, insights | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
 | Observabilidade derivada | HTTP metrics, patterns, topology, traces, SLOs | [#17](https://github.com/HarryRaddatz/argus-observability/issues/17) |
 | UI | Painel shadcn em `web/` | `flows/ui-panel.md` (ok) |
@@ -90,14 +90,14 @@ flowchart LR
 | Rules | `internal/rules/engine.go` | loop 30s |
 | SLO | `internal/slo/evaluator.go` | loop 60s |
 
-## Modelo de dados (SQLite)
+## Modelo de dados (Postgres)
 
 | Tabela | Pacote | Retenção |
 |---|---|---|
-| `agents` | `sqlite.go` | — |
-| `metric_points` | `sqlite.go` | `ARGUS_RETENTION_METRICS` |
-| `log_entries` | `sqlite.go` | `ARGUS_RETENTION_LOGS` |
-| `events` | `sqlite.go` | `ARGUS_RETENTION_EVENTS` |
+| `agents` | `postgres/db.go` | — |
+| `metric_points` | `postgres/db.go` | `ARGUS_RETENTION_METRICS` |
+| `log_entries` | `postgres/db.go` | `ARGUS_RETENTION_LOGS` |
+| `events` | `postgres/db.go` | `ARGUS_RETENTION_EVENTS` |
 | `container_fleet` | `fleet.go` | snapshot |
 | `workload_groups` | `groups.go` | — |
 | `log_patterns` | `patterns.go` | com logs |
@@ -105,14 +105,14 @@ flowchart LR
 | `trace_spans` | `traces.go` | com logs |
 | `slos` | `traces.go` | — |
 
-Interface: `internal/store/store.go` · implementação: `internal/store/sqlite/`
+Interface: `internal/store/store.go` · seleção de driver: `internal/store/factory` · Postgres: `internal/store/postgres/`
 
 ## Configuração (env)
 
 | Variável | Componente | Doc |
 |---|---|---|
 | `ARGUS_HUB_ADDR` | hub | [configuration.md](api/configuration.md) ok |
-| `ARGUS_STORE_PATH` | hub | ok |
+| `ARGUS_STORE_DRIVER`, `ARGUS_STORE_DSN` | hub | ok |
 | `ARGUS_AGENT_TOKEN` | hub + agent | ok |
 | `ARGUS_RETENTION_LOGS`, `ARGUS_RETENTION_METRICS`, `ARGUS_RETENTION_EVENTS` | hub | ok |
 | `ARGUS_PURGE_INTERVAL`, `ARGUS_PURGE_TIMEOUT` | hub | ok |

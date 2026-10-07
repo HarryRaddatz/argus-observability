@@ -1,13 +1,16 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { ListPager } from "@/components/list-pager"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePolling } from "@/hooks/use-polling"
+import { useQueryState } from "@/hooks/use-query-state"
 import { listEvents, type EventRow } from "@/lib/api"
+import { pageIndex, type ListPage } from "@/lib/page"
 import { formatDateTime } from "@/lib/format"
 import { severityLabel, severityVariant } from "@/lib/severity"
 
@@ -21,19 +24,27 @@ function formatPayload(payload?: Record<string, unknown>) {
 
 export function EventHistory({ since }: { since: string }) {
   const { t } = useTranslation()
-  const [rows, setRows] = useState<EventRow[]>([])
+  const [pageRaw, setPage] = useQueryState("page", "1")
+  const page = pageIndex(pageRaw)
+  const sinceSeen = useRef(since)
+  useEffect(() => {
+    if (sinceSeen.current === since) return
+    sinceSeen.current = since
+    setPage("1")
+  }, [since, setPage])
+  const [result, setResult] = useState<ListPage<EventRow>>({ entries: [], total: 0, limit: 50, offset: 0, truncated: false })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    listEvents(undefined, since)
+    listEvents(undefined, since, 50, (page - 1) * 50)
       .then((ev) => {
-        setRows(ev)
+        setResult(ev)
         setError(null)
       })
       .catch((e) => setError(e instanceof Error ? e.message : t("events.loadError")))
       .finally(() => setLoading(false))
-  }, [since, t])
+  }, [since, page, t])
 
   usePolling(load)
 
@@ -53,20 +64,20 @@ export function EventHistory({ since }: { since: string }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && rows.length === 0 ? (
+            {loading && result.entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
-            ) : rows.length === 0 ? (
+            ) : result.entries.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-muted-foreground text-center">
                   {t("events.empty")}
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((e) => {
+              result.entries.map((e) => {
                 const container = e.entity_uid.split(":").pop() ?? e.entity_uid
                 return (
                   <TableRow key={e.id}>
@@ -89,6 +100,15 @@ export function EventHistory({ since }: { since: string }) {
           </TableBody>
         </Table>
       </ScrollArea>
+      <ListPager
+        start={result.total === 0 ? 0 : result.offset + 1}
+        end={result.offset + result.entries.length}
+        total={result.total}
+        page={page}
+        pageSize={result.limit || 50}
+        truncated={result.truncated}
+        onPage={(n) => setPage(String(n))}
+      />
     </>
   )
 }

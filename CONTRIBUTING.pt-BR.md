@@ -77,7 +77,7 @@ Siga [semver](https://semver.org/). Enquanto a versão for `0.x`, mudanças inco
 |---|---|---|
 | Correção sem alterar contrato | patch | `0.1.0` → `0.1.1` |
 | Funcionalidade nova, rota ou env opcional | minor | `0.1.1` → `0.2.0` |
-| Rota removida/renomeada, payload incompatível, env obrigatória nova, schema SQLite incompatível | major (minor em `0.x`) | `1.4.2` → `2.0.0` |
+| Rota removida/renomeada, payload incompatível, env obrigatória nova, schema de banco incompatível | major (minor em `0.x`) | `1.4.2` → `2.0.0` |
 
 Mudanças incompatíveis entram no CHANGELOG sob `### Breaking`, com o passo de migração para quem atualiza.
 

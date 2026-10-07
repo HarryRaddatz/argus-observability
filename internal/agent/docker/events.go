@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,13 +141,25 @@ func mapDockerEvent(hostID, name string, raw dockerEvent) (model.Event, bool) {
 			Severity: "info", Source: "agent", EntityUID: entityUID, Labels: labels, Payload: payload,
 		}, true
 	case "die":
+		code := 1
+		if n, err := strconv.Atoi(raw.Actor.Attributes["exitCode"]); err == nil {
+			code = n
+		}
+		cause := StopDisposition("exited", code, false)
 		sev := "warning"
-		if raw.Actor.Attributes["exitCode"] == "0" {
+		if cause == DispositionIntentional {
 			sev = "info"
 		}
+		payload["cause"] = cause
 		return model.Event{
 			ID: uuid.NewString(), Type: "container.die", TS: ts,
 			Severity: sev, Source: "agent", EntityUID: entityUID, Labels: labels, Payload: payload,
+		}, true
+	case "kill", "stop":
+		payload["cause"] = DispositionIntentional
+		return model.Event{
+			ID: uuid.NewString(), Type: "container." + raw.Action, TS: ts,
+			Severity: "info", Source: "agent", EntityUID: entityUID, Labels: labels, Payload: payload,
 		}, true
 	case "oom":
 		return model.Event{

@@ -30,7 +30,7 @@ func (c *Collector) listFilteredContainersAll(ctx context.Context, all bool) ([]
 	if err != nil {
 		return nil, err
 	}
-	prefix := os.Getenv("ARGUS_NAME_PREFIX")
+	prefix := nameFilter()
 	var out []containerInfo
 	for _, ctr := range containers {
 		name := ctr.primaryName()
@@ -46,6 +46,10 @@ func (c *Collector) listFilteredContainersAll(ctx context.Context, all bool) ([]
 		})
 	}
 	return out, nil
+}
+
+func nameFilter() string {
+	return os.Getenv("ARGUS_NAME_PREFIX")
 }
 
 func (c *Collector) entityFor(name string, labels map[string]string) (string, model.Labels) {

@@ -14,8 +14,9 @@ The image nginx proxies `/api/` and `/health` to `http://argus-hub:8080`. The co
 
 ```bash
 docker network create argus
-docker run -d --name argus-hub --network argus -v argus_data:/data \
-  -e ARGUS_STORE_PATH=/data/argus.db pseudohuery/argus-hub:latest
+docker run -d --name argus-hub --network argus \
+  -e ARGUS_STORE_DSN=postgres://argus:change-me@postgres:5432/argus?sslmode=disable \
+  pseudohuery/argus-hub:latest
 docker run -d --name argus-web --network argus -p 3000:80 pseudohuery/argus-web:latest
 ```
 

@@ -27,8 +27,8 @@ type Props = {
 }
 
 export function MetricMeter({ label, value, warnAt = 75, criticalAt = 90, className }: Props) {
-  const pct = Math.min(100, Math.max(0, value))
-  const tone = meterTone(pct, warnAt, criticalAt)
+  const pct = Math.max(0, value)
+  const tone = meterTone(Math.min(100, pct), warnAt, criticalAt)
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between gap-2 text-xs">

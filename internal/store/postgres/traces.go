@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/HarryRaddatz/argus-observability/internal/slo"
 )
 
-func (s *SQLite) WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error {
+func (s *Postgres) WriteTraceSpans(ctx context.Context, spans []model.TraceSpan) error {
 	if len(spans) == 0 {
 		return nil
 	}
@@ -58,7 +58,7 @@ ON CONFLICT(trace_id, span_id) DO UPDATE SET
 	return tx.Commit()
 }
 
-func (s *SQLite) GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error) {
+func (s *Postgres) GetTraceSpans(ctx context.Context, traceID string) ([]model.TraceSpan, error) {
 	norm := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(traceID), "-", ""))
 	if norm == "" {
 		return nil, nil
@@ -102,7 +102,7 @@ const traceListScanLimit = 5000
 
 // ListTraces returns recent traces from OTLP spans and from log lines that carry a trace id.
 // A trace present in both sources is reported once, from its OTLP spans.
-func (s *SQLite) ListTraces(ctx context.Context, filter model.TraceListFilter) ([]model.TraceSummary, error) {
+func (s *Postgres) ListTraces(ctx context.Context, filter model.TraceListFilter) (model.TracePage, error) {
 	limit := filter.Limit
 	if limit <= 0 {
 		limit = 50
@@ -130,13 +130,15 @@ SELECT trace_id, parent_span_id, name, service, container, start_ts, end_ts, sta
 FROM trace_spans WHERE start_ts >= ?
 ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	if err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
+	spanScanned := 0
 	for spanRows.Next() {
+		spanScanned++
 		var traceID, parent, name, service, container, startStr, endStr, status string
 		if err := spanRows.Scan(&traceID, &parent, &name, &service, &container, &startStr, &endStr, &status); err != nil {
 			spanRows.Close()
-			return nil, err
+			return model.TracePage{}, err
 		}
 		start, _ := time.Parse(time.RFC3339Nano, startStr)
 		end, _ := time.Parse(time.RFC3339Nano, endStr)
@@ -167,24 +169,26 @@ ORDER BY start_ts DESC LIMIT ?`, since, traceListScanLimit)
 	}
 	if err := spanRows.Err(); err != nil {
 		spanRows.Close()
-		return nil, err
+		return model.TracePage{}, err
 	}
 	spanRows.Close()
 
 	logRows, err := s.rdb.QueryContext(ctx, `
 SELECT ts, message, level, entity_uid, labels_json,
-  COALESCE(json_extract(fields_json, '$.trace_id'), json_extract(fields_json, '$.traceId'), '')
+  COALESCE(fields_json::json->>'trace_id', fields_json::json->>'traceId', '')
 FROM log_entries
 WHERE ts >= ? AND (fields_json LIKE '%"trace_id"%' OR fields_json LIKE '%"traceId"%')
 ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 	if err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
+	logScanned := 0
 	defer logRows.Close()
 	for logRows.Next() {
+		logScanned++
 		var tsStr, message, level, entityUID, labelsJSON, traceID string
 		if err := logRows.Scan(&tsStr, &message, &level, &entityUID, &labelsJSON, &traceID); err != nil {
-			return nil, err
+			return model.TracePage{}, err
 		}
 		key := traceKey(traceID)
 		if key == "" {
@@ -223,7 +227,7 @@ ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 		addService(key, service)
 	}
 	if err := logRows.Err(); err != nil {
-		return nil, err
+		return model.TracePage{}, err
 	}
 
 	out := make([]model.TraceSummary, 0, len(byKey))
@@ -239,10 +243,23 @@ ORDER BY ts DESC LIMIT ?`, since, traceListScanLimit)
 		out = append(out, *sum)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartTS.After(out[j].StartTS) })
+	total := len(out)
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > total {
+		offset = total
+	}
+	out = out[offset:]
 	if len(out) > limit {
 		out = out[:limit]
 	}
-	return out, nil
+	return model.TracePage{
+		Traces:    out,
+		Total:     total,
+		Truncated: spanScanned == traceListScanLimit || logScanned == traceListScanLimit,
+	}, nil
 }
 
 func traceKey(traceID string) string {
@@ -286,7 +303,7 @@ func truncateRunes(s string, n int) string {
 	return string(r[:n])
 }
 
-func (s *SQLite) ListSLOs(ctx context.Context) ([]model.SLODefinition, error) {
+func (s *Postgres) ListSLOs(ctx context.Context) ([]model.SLODefinition, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at
 FROM slos ORDER BY name ASC`)
@@ -309,7 +326,7 @@ FROM slos ORDER BY name ASC`)
 	return out, rows.Err()
 }
 
-func (s *SQLite) GetSLO(ctx context.Context, id string) (model.SLODefinition, error) {
+func (s *Postgres) GetSLO(ctx context.Context, id string) (model.SLODefinition, error) {
 	row := s.rdb.QueryRowContext(ctx, `
 SELECT id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at
 FROM slos WHERE id=?`, id)
@@ -324,7 +341,7 @@ FROM slos WHERE id=?`, id)
 	return def, nil
 }
 
-func (s *SQLite) EvaluateSLO(ctx context.Context, def model.SLODefinition, at time.Time) (model.SLOStatus, error) {
+func (s *Postgres) EvaluateSLO(ctx context.Context, def model.SLODefinition, at time.Time) (model.SLOStatus, error) {
 	window := time.Duration(def.WindowHours) * time.Hour
 	if window <= 0 {
 		window = 30 * 24 * time.Hour
@@ -363,7 +380,7 @@ func (s *SQLite) EvaluateSLO(ctx context.Context, def model.SLODefinition, at ti
 	return status, nil
 }
 
-func (s *SQLite) httpMetricsForService(ctx context.Context, service string, since time.Time) ([]float64, int, int, error) {
+func (s *Postgres) httpMetricsForService(ctx context.Context, service string, since time.Time) ([]float64, int, int, error) {
 	rows, err := s.rdb.QueryContext(ctx, `
 SELECT metric_name, value, labels_json FROM metric_points
 WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts >= ?
@@ -402,13 +419,14 @@ WHERE metric_name IN ('http.duration_ms', 'http.requests', 'http.errors') AND ts
 	return latencies, requests, errors, rows.Err()
 }
 
-func (s *SQLite) seedDefaultSLOs() error {
+func (s *Postgres) seedDefaultSLOs() error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := s.db.Exec(`
-INSERT OR IGNORE INTO slos (id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at)
+INSERT INTO slos (id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at)
 VALUES
   ('slo-demo-latency', 'Latência p95 demo-api', 'demo-api', '', 'latency_p95', 99.9, 720, 500, ?),
   ('slo-demo-availability', 'Disponibilidade demo-api', 'demo-api', '', 'availability', 99.9, 720, 0, ?)
+ON CONFLICT (id) DO NOTHING
 `, now, now)
 	return err
 }
