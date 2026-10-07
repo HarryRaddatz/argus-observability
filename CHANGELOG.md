@@ -6,6 +6,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- Topology opens on the services that need attention and shows only the selected path, using fleet, workload, HTTP summary, and active alerts that already exist
 - Log search, events, and traces return a page (`entries`, `total`, `limit`, `offset`) instead of a silent cap. The panel pages those tables, and the containers chart states that it is the busiest slice of the same filtered list the table pages
 - The containers CPU chart averages each minute. A single scrape was being drawn as the whole minute, so the stack and the tooltip showed a spike instead of the minute
 

@@ -90,7 +90,7 @@ Overview, Problems, Containers, and Logs (patterns) refresh every 30 s; Logs (li
 
 ## Sequence — topology
 
-The screen calls one route. `since` from the URL (default `24h`) goes in the query. Node and edge open Logs with the same range (`web/src/pages/topology.tsx`).
+The screen loads topology plus the fleet, workload, HTTP summary, and active alerts that already exist. `focus` in the URL selects a service. A later incident can set that same parameter. The path is only the callers and dependencies of the selection (`web/src/pages/topology.tsx`).
 
 ```mermaid
 sequenceDiagram
@@ -98,8 +98,12 @@ sequenceDiagram
   participant Hub
 
   Browser->>Hub: GET /api/v1/topology?since=24h
-  Hub-->>Browser: nodes, edges
-  Browser->>Browser: link /logs?container=target&since=24h
+  Browser->>Hub: GET /api/v1/fleet/status
+  Browser->>Hub: GET /api/v1/workloads?since=24h
+  Browser->>Hub: GET /api/v1/metrics/http/summary?since=24h
+  Browser->>Hub: GET /api/v1/alerts/active
+  Hub-->>Browser: nodes, edges, and matching status
+  Browser->>Browser: rank services and show the selected path
 ```
 
 ## Sequence — groups
