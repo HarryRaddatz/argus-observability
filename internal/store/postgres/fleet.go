@@ -8,11 +8,21 @@ import (
 )
 
 func (s *Postgres) UpsertFleetStatus(ctx context.Context, rows []model.ContainerFleetStatus) error {
+	if tx := txFrom(ctx); tx != nil {
+		return upsertFleet(ctx, tx, rows)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := upsertFleet(ctx, tx, rows); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func upsertFleet(ctx context.Context, tx *boundTx, rows []model.ContainerFleetStatus) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM container_fleet`); err != nil {
 		return err
 	}
@@ -36,7 +46,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Postgres) GetFleetStatus(ctx context.Context) ([]model.ContainerFleetStatus, error) {

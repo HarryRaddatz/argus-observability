@@ -94,6 +94,10 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_entity_ts ON events(entity_uid, ts);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
+CREATE TABLE IF NOT EXISTS ingest_batches (
+  batch_id TEXT PRIMARY KEY,
+  received_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS container_fleet (
   entity_uid TEXT PRIMARY KEY,
   container TEXT NOT NULL,
@@ -258,11 +262,21 @@ SELECT agent_id, host_id, runtime, labels_json, last_seen FROM agents WHERE last
 }
 
 func (s *Postgres) WriteMetrics(ctx context.Context, points []model.MetricPoint) error {
+	if tx := txFrom(ctx); tx != nil {
+		return insertMetrics(ctx, tx, points)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := insertMetrics(ctx, tx, points); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func insertMetrics(ctx context.Context, tx *boundTx, points []model.MetricPoint) error {
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO metric_points (metric_name, ts, value, entity_uid, labels_json)
 VALUES (?, ?, ?, ?, ?)`)
@@ -279,15 +293,25 @@ VALUES (?, ?, ?, ?, ?)`)
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Postgres) WriteLogs(ctx context.Context, entries []model.LogEntry) error {
+	if tx := txFrom(ctx); tx != nil {
+		return insertLogs(ctx, tx, entries)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := insertLogs(ctx, tx, entries); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func insertLogs(ctx context.Context, tx *boundTx, entries []model.LogEntry) error {
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO log_entries (ts, message, level, entity_uid, labels_json, fields_json)
 VALUES (?, ?, ?, ?, ?, ?)`)
@@ -308,15 +332,25 @@ VALUES (?, ?, ?, ?, ?, ?)`)
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Postgres) WriteEvents(ctx context.Context, events []model.Event) error {
+	if tx := txFrom(ctx); tx != nil {
+		return insertEvents(ctx, tx, events)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := insertEvents(ctx, tx, events); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func insertEvents(ctx context.Context, tx *boundTx, events []model.Event) error {
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO events (id, type, ts, severity, source, entity_uid, labels_json, payload_json)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -345,7 +379,7 @@ ON CONFLICT (id) DO UPDATE SET
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *Postgres) QueryMetrics(ctx context.Context, metricName string, labels model.Labels, since time.Time) ([]model.SeriesPoint, error) {
@@ -374,12 +408,17 @@ ORDER BY ts ASC
 	return out, rows.Err()
 }
 
-func (s *Postgres) QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error) {
-	rows, err := s.rdb.QueryContext(ctx, `
+func (s *Postgres) QueryMetricSeries(ctx context.Context, metricName, container string, since, until time.Time) ([]model.ContainerSeries, error) {
+	q := `
 SELECT ts, value, entity_uid, labels_json FROM metric_points
-WHERE metric_name=? AND ts >= ?
-ORDER BY ts ASC
-`, metricName, since.UTC().Format(time.RFC3339Nano))
+WHERE metric_name=? AND ts >= ?`
+	args := []any{metricName, since.UTC().Format(time.RFC3339Nano)}
+	if !until.IsZero() {
+		q += ` AND ts <= ?`
+		args = append(args, until.UTC().Format(time.RFC3339Nano))
+	}
+	q += ` ORDER BY ts ASC`
+	rows, err := s.rdb.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -489,9 +528,13 @@ ORDER BY ts DESC
 	return out, nil
 }
 
-func eventWhere(entityUID string, since time.Time) (string, []any) {
+func eventWhere(entityUID string, since, until time.Time) (string, []any) {
 	clause := `ts >= ?`
 	args := []any{since.UTC().Format(time.RFC3339Nano)}
+	if !until.IsZero() {
+		clause += ` AND ts <= ?`
+		args = append(args, until.UTC().Format(time.RFC3339Nano))
+	}
 	if entityUID != "" {
 		clause += ` AND entity_uid=?`
 		args = append(args, entityUID)
@@ -499,21 +542,21 @@ func eventWhere(entityUID string, since time.Time) (string, []any) {
 	return clause, args
 }
 
-func (s *Postgres) CountEvents(ctx context.Context, entityUID string, since time.Time) (int, error) {
-	clause, args := eventWhere(entityUID, since)
+func (s *Postgres) CountEvents(ctx context.Context, entityUID string, since, until time.Time) (int, error) {
+	clause, args := eventWhere(entityUID, since, until)
 	var n int
 	err := s.rdb.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE `+clause, args...).Scan(&n)
 	return n, err
 }
 
-func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since time.Time, limit, offset int) ([]model.Event, error) {
+func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since, until time.Time, limit, offset int) ([]model.Event, error) {
 	if limit <= 0 {
 		limit = 100
 	}
 	if offset < 0 {
 		offset = 0
 	}
-	clause, args := eventWhere(entityUID, since)
+	clause, args := eventWhere(entityUID, since, until)
 	q := `SELECT id, type, ts, severity, source, entity_uid, labels_json, payload_json FROM events WHERE ` + clause + ` ORDER BY ts DESC LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 	rows, err := s.rdb.QueryContext(ctx, q, args...)
@@ -527,6 +570,10 @@ func (s *Postgres) ListEvents(ctx context.Context, entityUID string, since time.
 func logWhere(filter model.LogSearchFilter) (string, []any) {
 	clause := `ts >= ?`
 	args := []any{filter.Since.UTC().Format(time.RFC3339Nano)}
+	if !filter.Until.IsZero() {
+		clause += ` AND ts <= ?`
+		args = append(args, filter.Until.UTC().Format(time.RFC3339Nano))
+	}
 	if filter.Query != "" {
 		clause += ` AND message ILIKE ?`
 		args = append(args, fmt.Sprintf("%%%s%%", filter.Query))

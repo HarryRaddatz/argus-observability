@@ -124,6 +124,7 @@ type LogSearchFilter struct {
 	Topic      string
 	TraceID    string
 	Since      time.Time
+	Until      time.Time
 	Limit      int
 	Offset     int
 }
@@ -307,6 +308,7 @@ type TraceSummary struct {
 
 type TraceListFilter struct {
 	Since   time.Time
+	Until   time.Time
 	Service string
 	Limit   int
 	Offset  int

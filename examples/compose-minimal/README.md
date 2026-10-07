@@ -34,7 +34,7 @@ ARGUS_VERSION=0.1.1 docker compose -f examples/compose-minimal/docker-compose.pu
 
 ```bash
 curl -s http://localhost:8080/health
-curl -s 'http://localhost:8080/api/v1/workloads?since=30m' | head -c 500
+curl -s -H "Authorization: Bearer $ARGUS_AGENT_TOKEN" 'http://localhost:8080/api/v1/workloads?since=30m' | head -c 500
 ```
 
 ## Stop

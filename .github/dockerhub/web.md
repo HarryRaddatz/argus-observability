@@ -10,14 +10,16 @@ Also published on GHCR: `ghcr.io/harryraddatz/argus-web`.
 
 Full stack: see [`argus-hub`](https://hub.docker.com/r/pseudohuery/argus-hub).
 
-The image nginx proxies `/api/` and `/health` to `http://argus-hub:8080`. The container must share a Docker network with a hub named `argus-hub`:
+The image nginx proxies `/api/` and `/health` to `http://argus-hub:8080`. On `/api/`, nginx adds `Authorization: Bearer` from `ARGUS_AGENT_TOKEN` (the same value as the hub). The container must share a Docker network with a hub named `argus-hub`:
 
 ```bash
 docker network create argus
 docker run -d --name argus-hub --network argus \
   -e ARGUS_STORE_DSN=postgres://argus:change-me@postgres:5432/argus?sslmode=disable \
   pseudohuery/argus-hub:latest
-docker run -d --name argus-web --network argus -p 3000:80 pseudohuery/argus-web:latest
+docker run -d --name argus-web --network argus -p 3000:80 \
+  -e ARGUS_AGENT_TOKEN=change-me \
+  pseudohuery/argus-web:latest
 ```
 
 Panel at `http://localhost:3000`.

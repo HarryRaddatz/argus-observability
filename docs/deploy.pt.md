@@ -58,8 +58,8 @@ Ajuste host e portas se não usar os defaults (`8080` hub, `3000` painel).
 3. Agent reportando (aguarde um ciclo de `ARGUS_COLLECT_INTERVAL`, default 15s):
 
    ```bash
-   curl -fsS 'http://localhost:8080/api/v1/workloads?since=5m' | head -c 500
-   curl -fsS http://localhost:8080/api/v1/fleet/status | head -c 500
+   curl -fsS -H "Authorization: Bearer $ARGUS_AGENT_TOKEN" 'http://localhost:8080/api/v1/workloads?since=5m' | head -c 500
+   curl -fsS -H "Authorization: Bearer $ARGUS_AGENT_TOKEN" http://localhost:8080/api/v1/fleet/status | head -c 500
    ```
 
    A lista de workloads não pode vir vazia se houver containers em execução no host.

@@ -18,13 +18,14 @@ type Store interface {
 	WriteMetrics(ctx context.Context, points []model.MetricPoint) error
 	WriteLogs(ctx context.Context, entries []model.LogEntry) error
 	WriteEvents(ctx context.Context, events []model.Event) error
+	ApplyBatch(ctx context.Context, batchID string, fn func(context.Context) error) (applied bool, err error)
 
 	QueryMetrics(ctx context.Context, metricName string, labels model.Labels, since time.Time) ([]model.SeriesPoint, error)
-	QueryMetricSeries(ctx context.Context, metricName, container string, since time.Time) ([]model.ContainerSeries, error)
+	QueryMetricSeries(ctx context.Context, metricName, container string, since, until time.Time) ([]model.ContainerSeries, error)
 	QueryHTTPServiceSummary(ctx context.Context, since time.Time) ([]model.HTTPServiceSummary, error)
 	ListWorkloads(ctx context.Context, since time.Time) ([]model.WorkloadSnapshot, error)
-	ListEvents(ctx context.Context, entityUID string, since time.Time, limit, offset int) ([]model.Event, error)
-	CountEvents(ctx context.Context, entityUID string, since time.Time) (int, error)
+	ListEvents(ctx context.Context, entityUID string, since, until time.Time, limit, offset int) ([]model.Event, error)
+	CountEvents(ctx context.Context, entityUID string, since, until time.Time) (int, error)
 	SearchLogs(ctx context.Context, filter model.LogSearchFilter) ([]model.LogEntry, error)
 	CountLogs(ctx context.Context, filter model.LogSearchFilter) (int, error)
 	CountLogTopics(ctx context.Context, since time.Time) ([]model.LogTopicCount, error)

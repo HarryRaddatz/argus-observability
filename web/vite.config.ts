@@ -21,6 +21,12 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_HUB_PROXY ?? "http://127.0.0.1:8080",
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            const token = process.env.ARGUS_AGENT_TOKEN
+            if (token) proxyReq.setHeader("Authorization", `Bearer ${token}`)
+          })
+        },
       },
       "/health": {
         target: process.env.VITE_HUB_PROXY ?? "http://127.0.0.1:8080",

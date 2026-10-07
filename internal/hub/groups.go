@@ -14,13 +14,13 @@ import (
 )
 
 func (s *Server) registerGroupRoutes() {
-	s.mux.HandleFunc("GET /api/v1/workload-groups", s.handleListGroups)
-	s.mux.HandleFunc("GET /api/v1/workload-groups/discover", s.handleDiscoverGroups)
-	s.mux.HandleFunc("POST /api/v1/workload-groups", s.handleCreateGroup)
-	s.mux.HandleFunc("GET /api/v1/workload-groups/{id}", s.handleGetGroup)
-	s.mux.HandleFunc("GET /api/v1/workload-groups/{id}/summary", s.handleGroupSummary)
-	s.mux.HandleFunc("PUT /api/v1/workload-groups/{id}", s.handleUpdateGroup)
-	s.mux.HandleFunc("DELETE /api/v1/workload-groups/{id}", s.handleDeleteGroup)
+	s.mux.HandleFunc("GET /api/v1/workload-groups", s.auth(s.handleListGroups))
+	s.mux.HandleFunc("GET /api/v1/workload-groups/discover", s.auth(s.handleDiscoverGroups))
+	s.mux.HandleFunc("POST /api/v1/workload-groups", s.auth(s.handleCreateGroup))
+	s.mux.HandleFunc("GET /api/v1/workload-groups/{id}", s.auth(s.handleGetGroup))
+	s.mux.HandleFunc("GET /api/v1/workload-groups/{id}/summary", s.auth(s.handleGroupSummary))
+	s.mux.HandleFunc("PUT /api/v1/workload-groups/{id}", s.auth(s.handleUpdateGroup))
+	s.mux.HandleFunc("DELETE /api/v1/workload-groups/{id}", s.auth(s.handleDeleteGroup))
 }
 
 func (s *Server) handleListGroups(w http.ResponseWriter, r *http.Request) {
@@ -134,11 +134,10 @@ func (s *Server) handleGroupSummary(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
-	since := time.Now().UTC().Add(-30 * time.Minute)
-	if raw := r.URL.Query().Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, 30*time.Minute)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	workloads, err := s.store.ListWorkloads(r.Context(), since)
 	if err != nil {

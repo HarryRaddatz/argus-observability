@@ -13,16 +13,15 @@ import (
 const patternLimit = 50
 
 func (s *Server) registerPatternRoutes() {
-	s.mux.HandleFunc("GET /api/v1/logs/patterns", s.handleLogPatterns)
+	s.mux.HandleFunc("GET /api/v1/logs/patterns", s.auth(s.handleLogPatterns))
 }
 
 func (s *Server) handleLogPatterns(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	since := time.Now().UTC().Add(-1 * time.Hour)
-	if raw := q.Get("since"); raw != "" {
-		if d, err := time.ParseDuration(raw); err == nil {
-			since = time.Now().UTC().Add(-d)
-		}
+	since, _, winErr := requestWindow(r, time.Hour)
+	if winErr != nil {
+		http.Error(w, "invalid range", http.StatusBadRequest)
+		return
 	}
 	container := strings.TrimSpace(q.Get("container"))
 	if container == "all" {
