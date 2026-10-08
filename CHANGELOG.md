@@ -13,6 +13,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 ### Security
 
 - Query routes require the same Bearer token as ingest when `ARGUS_AGENT_TOKEN` is set. The panel proxy adds that header. `/health` stays open
+- Bump `golang.org/x/text` to v0.41.0 (GO-2026-6629)
 
 ### Changed
 
