@@ -4,6 +4,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-07
+
 ### Added
 
 - Python, Node.js, and Java transports that POST spans to the hub as OTLP JSON, with `traceparent` and `X-Correlation-Id`
@@ -11,6 +13,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 ### Security
 
 - Query routes require the same Bearer token as ingest when `ARGUS_AGENT_TOKEN` is set. The panel proxy adds that header. `/health` stays open
+- Bump `golang.org/x/text` to v0.41.0 (GO-2026-6629)
 
 ### Changed
 
@@ -157,6 +160,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
+[0.6.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.6.0
 [0.5.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.5.0
 [0.4.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.4.0
 [0.3.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.3.0
