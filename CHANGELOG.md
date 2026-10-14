@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-14
+
+The `v0.6.0` tag was never published as a release because its vulnerability scan failed. This is the first release of the 0.6 line and also ships everything listed under [0.6.0].
+
 ### Fixed
 
 - The workloads list reads a `workload_latest` table kept in the same transaction as metric writes, instead of scanning every metric point in the window. Containers and Topology no longer wait seconds for it
@@ -22,6 +26,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Load errors use `role="alert"`, say what to check, and offer a retry
 - Numbers, durations, and dates follow the panel language. The first visit picks Portuguese or English from the browser
 - Logs, traces, and problems copy is translated, including the trace banner, level and topic labels, and the trace ID field
+- Dependency updates: `pgx/v5`, the web npm group, and the web base images
 
 ## [0.6.0] - 2026-10-07
 
@@ -179,7 +184,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 - Seeds e exemplos genéricos (`demo-api`) — sem referências a infra privada
 - Portas default do compose: hub `8080`, painel `3000`
 
-[0.6.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.6.0
+[0.6.1]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.6.1
+[0.6.0]: https://github.com/HarryRaddatz/argus-observability/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.5.0
 [0.4.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.4.0
 [0.3.0]: https://github.com/HarryRaddatz/argus-observability/releases/tag/v0.3.0
