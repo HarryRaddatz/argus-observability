@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { StatToggle } from "@/components/metrics/stat-toggle"
 import { MetricMeter } from "@/components/metrics/metric-meter"
 import { TimeSeriesChart } from "@/components/metrics/time-series-chart"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
+import { parseStatMode, summarize } from "@/lib/stats"
 import { fetchMetricSeries, type SeriesPoint, type WorkloadSnapshot } from "@/lib/api"
 import { matchesService } from "@/lib/observability"
 import { cn } from "@/lib/utils"
@@ -43,7 +45,8 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
   const { t } = useTranslation()
   const [selected] = useQueryState("container", "")
   const [service] = useQueryState("service", "")
-  const [stat, setStat] = useQueryState("stat", "avg")
+  const [statRaw, setStat] = useQueryState("stat", "avg")
+  const stat = parseStatMode(statRaw)
   const patch = useQueryPatch()
   const [series, setSeries] = useState<Series>(EMPTY)
   const [loading, setLoading] = useState(false)
@@ -102,16 +105,17 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
 
   const summary = useMemo(() => {
     const pick = (pts: SeriesPoint[]) => {
-      if (pts.length === 0) return 0
-      const vals = pts.map((p) => p.value)
-      const v = stat === "max" ? Math.max(...vals) : vals.reduce((a, b) => a + b, 0) / vals.length
-      return Math.round(v * 10) / 10
+      const v = summarize(
+        pts.map((p) => p.value),
+        stat,
+      )
+      return v === null ? 0 : Math.round(v * 10) / 10
     }
     return { cpu: pick(series.cpu), memPct: pick(series.memPct) }
   }, [series, stat])
 
   const workload = workloads.find((w) => w.container === selected)
-  const statLabel = stat === "max" ? t("metrics.statPeak") : t("metrics.statAvg")
+  const statWord = stat === "avg" ? t("metrics.statAvg") : stat === "max" ? t("metrics.statPeak") : stat
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -170,14 +174,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
                 </Link>
               </div>
             </div>
-            <div role="group" aria-label={t("chart.summary")} className="flex gap-1">
-              <Button size="sm" variant={stat === "avg" ? "default" : "outline"} aria-pressed={stat === "avg"} onClick={() => setStat("avg")}>
-                {t("chart.avg")}
-              </Button>
-              <Button size="sm" variant={stat === "max" ? "default" : "outline"} aria-pressed={stat === "max"} onClick={() => setStat("max")}>
-                {t("chart.peak")}
-              </Button>
-            </div>
+            <StatToggle value={stat} onChange={setStat} />
           </div>
         ) : null}
 
@@ -197,8 +194,8 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         ) : (
           <>
             <div className="grid gap-4 lg:grid-cols-2">
-              <MetricMeter label={t("metrics.cpuStat", { stat: statLabel })} value={summary.cpu} />
-              <MetricMeter label={t("metrics.memStat", { stat: statLabel })} value={summary.memPct} />
+              <MetricMeter label={t("metrics.cpuStat", { stat: statWord })} value={summary.cpu} />
+              <MetricMeter label={t("metrics.memStat", { stat: statWord })} value={summary.memPct} />
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <TimeSeriesChart title={t("containers.cpu")} points={series.cpu} loading={loading} unit="%" />

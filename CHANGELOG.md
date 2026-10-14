@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Metric summaries offer p85, p90, and p95 next to average and peak, in the container view and in the comparison chart. The choice stays in the URL (`stat=p95`)
+
 ## [0.6.1] - 2026-10-14
 
 The `v0.6.0` tag was never published as a release because its vulnerability scan failed. This is the first release of the 0.6 line and also ships everything listed under [0.6.0].

@@ -430,7 +430,14 @@
     "noData": "No data",
     "sparkSummary": "{{label}}: now {{last}}, range {{min}} to {{max}}",
     "chartLabel": "{{title}} chart, {{count}} points",
-    "seriesLabel": "{{title}} chart, {{count}} series: {{names}}"
+    "seriesLabel": "{{title}} chart, {{count}} series: {{names}}",
+    "stats": {
+      "avg": "Average",
+      "p85": "p85",
+      "p90": "p90",
+      "p95": "p95",
+      "max": "Peak"
+    }
   },
   "views": {
     "name": "View name",

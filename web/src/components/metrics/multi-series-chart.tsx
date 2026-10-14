@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatTime } from "@/lib/format"
+import { formatNumber, formatTime } from "@/lib/format"
+import { statLabel, summarize, type StatMode } from "@/lib/stats"
 import type { ContainerSeries } from "@/lib/api"
 import { containerColor } from "@/lib/chart-colors"
 import type { TFunction } from "i18next"
@@ -17,7 +18,7 @@ type Props = {
   unit?: string
   transform?: (v: number) => number
   chartType?: "area" | "line"
-  statMode?: "avg" | "max"
+  statMode?: StatMode
 }
 
 export function MultiSeriesChart({
@@ -116,7 +117,7 @@ function mergeSeries(series: ContainerSeries[], transform?: (v: number) => numbe
 function describeStat(
   t: TFunction,
   series: ContainerSeries[],
-  mode: "avg" | "max",
+  mode: StatMode,
   unit: string,
   transform?: (v: number) => number,
 ) {
@@ -126,8 +127,7 @@ function describeStat(
       values.push(transform ? transform(p.value) : p.value)
     }
   }
-  if (values.length === 0) return null
-  const agg = mode === "max" ? Math.max(...values) : values.reduce((a, b) => a + b, 0) / values.length
-  const label = mode === "max" ? t("chart.peak") : t("chart.avg")
-  return t("chart.statLine", { label, value: Math.round(agg * 10) / 10, unit })
+  const agg = summarize(values, mode)
+  if (agg === null) return null
+  return t("chart.statLine", { label: statLabel(t, mode), value: formatNumber(agg, 1), unit })
 }

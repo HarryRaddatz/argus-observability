@@ -430,7 +430,14 @@
     "noData": "Sem dados",
     "sparkSummary": "{{label}}: agora {{last}}, entre {{min}} e {{max}}",
     "chartLabel": "Gráfico de {{title}}, {{count}} pontos",
-    "seriesLabel": "Gráfico de {{title}}, {{count}} séries: {{names}}"
+    "seriesLabel": "Gráfico de {{title}}, {{count}} séries: {{names}}",
+    "stats": {
+      "avg": "Média",
+      "p85": "p85",
+      "p90": "p90",
+      "p95": "p95",
+      "max": "Pico"
+    }
   },
   "views": {
     "name": "Nome da visão",
