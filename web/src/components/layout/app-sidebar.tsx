@@ -24,7 +24,10 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<NavLink to="/" />}>
-              <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold">
+              <div
+                aria-hidden="true"
+                className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg font-semibold"
+              >
                 A
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">

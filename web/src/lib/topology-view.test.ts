@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { buildServices, filterServices, pickService, rankServices } from "@/lib/topology-view"
+import { buildServices, filterServices, isAddress, pickService, rankServices, splitAddresses } from "@/lib/topology-view"
 import type { TopologySignals } from "@/lib/topology-view"
 
 const signals: TopologySignals = {
@@ -48,5 +48,14 @@ describe("topology view", () => {
     expect(pickService(ranked, "checkout")?.id).toBe("checkout")
     expect(pickService(ranked, "")?.id).toBe("payments")
     expect(filterServices(ranked, "gate").map((service) => service.id)).toEqual(["gateway"])
+  })
+
+  it("separates raw addresses and container ids from named services", () => {
+    for (const id of ["10.0.160.97", "2a02:4780:14:3aa7::1", "0aa83922cb55"]) expect(isAddress(id)).toBe(true)
+    for (const id of ["gateway", "api.example.com", "orders-response-queue-0aa83922cb55", "beef"]) expect(isAddress(id)).toBe(false)
+    const mixed = buildServices({ nodes: [{ id: "gateway", label: "gateway" }, { id: "10.0.0.1", label: "10.0.0.1" }], edges: [] }, signals)
+    const { named, addresses } = splitAddresses(mixed)
+    expect(named.map((service) => service.id)).toEqual(["gateway"])
+    expect(addresses.map((service) => service.id)).toEqual(["10.0.0.1"])
   })
 })

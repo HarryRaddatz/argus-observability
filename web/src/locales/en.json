@@ -46,14 +46,17 @@
     "pagerRange": "{{start}}–{{end}} of {{total}}",
     "pagerPrev": "Previous page",
     "pagerNext": "Next page",
-    "pagerTruncated": "This total stops at the scan cap. Older rows may exist.",
-    "navPanel": "Panel navigation"
+    "pagerTruncated": "This total stops at the search limit. Older rows may exist.",
+    "retry": "Try again",
+    "loading": "Loading…",
+    "navPanel": "Panel navigation",
+    "groupsError": "Could not load groups"
   },
   "overview": {
     "title": "Overview",
     "alerts": "Active alerts",
     "slosBreached": "SLOs breached",
-    "lowBudget": "{{count}} with low budget",
+    "lowBudget": "{{count}} with low error budget",
     "unstableContainers": "Containers with issues",
     "httpErrors": "HTTP services with errors",
     "httpHint": "Over 1% in 1 hour",
@@ -62,8 +65,9 @@
     "more": "{{count}} more in the indicators above.",
     "sloOf": "SLO for {{service}}",
     "violated": "Breached",
-    "lowMargin": "Low budget",
-    "httpDetail": "{{pct}} of HTTP requests with errors"
+    "lowMargin": "Low error budget",
+    "httpDetail": "{{pct}} of HTTP requests with errors",
+    "unstableBadge": "Unstable"
   },
   "problems": {
     "title": "Problems",
@@ -76,7 +80,7 @@
     "logsOf": "Container logs",
     "metricsOf": "Container metrics",
     "groupMetrics": "Group metrics",
-    "loadError": "Could not load problems",
+    "loadError": "Could not load problems. Check that the hub is up, then try again.",
     "themeGroup": "Group",
     "downTitle": "Down now",
     "downEmpty": "Nothing is down because it failed.",
@@ -84,10 +88,11 @@
     "intentionalEmpty": "No container was stopped on purpose.",
     "intentionalDetail": "Exit {{code}}. An operator stopped it.",
     "unexpectedDetail": "Exit {{code}}. The process ended on its own.",
-    "oomDetail": "The kernel killed it because it ran out of memory."
+    "oomDetail": "The kernel killed it because it ran out of memory.",
+    "onContainer": ", on {{container}}"
   },
   "events": {
-    "loadError": "Could not load events",
+    "loadError": "Could not load events. Check that the hub is up, then try again.",
     "empty": "No events in this range. Widen the range to see more.",
     "time": "Time",
     "type": "Type",
@@ -100,7 +105,8 @@
     "empty": "No SLOs configured on the hub.",
     "httpMetrics": "HTTP metrics for the service",
     "latency": "p95 under {{ms}} ms on {{target}}% of requests",
-    "availability": "{{target}}% of requests without error"
+    "availability": "{{target}}% of requests without error",
+    "loadError": "Could not load SLOs. Check that the hub is up, then try again."
   },
   "containers": {
     "title": "Containers",
@@ -123,7 +129,7 @@
     "health": "Health",
     "restarts": "Restarts",
     "stopped": "Stopped",
-    "loadError": "Could not load containers",
+    "loadError": "Could not load containers. Check that the hub is up, then try again.",
     "empty": "No containers in this filter.",
     "emptyAgent": "No monitored containers. Start the agent with access to the Docker socket.",
     "unstableBanner": "Showing only containers with issues.",
@@ -140,7 +146,9 @@
     "healthFailing": "Healthcheck failing",
     "of": "of",
     "metricsLink": "Metrics",
-    "logsLink": "Logs"
+    "logsLink": "Logs",
+    "replicasValue": "{{up}} of {{total}}",
+    "cpuHigh": "{{pct}} high"
   },
   "state": {
     "running": "Running",
@@ -186,7 +194,7 @@
     "title": "Metrics",
     "byContainer": "By container",
     "compare": "Compare containers",
-    "loadError": "Could not load series",
+    "loadError": "Could not load series. Check that the hub is up, then try again.",
     "noContainer": "No container in this filter.",
     "logsOf": "Logs for this container",
     "compareOthers": "Compare with others",
@@ -219,7 +227,8 @@
     "httpLatencyLogs": "From logs",
     "httpErrorStatus": "Status 400 or higher",
     "statAvg": "average",
-    "statPeak": "peak"
+    "statPeak": "peak",
+    "notRecent": "No data from this container in the last hour. It may have stopped or been renamed."
   },
   "logs": {
     "title": "Logs",
@@ -239,24 +248,34 @@
     "trace": "Trace",
     "oneOccurrence": "1 occurrence",
     "nOccurrences": "{{count}} occurrences",
-    "patternsError": "Could not load patterns",
+    "patternsError": "Could not load patterns. Check that the hub is up, then try again.",
     "patternsEmpty": "No repeated patterns for these filters in this range.",
     "metricsOf": "Metrics for {{container}}",
     "openLines": "Open as lines",
     "linesOnlyFilters": "Topic, level, and trace only apply to Lines mode.",
-    "searchError": "Could not fetch logs",
+    "searchError": "Could not fetch logs. Check that the hub is up, then try again.",
     "time": "Time",
     "topics": "Topics",
     "linesEmpty": "No lines for these filters. Widen the range or clear a filter.",
-    "viewLines": "View lines"
+    "viewLines": "View lines",
+    "messagePlaceholder": "Text in the message…",
+    "traceBanner": "Lines for this trace across all containers:",
+    "viewTrace": "View the trace",
+    "clearTrace": "Clear trace",
+    "levels": {
+      "error": "Error",
+      "warn": "Warning",
+      "info": "Info",
+      "debug": "Debug"
+    }
   },
   "traces": {
     "title": "Traces",
     "openById": "Open a trace by ID",
     "open": "Open trace",
-    "loadError": "Could not load traces",
+    "loadError": "Could not load traces. Check that the hub is up, then try again.",
     "empty": "No traces in this range. Traces come from OTLP spans sent to the hub or from logs with trace_id.",
-    "noSpans": "No spans for this trace in the last 24 hours. Check the ID or send OTLP to POST /v1/traces.",
+    "noSpans": "No spans for this trace in the selected range. Widen the range, check the ID, or send OTLP to POST /v1/traces.",
     "service": "Service",
     "start": "Start",
     "duration": "Duration",
@@ -268,21 +287,40 @@
     "outcome": "Result",
     "source": "Source",
     "withError": "With error",
-    "ok": "Ok",
+    "ok": "OK",
     "backToList": "Back to the list",
     "logsOfTrace": "Logs for this trace",
-    "totalSpans": "{{duration}} total, {{count}} spans, source {{source}}",
     "waterfall": "Waterfall",
     "timeline": "Timeline",
-    "metricsOf": "Metrics for {{container}}"
+    "metricsOf": "Metrics for {{container}}",
+    "traceId": "Trace ID",
+    "detailError": "Could not load this trace. Check that the hub is up, then try again.",
+    "spanError": "Error",
+    "totalSpans_one": "{{duration}} total, {{count}} span, source {{source}}",
+    "totalSpans_other": "{{duration}} total, {{count}} spans, source {{source}}",
+    "kinds": {
+      "server": "Server",
+      "client": "Client",
+      "internal": "Internal",
+      "producer": "Producer",
+      "consumer": "Consumer",
+      "log": "Log"
+    }
   },
   "topology": {
     "title": "Topology",
     "description": "Who calls the selected service, and who it calls.",
     "empty": "No dependencies in this range. Edges appear from kernel observations or from logs.",
-    "loadError": "Could not load topology.",
-    "summary": "{{critical}} critical, {{warning}} warning, of {{total}}.",
+    "loadError": "Could not load topology. Check that the hub is up, then try again.",
+    "staleError": "The last refresh failed. The list below may be out of date.",
+    "summary_one": "{{critical}} critical and {{warning}} with warnings, out of {{count}} named service.",
+    "summary_other": "{{critical}} critical and {{warning}} with warnings, out of {{count}} named services.",
+    "focusMissing": "{{name}} was not seen in this range. Showing the service that needs attention first.",
     "search": "Find a service",
+    "searchPlaceholder": "checkout, gateway…",
+    "showAddresses_one": "Show {{count}} IP address or container ID",
+    "showAddresses_other": "Show {{count}} IP addresses and container IDs",
+    "hideAddresses": "Hide IP addresses and container IDs",
     "shown": "{{shown}} of {{total}}",
     "noMatch": "No service matches that name.",
     "path": "Path",
@@ -290,8 +328,19 @@
     "downstream": "Dependencies",
     "noUpstream": "No callers",
     "noDownstream": "No dependencies",
-    "edgeMeta": "{{kind}} · {{count}} · {{origin}}",
-    "originUnknown": "origin not set",
+    "edgeMeta": "{{kind}}, {{calls}}",
+    "calls_one": "{{count}} call",
+    "calls_other": "{{count}} calls",
+    "kinds": {
+      "http": "HTTP",
+      "amqp": "AMQP queue",
+      "tcp": "TCP",
+      "mongodb": "MongoDB",
+      "mysql": "MySQL",
+      "postgres": "PostgreSQL",
+      "redis": "Redis"
+    },
+    "originUnknown": "Source not recorded",
     "detail": "Selected service",
     "cpu": "CPU",
     "memory": "Memory",
@@ -299,9 +348,9 @@
     "errorRate": "Error rate",
     "latency": "Average latency",
     "latencyMs": "{{ms}} ms",
-    "noHttp": "No HTTP summary uses this name.",
-    "noWorkload": "No workload snapshot matches this name.",
-    "noFleet": "No fleet status matches this name.",
+    "noHttp": "No HTTP traffic recorded under this name in this range.",
+    "noWorkload": "No container with this name reported CPU or memory recently.",
+    "noFleet": "No running or stopped container has this name.",
     "status": {
       "critical": "Critical",
       "warning": "Warning",
@@ -326,7 +375,8 @@
   },
   "alerts": {
     "cpuHigh": "High CPU",
-    "memoryHigh": "Critical memory"
+    "memoryHigh": "Critical memory",
+    "valueNow": "Now at {{value}}"
   },
   "insight": {
     "group_degradation": "Group"
@@ -347,10 +397,13 @@
   },
   "card": {
     "of": "of",
-    "cpuHour": "CPU in the last hour",
-    "memHour": "Memory in the last hour",
+    "cpuHour": "CPU trend",
+    "memHour": "Memory trend",
     "oneRestart": "1 restart",
-    "nRestarts": "{{count}} restarts"
+    "nRestarts": "{{count}} restarts",
+    "memoryOf": "{{used}} of {{limit}}",
+    "restarts_one": "{{count}} restart",
+    "restarts_other": "{{count}} restarts"
   },
   "sloExtra": {
     "ok": "Within objective",
@@ -373,7 +426,11 @@
     "empty": "No data in this range.",
     "emptyHint": "No data in this range — try a wider interval.",
     "statLine": "{{label}}: {{value}}{{unit}}",
-    "total": "Total"
+    "total": "Total",
+    "noData": "No data",
+    "sparkSummary": "{{label}}: now {{last}}, range {{min}} to {{max}}",
+    "chartLabel": "{{title}} chart, {{count}} points",
+    "seriesLabel": "{{title}} chart, {{count}} series: {{names}}"
   },
   "views": {
     "name": "View name",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,6 +17,7 @@ type Props = {
 }
 
 export function StatCard({ label, value, tone = "default", hint, to, loading }: Props) {
+  const { t } = useTranslation()
   const body = (
     <Card className={cn("h-full", to && "hover:bg-muted/40 transition-colors")}>
       <CardContent className="space-y-1 pt-6">
@@ -24,7 +26,12 @@ export function StatCard({ label, value, tone = "default", hint, to, loading }: 
         ) : (
           <p className={cn("text-2xl font-semibold tabular-nums", textTone[tone])}>{value}</p>
         )}
-        <p className="text-muted-foreground text-sm">{label}</p>
+        <p className="text-muted-foreground text-sm">
+          {label}
+          {tone !== "default" && !loading ? (
+            <span className={cn("ml-1.5 text-xs font-medium", textTone[tone])}>{t(`severity.${tone}`)}</span>
+          ) : null}
+        </p>
         {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
       </CardContent>
     </Card>

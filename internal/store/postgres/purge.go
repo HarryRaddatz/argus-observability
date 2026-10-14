@@ -39,6 +39,9 @@ func (s *Postgres) Purge(ctx context.Context, logsBefore, metricsBefore, eventsB
 	if _, err = s.purgeBefore(ctx, "topology_links", "last_seen", metricsBefore); err != nil {
 		return out, err
 	}
+	if _, err = s.purgeBefore(ctx, "workload_latest", "ts", metricsBefore); err != nil {
+		return out, err
+	}
 
 	out.Duration = time.Since(start)
 	if ctx.Err() != nil {
@@ -50,7 +53,7 @@ func (s *Postgres) Purge(ctx context.Context, logsBefore, metricsBefore, eventsB
 
 func (s *Postgres) purgeBefore(ctx context.Context, table, tsColumn string, before time.Time) (int64, error) {
 	cutoff := before.UTC().Format(time.RFC3339Nano)
-	if table == "topology_edges" || table == "topology_links" {
+	if table == "topology_edges" || table == "topology_links" || table == "workload_latest" {
 		res, err := s.db.ExecContext(ctx,
 			fmt.Sprintf(`DELETE FROM %s WHERE %s < ?`, table, tsColumn), cutoff)
 		if err != nil {

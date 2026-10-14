@@ -129,6 +129,21 @@ export function filterServices(services: ServiceView[], query: string): ServiceV
   return services.filter((service) => service.label.toLowerCase().includes(q) || service.id.toLowerCase().includes(q))
 }
 
+const ipv4 = /^\d{1,3}(\.\d{1,3}){3}$/
+const containerHash = /^[0-9a-f]{12}$/
+
+// isAddress reports nodes named by a raw IP or a short container id instead of a service name.
+export function isAddress(id: string): boolean {
+  return ipv4.test(id) || (id.includes(":") && /^[0-9a-f:]+$/i.test(id)) || containerHash.test(id)
+}
+
+export function splitAddresses(services: ServiceView[]): { named: ServiceView[]; addresses: ServiceView[] } {
+  const named: ServiceView[] = []
+  const addresses: ServiceView[] = []
+  for (const service of services) (isAddress(service.id) ? addresses : named).push(service)
+  return { named, addresses }
+}
+
 export function pickService(services: ServiceView[], focus: string): ServiceView | null {
   if (services.length === 0) return null
   return services.find((service) => service.id === focus) ?? services[0]

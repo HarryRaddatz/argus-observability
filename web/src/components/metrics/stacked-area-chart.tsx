@@ -7,7 +7,7 @@ import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ContainerSeries } from "@/lib/api"
 import { containerColor } from "@/lib/chart-colors"
-import { formatPercent } from "@/lib/format"
+import { formatNumber, formatPercent } from "@/lib/format"
 import { mergeStacked } from "@/lib/series"
 
 type Props = {
@@ -48,7 +48,7 @@ export function StackedAreaChart({
             {hint}
           </p>
         ) : (
-          <ChartContainer config={{}} className="h-[280px] w-full">
+          <ChartContainer config={{}} className="h-[280px] w-full" role="img" aria-label={t("chart.seriesLabel", { title, count: keys.length, names: keys.slice(0, 8).join(", ") })}>
             <AreaChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="time" tickLine={false} axisLine={false} minTickGap={32} />
@@ -99,7 +99,7 @@ function StackTooltip({
             {item.name}
           </span>
           <span className="font-mono font-medium tabular-nums">
-            {unit === "%" ? formatPercent(Number(item.value)) : Number(item.value).toLocaleString()}
+            {unit === "%" ? formatPercent(Number(item.value)) : formatNumber(Number(item.value), 1)}
           </span>
         </div>
       ))}

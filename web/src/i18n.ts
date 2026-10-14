@@ -19,6 +19,12 @@ export function readStoredLocale(): AppLocale {
   } catch {
     /* ignore */
   }
+  const preferred = typeof navigator === "undefined" ? [] : navigator.languages ?? [navigator.language]
+  for (const tag of preferred) {
+    const lower = tag.toLowerCase()
+    if (lower.startsWith("pt")) return "pt-BR"
+    if (lower.startsWith("en")) return "en"
+  }
   return "en"
 }
 

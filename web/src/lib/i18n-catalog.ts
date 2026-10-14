@@ -1,5 +1,7 @@
 import type { TFunction } from "i18next"
 
+import { formatPercent } from "@/lib/format"
+
 const RULE_KEYS: Record<string, string> = {
   "cpu-high": "alerts.cpuHigh",
   "memory-high": "alerts.memoryHigh",
@@ -23,6 +25,10 @@ const METRIC_KEYS: Record<string, string> = {
 export function localizeAlertTitle(t: TFunction, ruleId: string, fallback: string): string {
   const key = RULE_KEYS[ruleId]
   return key ? t(key) : fallback
+}
+
+export function localizeAlertSummary(t: TFunction, ruleId: string, value: number, fallback: string): string {
+  return RULE_KEYS[ruleId] ? t("alerts.valueNow", { value: formatPercent(value) }) : fallback
 }
 
 export function localizeMetricLabel(t: TFunction, metricName: string, fallback: string): string {

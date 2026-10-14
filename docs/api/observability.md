@@ -18,8 +18,8 @@ Hub JSON titles stay in the seed language. The panel maps `rule_id` and metric n
       "id": "cpu-high-stack-demo-api-1",
       "theme": "cpu",
       "severity": "warning",
-      "title": "CPU elevada",
-      "summary": "Uso sustentado acima do limiar",
+      "title": "High CPU",
+      "summary": "Sustained use above the threshold",
       "container": "stack-demo-api-1",
       "entity_uid": "container:stack-demo-api-1",
       "evidence": { "cpu_usage": 82.1 },
@@ -124,9 +124,9 @@ Built-in rules: `cpu-high` (`cpu.usage` ≥ 80 for 5 minutes, `warning`) and `me
     "rule_id": "cpu-high",
     "entity_uid": "container:stack-demo-api-1",
     "container": "stack-demo-api-1",
-    "title": "CPU elevada — stack-demo-api-1",
+    "title": "High CPU — stack-demo-api-1",
     "severity": "warning",
-    "summary": "cpu.usage em 82.1 (limiar 80)",
+    "summary": "cpu.usage at 82.1 (threshold 80)",
     "fired_at": "2026-09-29T18:10:00Z",
     "value": 82.1
   }
@@ -152,7 +152,7 @@ The seed includes two SLOs for service `demo-api`, target `99.9`, window `720` h
   {
     "slo": {
       "id": "slo-demo-availability",
-      "name": "Disponibilidade demo-api",
+      "name": "demo-api availability",
       "service": "demo-api",
       "sli_metric": "availability",
       "target": 99.9,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { ListPager } from "@/components/list-pager"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,14 +39,14 @@ export function LogPatterns({ filters, onOpenLines }: Props) {
         setRows(r)
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t("logs.patternsError")))
+      .catch(() => setError(t("logs.patternsError")))
       .finally(() => setLoading(false))
   }, [since, q, container, group, t])
 
   usePolling(load)
 
   if (loading && rows.length === 0) return <Skeleton className="h-24 w-full" />
-  if (error) return <p className="text-destructive text-sm">{error}</p>
+  if (error) return <LoadError message={error} onRetry={load} />
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{t("logs.patternsEmpty")}</p>
   }

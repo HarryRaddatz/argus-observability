@@ -53,8 +53,8 @@ func NewEngine(eventBus *bus.Bus) *Engine {
 		track:  map[string]*tracker{},
 		active: map[string]ActiveAlert{},
 		rules: []Rule{
-			{ID: "cpu-high", Metric: "cpu.usage", Threshold: 80, Duration: 5 * time.Minute, Severity: "warning", Title: "CPU elevada"},
-			{ID: "memory-high", Metric: "memory.usage_pct", Threshold: 90, Duration: 5 * time.Minute, Severity: "critical", Title: "Memória crítica"},
+			{ID: "cpu-high", Metric: "cpu.usage", Threshold: 80, Duration: 5 * time.Minute, Severity: "warning", Title: "High CPU"},
+			{ID: "memory-high", Metric: "memory.usage_pct", Threshold: 90, Duration: 5 * time.Minute, Severity: "critical", Title: "Critical memory"},
 		},
 	}
 }
@@ -115,7 +115,7 @@ func (e *Engine) fire(rule Rule, entityUID, container string, labels model.Label
 	e.active[key] = ActiveAlert{
 		RuleID: rule.ID, EntityUID: entityUID, Container: container,
 		Title: fmt.Sprintf("%s — %s", rule.Title, container), Severity: rule.Severity,
-		Summary: fmt.Sprintf("%s em %.1f (limiar %.0f)", rule.Metric, value, rule.Threshold),
+		Summary: fmt.Sprintf("%s at %.1f (threshold %.0f)", rule.Metric, value, rule.Threshold),
 		FiredAt: now, Value: value,
 	}
 	e.bus.Publish(model.Event{
@@ -157,7 +157,7 @@ func (e *Engine) ActiveInsights() []model.Insight {
 			Evidence: map[string]any{
 				"rule_id": a.RuleID, "fired_at": a.FiredAt.Format(time.RFC3339), "value": a.Value,
 			},
-			Recommendations: []string{"Alerta ativo — ver métricas e logs do container"},
+			Recommendations: []string{"Alert is active. Check the container metrics and logs."},
 		})
 	}
 	return out

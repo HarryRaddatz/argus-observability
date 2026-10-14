@@ -2,6 +2,7 @@ import { useCallback, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePolling } from "@/hooks/use-polling"
@@ -14,7 +15,7 @@ import {
   type Insight,
 } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
-import { localizeAlertTitle } from "@/lib/i18n-catalog"
+import { localizeAlertSummary, localizeAlertTitle } from "@/lib/i18n-catalog"
 import { severityLabel, severityVariant } from "@/lib/severity"
 
 type Props = {
@@ -38,7 +39,7 @@ export function ProblemsNow({ since, group }: Props) {
         setFleet(f.containers ?? [])
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t("problems.loadError")))
+      .catch(() => setError(t("problems.loadError")))
       .finally(() => setLoading(false))
   }, [since, group, t])
 
@@ -59,11 +60,7 @@ export function ProblemsNow({ since, group }: Props) {
 
   return (
     <div className="space-y-8">
-      {error ? (
-        <p className="text-destructive text-sm" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <LoadError message={error} onRetry={load} /> : null}
 
       <Section title={t("problems.downTitle")}>
         {failed.length === 0 ? (
@@ -97,14 +94,18 @@ export function ProblemsNow({ since, group }: Props) {
             {alerts.map((a) => (
               <li key={a.rule_id + a.entity_uid} className="flex items-baseline justify-between gap-4 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{localizeAlertTitle(t, a.rule_id, a.title)}</p>
-                  <p className="text-muted-foreground truncate text-sm">
+                  <p className="text-sm font-medium">{localizeAlertTitle(t, a.rule_id, a.title)}</p>
+                  <p className="text-muted-foreground text-sm break-words">
                     {t("problems.since", { container: a.container, when: formatDateTime(a.fired_at) })}
-                    {a.summary ? ` ${a.summary}` : ""}
                   </p>
+                  {a.summary || a.value ? (
+                    <p className="text-muted-foreground text-sm break-words">{localizeAlertSummary(t, a.rule_id, a.value, a.summary)}</p>
+                  ) : null}
                   {a.container ? <RowLinks container={a.container} /> : null}
                 </div>
-                <Badge variant={severityVariant[a.severity] ?? "outline"}>{severityLabel(t, a.severity)}</Badge>
+                <Badge variant={severityVariant[a.severity] ?? "outline"} className="shrink-0">
+                  {severityLabel(t, a.severity)}
+                </Badge>
               </li>
             ))}
           </ul>
@@ -150,25 +151,28 @@ function DownRow({ container }: { container: ContainerFleetStatus }) {
   return (
     <li className="flex items-baseline justify-between gap-4 py-3">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{container.container}</p>
+        <p className="text-sm font-medium break-all">{container.container}</p>
         <p className="text-muted-foreground text-sm">{detail}</p>
         <RowLinks container={container.container} />
       </div>
-      <Badge variant={container.disposition === "intentional" ? "outline" : "destructive"}>
+      <Badge variant={container.disposition === "intentional" ? "outline" : "destructive"} className="shrink-0">
         {t(`state.${container.disposition}`)}
       </Badge>
     </li>
   )
 }
 
+const rowLink =
+  "focus-visible:ring-ring inline-flex items-center rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11"
+
 function RowLinks({ container }: { container: string }) {
   const { t } = useTranslation()
   return (
     <p className="mt-1 flex gap-3 text-sm">
-      <Link className="underline-offset-4 hover:underline" to={`/logs?container=${encodeURIComponent(container)}`}>
+      <Link className={rowLink} to={`/logs?container=${encodeURIComponent(container)}`}>
         {t("problems.logsOf")}
       </Link>
-      <Link className="underline-offset-4 hover:underline" to={`/metrics?container=${encodeURIComponent(container)}`}>
+      <Link className={rowLink} to={`/metrics?container=${encodeURIComponent(container)}`}>
         {t("problems.metricsOf")}
       </Link>
     </p>
@@ -198,16 +202,18 @@ function InsightRow({ insight, group }: { insight: Insight; group: string }) {
         <p className="text-sm font-medium">{insight.title}</p>
         <p className="text-muted-foreground text-sm">
           <span className="text-foreground">{themeLabel}</span>
-          {insight.container ? ` · ${insight.container}` : ""}
-          {insight.summary ? ` · ${insight.summary}` : ""}
+          {insight.container ? <span className="break-all">{t("problems.onContainer", { container: insight.container })}</span> : null}
         </p>
+        {insight.summary ? <p className="text-muted-foreground text-sm break-words">{insight.summary}</p> : null}
         <p className="mt-1 flex gap-3 text-sm">
-          <Link className="underline-offset-4 hover:underline" to={logsLink}>
+          <Link className={rowLink} to={logsLink}>
             {t("problemsExtra.relatedLogs")}
           </Link>
         </p>
       </div>
-      <Badge variant={severityVariant[insight.severity] ?? "outline"}>{severityLabel(t, insight.severity)}</Badge>
+      <Badge variant={severityVariant[insight.severity] ?? "outline"} className="shrink-0">
+        {severityLabel(t, insight.severity)}
+      </Badge>
     </li>
   )
 }
