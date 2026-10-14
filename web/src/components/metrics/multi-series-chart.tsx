@@ -50,7 +50,7 @@ export function MultiSeriesChart({
             {t("chart.empty")}
           </p>
         ) : chartType === "line" ? (
-          <ChartContainer config={{}} className="h-[280px] w-full">
+          <ChartContainer config={{}} className="h-[280px] w-full" role="img" aria-label={t("chart.seriesLabel", { title, count: keys.length, names: keys.slice(0, 8).join(", ") })}>
             <LineChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="time" tickLine={false} axisLine={false} minTickGap={32} />
@@ -72,7 +72,7 @@ export function MultiSeriesChart({
             </LineChart>
           </ChartContainer>
         ) : (
-          <ChartContainer config={{}} className="h-[280px] w-full">
+          <ChartContainer config={{}} className="h-[280px] w-full" role="img" aria-label={t("chart.seriesLabel", { title, count: keys.length, names: keys.slice(0, 8).join(", ") })}>
             <AreaChart data={data} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="time" tickLine={false} axisLine={false} minTickGap={32} />

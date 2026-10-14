@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { GroupSelect } from "@/components/filters/group-select"
 import { ListPager } from "@/components/list-pager"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
@@ -16,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePolling } from "@/hooks/use-polling"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
 import { listWorkloads, searchLogs, type LogRow } from "@/lib/api"
+import { formatClock, formatDateTime, stripAnsi } from "@/lib/format"
 import { pageIndex, type ListPage } from "@/lib/page"
 import { LOG_LEVELS, LOG_TOPICS } from "@/lib/observability"
 import { LogPatterns } from "@/views/log-patterns"
@@ -31,6 +33,12 @@ const levelVariant: Record<string, "default" | "secondary" | "destructive" | "ou
 function getTraceId(row: LogRow): string | undefined {
   const tid = row.fields?.trace_id
   return typeof tid === "string" && tid.length > 0 ? tid : undefined
+}
+
+const levelKey: Record<string, string> = { error: "error", warn: "warn", warning: "warn", info: "info", debug: "debug" }
+
+function levelLabel(t: (key: string, opts?: Record<string, unknown>) => string, level: string): string {
+  return level === "all" ? t("logs.all") : levelKey[level] ? t(`logs.levels.${levelKey[level]}`) : level
 }
 
 function formatTraceShort(id: string): string {
@@ -85,8 +93,9 @@ export function LogsPage() {
               onChange={(v) => patch({ group: v, container: v ? null : container })}
             />
             <select
+              name="container"
               aria-label={t("common.container")}
-              className="border-input bg-background h-8 rounded-md border px-2 text-sm disabled:opacity-50"
+              className="border-input bg-background text-foreground h-8 rounded-md border px-2 text-sm disabled:opacity-50 pointer-coarse:h-11"
               value={container}
               disabled={Boolean(group) || traceActive}
               onChange={(e) => setContainer(e.target.value)}
@@ -119,7 +128,15 @@ export function LogsPage() {
             patch({ q: queryDraft.trim() })
           }}
         >
-          <Input aria-label={t("logs.message")} placeholder={t("logs.message")} value={queryDraft} onChange={(e) => setQueryDraft(e.target.value)} />
+          <Input
+            type="search"
+            name="q"
+            autoComplete="off"
+            aria-label={t("logs.message")}
+            placeholder={t("logs.messagePlaceholder")}
+            value={queryDraft}
+            onChange={(e) => setQueryDraft(e.target.value)}
+          />
           <Button type="submit" size="sm" variant="outline">
             {t("logs.search")}
           </Button>
@@ -133,8 +150,12 @@ export function LogsPage() {
           }}
         >
           <Input
-            aria-label="Trace ID"
-            placeholder="Trace ID"
+            type="search"
+            name="trace_id"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label={t("traces.traceId")}
+            placeholder={t("traces.traceId")}
             value={traceDraft}
             disabled={patterns}
             onChange={(e) => setTraceDraft(e.target.value)}
@@ -176,7 +197,7 @@ export function LogsPage() {
                 disabled={patterns}
                 onClick={() => setLevel(item.id)}
               >
-                {item.id === "all" ? t("logs.all") : item.id}
+                {levelLabel(t, item.id)}
               </Button>
             ))}
           </div>
@@ -188,14 +209,17 @@ export function LogsPage() {
 
       {traceActive ? (
         <div className="bg-muted/50 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-          <span>
-            Linhas do trace <span className="font-mono">{traceId}</span> em todos os containers.
+          <span className="min-w-0 break-all">
+            {t("logs.traceBanner")} <span className="font-mono">{traceId}</span>
           </span>
-          <Link to={`/traces?trace_id=${encodeURIComponent(traceId)}`} className="text-primary hover:underline">
-            Ver o trace
+          <Link
+            to={`/traces?${new URLSearchParams({ trace_id: traceId, since })}`}
+            className="text-primary focus-visible:ring-ring rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:py-3"
+          >
+            {t("logs.viewTrace")}
           </Link>
           <Button size="sm" variant="ghost" onClick={() => patch({ trace_id: null })}>
-            Limpar trace
+            {t("logs.clearTrace")}
           </Button>
         </div>
       ) : null}
@@ -261,8 +285,8 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
         setResult(r)
         setError(null)
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : t("logs.searchError"))
+      .catch(() => {
+        setError(t("logs.searchError"))
         setResult({ entries: [], total: 0, limit: 50, offset: 0, truncated: false })
       })
       .finally(() => setLoading(false))
@@ -272,8 +296,8 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
 
   return (
     <>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      <ScrollArea className="h-[480px] rounded-md border">
+      {error ? <LoadError message={error} onRetry={load} /> : null}
+      <ScrollArea className="h-[480px] rounded-md border" aria-busy={loading}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -299,7 +323,7 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
                 </TableCell>
               </TableRow>
             ) : (
-              result.entries.map((row, i) => <LogRowView key={`${row.ts}-${row.entity_uid}-${i}`} row={row} />)
+              result.entries.map((row, i) => <LogRowView key={`${row.ts}-${row.entity_uid}-${i}`} row={row} since={since} />)
             )}
           </TableBody>
         </Table>
@@ -317,16 +341,20 @@ function LogLines({ q, since, level, topic, container, group, traceId }: LinesPr
   )
 }
 
-function LogRowView({ row }: { row: LogRow }) {
-  const { t, i18n } = useTranslation()
+function LogRowView({ row, since }: { row: LogRow; since: string }) {
+  const { t } = useTranslation()
   const topics = (row.fields?.topics as string[] | undefined) ?? []
   const tid = getTraceId(row)
   const container = row.entity_uid.split(":").pop() ?? row.entity_uid
   return (
     <TableRow>
-      <TableCell className="whitespace-nowrap font-mono text-xs">{new Date(row.ts).toLocaleTimeString(i18n.language)}</TableCell>
+      <TableCell className="whitespace-nowrap font-mono text-xs">
+        <time dateTime={row.ts} title={formatDateTime(row.ts)}>
+          {formatClock(row.ts)}
+        </time>
+      </TableCell>
       <TableCell>
-        <Badge variant={levelVariant[row.level] ?? "outline"}>{row.level}</Badge>
+        <Badge variant={levelVariant[row.level] ?? "outline"}>{levelLabel(t, row.level)}</Badge>
       </TableCell>
       <TableCell className="max-w-[160px] truncate font-mono text-xs">
         <Link to={`/metrics?container=${encodeURIComponent(container)}`} className="hover:underline" title={t("logs.metricsOf", { container })}>
@@ -335,7 +363,7 @@ function LogRowView({ row }: { row: LogRow }) {
       </TableCell>
       <TableCell className="font-mono text-xs">
         {tid ? (
-          <Link to={`/traces?trace_id=${encodeURIComponent(tid)}`} className="text-primary hover:underline" title={tid}>
+          <Link to={`/traces?${new URLSearchParams({ trace_id: tid, since })}`} className="text-primary hover:underline" title={tid}>
             {formatTraceShort(tid)}
           </Link>
         ) : (
@@ -348,12 +376,12 @@ function LogRowView({ row }: { row: LogRow }) {
             .filter((topicId) => topicId !== "general")
             .map((topicId) => (
               <Badge key={topicId} variant="outline" className="text-xs">
-                {topicId}
+                {topicId === "error" ? t("logs.errors") : t(`logs.${topicId}`, { defaultValue: topicId })}
               </Badge>
             ))}
         </div>
       </TableCell>
-      <TableCell className="max-w-[520px] font-mono text-xs break-all whitespace-pre-wrap">{row.message}</TableCell>
+      <TableCell className="max-w-[520px] min-w-[280px] font-mono text-xs break-all whitespace-pre-wrap">{stripAnsi(row.message)}</TableCell>
     </TableRow>
   )
 }

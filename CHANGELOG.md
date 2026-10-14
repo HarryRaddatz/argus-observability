@@ -4,6 +4,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The workloads list reads a `workload_latest` table kept in the same transaction as metric writes, instead of scanning every metric point in the window. Containers and Topology no longer wait seconds for it
+- Repeated log patterns keep their newest sample. The upsert referenced an ambiguous `sample` column on Postgres
+- The agent strips terminal color codes from log lines and trusts a declared level (JSON `level`/`severity`, pino numbers, logfmt `level=`) before guessing from words, so `trace_id` no longer turns an info line into debug
+- Opening a trace honors the selected range and shows an error with a retry instead of an empty trace
+- The time range control never shows a preset and Custom pressed at the same time, and closes the custom form when the range changes elsewhere
+
+### Changed
+
+- Insight, alert, metric catalog, and default SLO text from the hub is in English. The panel still translates alert titles and values
+- Topology renders as soon as the graph arrives, keeps working when fleet, workload, HTTP, or alert data fails, and hides raw IP addresses and container ids behind a toggle
+- Container cards draw sparklines as plain SVG, and the table view does not fetch series, so the page no longer blocks on each refresh
+- Status is never shown by color alone: meters, stat cards, badges, and failed spans carry a text label, and warning text uses a darker amber
+- Buttons, tabs, inputs, selects, links in lists, and sidebar items reach 44 px on touch screens
+- Load errors use `role="alert"`, say what to check, and offer a retry
+- Numbers, durations, and dates follow the panel language. The first visit picks Portuguese or English from the browser
+- Logs, traces, and problems copy is translated, including the trace banner, level and topic labels, and the trace ID field
+
 ## [0.6.0] - 2026-10-07
 
 ### Added

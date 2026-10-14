@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,21 @@ export function TimeRangePicker({ value, onChange }: Props) {
   const [start, setStart] = useState("")
   const [end, setEnd] = useState("")
   const [invalid, setInvalid] = useState(false)
+  const errorId = useId()
 
   useEffect(() => {
+    setInvalid(false)
     const parsed = splitRange(value)
-    if (!parsed) return
+    if (!parsed) {
+      setDrafting(false)
+      return
+    }
     setStart(toLocalInput(parsed.start))
     setEnd(toLocalInput(parsed.end))
     setDrafting(true)
   }, [value])
+
+  const customActive = custom || drafting
 
   function openCustom() {
     if (!start || !end) {
@@ -54,8 +61,8 @@ export function TimeRangePicker({ value, onChange }: Props) {
           <Button
             key={r.id}
             size="sm"
-            variant={!custom && value === r.id ? "default" : "outline"}
-            aria-pressed={!custom && value === r.id}
+            variant={!customActive && value === r.id ? "default" : "outline"}
+            aria-pressed={!customActive && value === r.id}
             onClick={() => {
               setDrafting(false)
               setInvalid(false)
@@ -65,11 +72,11 @@ export function TimeRangePicker({ value, onChange }: Props) {
             {t(`time.${r.id}`)}
           </Button>
         ))}
-        <Button size="sm" variant={custom || drafting ? "default" : "outline"} aria-pressed={custom || drafting} onClick={openCustom}>
+        <Button size="sm" variant={customActive ? "default" : "outline"} aria-pressed={customActive} onClick={openCustom}>
           {t("time.custom")}
         </Button>
       </div>
-      {drafting || custom ? (
+      {customActive ? (
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
@@ -81,7 +88,9 @@ export function TimeRangePicker({ value, onChange }: Props) {
             <span className="text-muted-foreground">{t("time.from")}</span>
             <Input
               type="datetime-local"
-              aria-label={t("time.from")}
+              name="range_start"
+              aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? errorId : undefined}
               value={start}
               onChange={(e) => setStart(e.target.value)}
               className="w-48"
@@ -91,7 +100,9 @@ export function TimeRangePicker({ value, onChange }: Props) {
             <span className="text-muted-foreground">{t("time.to")}</span>
             <Input
               type="datetime-local"
-              aria-label={t("time.to")}
+              name="range_end"
+              aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? errorId : undefined}
               value={end}
               onChange={(e) => setEnd(e.target.value)}
               className="w-48"
@@ -100,7 +111,11 @@ export function TimeRangePicker({ value, onChange }: Props) {
           <Button type="submit" size="sm" variant="outline">
             {t("time.apply")}
           </Button>
-          {invalid ? <p className="text-destructive text-xs">{t("time.rangeInvalid")}</p> : null}
+          {invalid ? (
+            <p id={errorId} role="alert" className="text-destructive text-xs">
+              {t("time.rangeInvalid")}
+            </p>
+          ) : null}
         </form>
       ) : null}
     </div>

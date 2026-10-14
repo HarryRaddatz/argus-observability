@@ -90,7 +90,7 @@ func Discover(workloads []model.WorkloadSnapshot) []model.WorkloadGroup {
 		}
 		out = append(out, model.WorkloadGroup{
 			ID:         "discover-service-" + svc,
-			Name:       "Serviço " + svc,
+			Name:       "Service " + svc,
 			Kind:       model.GroupKindService,
 			LabelKey:   "service",
 			LabelValue: svc,

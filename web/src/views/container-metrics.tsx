@@ -36,6 +36,9 @@ const EMPTY: Series = {
   blkWrite: [],
 }
 
+const linkClass =
+  "text-primary focus-visible:ring-ring inline-flex items-center rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11"
+
 export function ContainerMetrics({ since, workloads, members }: Props) {
   const { t } = useTranslation()
   const [selected] = useQueryState("container", "")
@@ -45,6 +48,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
   const [series, setSeries] = useState<Series>(EMPTY)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   const containers = useMemo(
     () =>
@@ -58,7 +62,10 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
   useEffect(() => {
     if (selected || containers.length === 0) return
     const byService = service ? workloads.find((w) => matchesService(w.container, w.service, service)) : undefined
-    patch({ container: byService?.container ?? containers[0], service: null })
+    const busiest = workloads
+      .filter((w) => containers.includes(w.container))
+      .sort((a, b) => b.cpu_usage - a.cpu_usage || b.memory_usage - a.memory_usage)[0]
+    patch({ container: byService?.container ?? busiest?.container ?? containers[0], service: null })
   }, [selected, service, containers, workloads, patch])
 
   useEffect(() => {
@@ -82,8 +89,8 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         setSeries({ cpu, mem, memPct, httpLatency, httpErrors, netRx, netTx, blkRead, blkWrite })
         setError(null)
       })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : t("metrics.loadError"))
+      .catch(() => {
+        if (!cancelled) setError(t("metrics.loadError"))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -91,7 +98,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
     return () => {
       cancelled = true
     }
-  }, [selected, since, t])
+  }, [selected, since, attempt, t])
 
   const summary = useMemo(() => {
     const pick = (pts: SeriesPoint[]) => {
@@ -121,7 +128,7 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
                     type="button"
                     aria-current={selected === name ? "true" : undefined}
                     className={cn(
-                      "hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm transition-colors",
+                      "hover:bg-muted focus-visible:ring-ring w-full rounded-md px-3 py-2 text-left text-sm break-all transition-colors focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11",
                       selected === name && "bg-muted font-medium",
                     )}
                     onClick={() => patch({ container: name })}
@@ -139,20 +146,25 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         {selected ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
-              <h2 className="text-lg font-medium">{selected}</h2>
+              <h2 className="text-lg font-medium break-all">{selected}</h2>
+              {workloads.length > 0 && !containers.includes(selected) ? (
+                <p role="status" className="text-muted-foreground text-sm">
+                  {t("metrics.notRecent")}
+                </p>
+              ) : null}
               <div className="flex flex-wrap gap-3 text-sm">
-                <Link to={`/logs?container=${encodeURIComponent(selected)}&since=${since}`} className="text-primary hover:underline">
+                <Link to={`/logs?container=${encodeURIComponent(selected)}&since=${since}`} className={linkClass}>
                   {t("metrics.logsOf")}
                 </Link>
                 <Link
                   to={`/traces?service=${encodeURIComponent(workload?.service || selected)}&since=${since}`}
-                  className="text-primary hover:underline"
+                  className={linkClass}
                 >
                   {t("sloExtra.traces")}
                 </Link>
                 <Link
                   to={`/metrics?mode=compare&containers=${encodeURIComponent(selected)}&since=${since}`}
-                  className="text-primary hover:underline"
+                  className={linkClass}
                 >
                   {t("metrics.compareOthers")}
                 </Link>
@@ -170,8 +182,13 @@ export function ContainerMetrics({ since, workloads, members }: Props) {
         ) : null}
 
         {error ? (
-          <Card className="border-destructive/50">
-            <CardContent className="text-destructive pt-6 text-sm">{error}</CardContent>
+          <Card className="border-destructive/50" role="alert">
+            <CardContent className="flex flex-wrap items-center gap-3 pt-6 text-sm">
+              <span className="text-destructive">{error}</span>
+              <Button size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
+                {t("common.retry")}
+              </Button>
+            </CardContent>
           </Card>
         ) : null}
 

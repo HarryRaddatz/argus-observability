@@ -39,14 +39,14 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 			seen[key] = struct{}{}
 			out = append(out, model.Insight{
 				ID: key, Theme: "memory_pressure", Severity: "critical",
-				Title:     fmt.Sprintf("Memória crítica — %s", w.Container),
-				Summary:   fmt.Sprintf("Uso em %.0f%% do limite (%.0f MiB / %.0f MiB). Risco iminente de OOM.", w.MemoryPct, w.MemoryUsage/1024/1024, w.MemoryLimit/1024/1024),
+				Title:     fmt.Sprintf("Critical memory — %s", w.Container),
+				Summary:   fmt.Sprintf("Using %.0f%% of the limit (%.0f MiB of %.0f MiB). An OOM kill is likely soon.", w.MemoryPct, w.MemoryUsage/1024/1024, w.MemoryLimit/1024/1024),
 				Container: w.Container, EntityUID: w.EntityUID,
 				Evidence: map[string]any{"memory_pct": w.MemoryPct, "cpu_usage": w.CPUUsage},
 				Recommendations: []string{
-					"Revisar limites de memória no compose e heap da aplicação",
-					"Correlacionar com logs de GC e erros OutOfMemory",
-					"Considerar scale horizontal ou redução de cache in-memory",
+					"Review the memory limit in compose and the application heap",
+					"Compare with GC logs and OutOfMemory errors",
+					"Consider scaling out or shrinking in-memory caches",
 				},
 			})
 		} else if w.MemoryPct >= 75 {
@@ -57,13 +57,13 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 			seen[key] = struct{}{}
 			out = append(out, model.Insight{
 				ID: key, Theme: "memory_pressure", Severity: "warning",
-				Title:     fmt.Sprintf("Memória elevada — %s", w.Container),
-				Summary:   fmt.Sprintf("Uso sustentado em %.0f%% do limite.", w.MemoryPct),
+				Title:     fmt.Sprintf("High memory — %s", w.Container),
+				Summary:   fmt.Sprintf("Sustained use at %.0f%% of the limit.", w.MemoryPct),
 				Container: w.Container, EntityUID: w.EntityUID,
 				Evidence: map[string]any{"memory_pct": w.MemoryPct},
 				Recommendations: []string{
-					"Monitorar tendência de crescimento (RSS vs heap)",
-					"Filtrar logs por tópico GC para detectar thrashing",
+					"Watch the growth trend (RSS against heap)",
+					"Filter logs by the GC topic to spot thrashing",
 				},
 			})
 		}
@@ -75,13 +75,13 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 			seen[key] = struct{}{}
 			out = append(out, model.Insight{
 				ID: key, Theme: "cpu_hot", Severity: "warning",
-				Title:     fmt.Sprintf("CPU saturada — %s", w.Container),
-				Summary:   fmt.Sprintf("CPU em %.1f%% — possível gargalo ou loop ativo.", w.CPUUsage),
+				Title:     fmt.Sprintf("CPU saturated — %s", w.Container),
+				Summary:   fmt.Sprintf("CPU at %.1f%%. Possible bottleneck or busy loop.", w.CPUUsage),
 				Container: w.Container, EntityUID: w.EntityUID,
 				Evidence: map[string]any{"cpu_usage": w.CPUUsage},
 				Recommendations: []string{
-					"Verificar threads bloqueadas e profiling de CPU",
-					"Correlacionar com logs de performance/latência",
+					"Check for blocked threads and profile the CPU",
+					"Compare with performance and latency logs",
 				},
 			})
 		}
@@ -120,14 +120,14 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 		}
 		out = append(out, model.Insight{
 			ID: key, Theme: "gc_thrashing", Severity: sev,
-			Title:     fmt.Sprintf("Pressão de GC — %s", container),
-			Summary:   fmt.Sprintf("%d linhas de GC no período — possível thrashing ou heap subdimensionado.", count),
+			Title:     fmt.Sprintf("GC pressure — %s", container),
+			Summary:   fmt.Sprintf("%d GC lines in this period. Possible thrashing or an undersized heap.", count),
 			Container: container, EntityUID: entityByContainer[container],
 			Evidence: map[string]any{"gc_log_lines": count},
 			Recommendations: []string{
-				"Ajustar heap JVM (-Xmx/-Xms) ou GC collector (G1/ZGC)",
-				"Investigar alocação de objetos de curta duração",
-				"Usar filtro de logs tópico GC para ver pausas longas",
+				"Tune the JVM heap (-Xmx/-Xms) or the GC collector (G1/ZGC)",
+				"Look for short-lived object allocation",
+				"Use the GC log topic to find long pauses",
 			},
 		})
 	}
@@ -143,13 +143,13 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 		seen[key] = struct{}{}
 		out = append(out, model.Insight{
 			ID: key, Theme: "oom_risk", Severity: "critical",
-			Title:     fmt.Sprintf("Sinais de OOM — %s", container),
-			Summary:   fmt.Sprintf("%d ocorrências relacionadas a memória/OOM nos logs.", count),
+			Title:     fmt.Sprintf("OOM signs — %s", container),
+			Summary:   fmt.Sprintf("%d memory or OOM related lines in the logs.", count),
 			Container: container, EntityUID: entityByContainer[container],
 			Evidence: map[string]any{"oom_log_lines": count},
 			Recommendations: []string{
-				"Prioridade: aumentar limite ou reduzir footprint",
-				"Revisar vazamentos e caches sem TTL",
+				"First raise the limit or reduce the memory footprint",
+				"Look for leaks and caches without a TTL",
 			},
 		})
 	}
@@ -165,13 +165,13 @@ func Generate(workloads []WorkloadMemory, logStats []LogTopicStats) []model.Insi
 		seen[key] = struct{}{}
 		out = append(out, model.Insight{
 			ID: key, Theme: "error_spike", Severity: "warning",
-			Title:     fmt.Sprintf("Pico de erros — %s", container),
-			Summary:   fmt.Sprintf("%d linhas de erro/exception no período.", count),
+			Title:     fmt.Sprintf("Error spike — %s", container),
+			Summary:   fmt.Sprintf("%d error or exception lines in this period.", count),
 			Container: container, EntityUID: entityByContainer[container],
 			Evidence: map[string]any{"error_log_lines": count},
 			Recommendations: []string{
-				"Agrupar stack traces repetidos",
-				"Verificar dependências externas indisponíveis",
+				"Group repeated stack traces",
+				"Check for unavailable external dependencies",
 			},
 		})
 	}

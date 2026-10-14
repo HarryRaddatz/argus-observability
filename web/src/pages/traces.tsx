@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
 import { ListPager } from "@/components/list-pager"
 import { PageHeader } from "@/components/layout/page-header"
@@ -14,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
 import { fetchTrace, fetchTraces, type TraceDetail, type TraceSummary } from "@/lib/api"
+import { formatDuration as formatMs } from "@/lib/format"
 import { pageIndex, type ListPage } from "@/lib/page"
 import { localeBcp47 } from "@/i18n"
 
@@ -27,9 +29,17 @@ function formatClock(ts: string, lng: string) {
 }
 
 function formatDuration(ms: number) {
-  if (ms <= 0) return "—"
-  if (ms < 1000) return `${ms.toFixed(0)} ms`
-  return `${(ms / 1000).toFixed(2)} s`
+  return ms <= 0 ? "—" : formatMs(ms)
+}
+
+function useTraceHref() {
+  const { pathname, search } = useLocation()
+  return (traceId: string) => {
+    const q = new URLSearchParams(search)
+    q.set("trace_id", traceId)
+    q.delete("page")
+    return `${pathname}?${q}`
+  }
 }
 
 export function TracesPage() {
@@ -54,25 +64,29 @@ export function TracesPage() {
         className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          patch({ trace_id: draft.trim() })
+          if (draft.trim()) patch({ trace_id: draft.trim() })
         }}
       >
         <Input
-          aria-label="Trace ID"
+          type="search"
+          name="trace_id"
+          autoComplete="off"
+          spellCheck={false}
+          aria-label={t("traces.traceId")}
           className="max-w-xl font-mono text-sm"
           placeholder={t("traces.openById")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <Button type="submit" disabled={!draft.trim()}>
+        <Button type="submit">
           {t("traces.open")}
         </Button>
       </form>
 
       {traceId ? (
-        <TraceDetailView traceId={traceId} onBack={() => patch({ trace_id: null })} />
+        <TraceDetailView traceId={traceId} since={since} onBack={() => patch({ trace_id: null })} />
       ) : (
-        <TraceList since={since} service={service} onService={setService} onOpen={(id) => patch({ trace_id: id })} />
+        <TraceList since={since} service={service} onService={setService} />
       )}
     </div>
   )
@@ -82,11 +96,11 @@ type ListProps = {
   since: string
   service: string
   onService: (service: string) => void
-  onOpen: (traceId: string) => void
 }
 
-function TraceList({ since, service, onService, onOpen }: ListProps) {
+function TraceList({ since, service, onService }: ListProps) {
   const { t, i18n } = useTranslation()
+  const traceHref = useTraceHref()
   const [pageRaw, setPage] = useQueryState("page", "1")
   const page = pageIndex(pageRaw)
   const filterKey = `${since}|${service}`
@@ -111,7 +125,7 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
           setServices([...new Set(r.entries.map((row) => row.service).filter(Boolean))].sort())
         }
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t("traces.loadError")))
+      .catch(() => setError(t("traces.loadError")))
       .finally(() => setLoading(false))
   }, [since, service, page, t])
 
@@ -129,8 +143,9 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-medium">{t("traces.recent")}</h2>
         <select
+          name="service"
           aria-label={t("traces.service")}
-          className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+          className="border-input bg-background text-foreground h-8 rounded-md border px-2 text-sm pointer-coarse:h-11"
           value={service}
           onChange={(e) => onService(e.target.value)}
         >
@@ -142,8 +157,8 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
           ))}
         </select>
       </div>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      <ScrollArea className="rounded-md border">
+      {error ? <LoadError message={error} onRetry={load} /> : null}
+      <ScrollArea className="rounded-md border" aria-busy={loading}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -187,14 +202,13 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
                     )}
                   </TableCell>
                   <TableCell className="max-w-[320px]">
-                    <button
-                      type="button"
-                      className="text-primary block max-w-full truncate text-left text-sm hover:underline"
+                    <Link
+                      to={traceHref(row.trace_id)}
+                      className="text-primary focus-visible:ring-ring block max-w-full truncate rounded-sm text-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:py-3"
                       title={row.trace_id}
-                      onClick={() => onOpen(row.trace_id)}
                     >
                       {row.name || row.trace_id}
-                    </button>
+                    </Link>
                   </TableCell>
                   <TableCell className="tabular-nums">{formatDuration(row.duration_ms)}</TableCell>
                   <TableCell className="tabular-nums">{row.span_count}</TableCell>
@@ -223,20 +237,25 @@ function TraceList({ since, service, onService, onOpen }: ListProps) {
   )
 }
 
-function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => void }) {
+function TraceDetailView({ traceId, since, onBack }: { traceId: string; since: string; onBack: () => void }) {
   const { t, i18n } = useTranslation()
   const [detail, setDetail] = useState<TraceDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetchTrace(traceId, "24h")
+    setError(false)
+    fetchTrace(traceId, since)
       .then((d) => {
         if (!cancelled) setDetail(d)
       })
       .catch(() => {
-        if (!cancelled) setDetail(null)
+        if (cancelled) return
+        setDetail(null)
+        setError(true)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -244,7 +263,7 @@ function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => v
     return () => {
       cancelled = true
     }
-  }, [traceId])
+  }, [traceId, since, attempt])
 
   const origin = useMemo(() => {
     if (!detail?.spans?.length) return 0
@@ -261,13 +280,18 @@ function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => v
         <Button size="sm" variant="outline" onClick={onBack}>
           {t("traces.backToList")}
         </Button>
-        <Link to={`/logs?trace_id=${encodeURIComponent(traceId)}&since=24h`} className="text-primary text-sm hover:underline">
+        <Link
+          to={`/logs?${new URLSearchParams({ trace_id: traceId, since })}`}
+          className="text-primary focus-visible:ring-ring rounded-sm text-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:py-3"
+        >
           {t("traces.logsOfTrace")}
         </Link>
       </div>
 
       {loading ? (
         <Skeleton className="h-48 w-full" />
+      ) : error ? (
+        <LoadError message={t("traces.detailError")} onRetry={() => setAttempt((n) => n + 1)} />
       ) : !detail || detail.spans.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("traces.noSpans")}</p>
       ) : (
@@ -292,13 +316,23 @@ function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => v
                 const startMs = new Date(sp.start_ts).getTime() - origin
                 const widthPct = Math.max((sp.duration_ms / totalWidth) * 100, sp.duration_ms > 0 ? 2 : 0.5)
                 const leftPct = (startMs / totalWidth) * 100
-                const barColor =
-                  sp.status === "error" ? "bg-destructive/80" : sp.kind === "log" ? "bg-muted-foreground/50" : "bg-primary/70"
+                const failed = sp.status === "error"
+                const barColor = failed ? "bg-destructive/80" : sp.kind === "log" ? "bg-muted-foreground/50" : "bg-primary/70"
                 return (
-                  <div key={`${sp.span_id}-${sp.start_ts}`} className="grid gap-1 md:grid-cols-[200px_1fr_160px] md:items-center">
-                    <div className="truncate text-xs">
-                      <div className="font-medium">{sp.service || sp.container || "—"}</div>
-                      <div className="text-muted-foreground truncate">{sp.name}</div>
+                  <div
+                    key={`${sp.span_id}-${sp.start_ts}`}
+                    className="grid gap-1 [contain-intrinsic-size:auto_48px] [content-visibility:auto] md:grid-cols-[200px_1fr_160px] md:items-center"
+                  >
+                    <div className="min-w-0 text-xs">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-medium" title={sp.service || sp.container}>
+                          {sp.service || sp.container || "—"}
+                        </span>
+                        {failed ? <Badge variant="destructive" className="shrink-0">{t("traces.spanError")}</Badge> : null}
+                      </div>
+                      <div className="text-muted-foreground truncate" title={sp.name}>
+                        {sp.name}
+                      </div>
                     </div>
                     <div className="bg-muted relative h-6 overflow-hidden rounded">
                       <div
@@ -310,7 +344,10 @@ function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => v
                     <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                       <span className="tabular-nums">{formatDuration(sp.duration_ms)}</span>
                       {sp.container ? (
-                        <Link className="text-primary hover:underline" to={`/logs?container=${encodeURIComponent(sp.container)}`}>
+                        <Link
+                          className="text-primary focus-visible:ring-ring rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:py-3"
+                          to={`/logs?${new URLSearchParams({ container: sp.container, since })}`}
+                        >
                           {t("traces.containerLogs")}
                         </Link>
                       ) : null}
@@ -327,9 +364,12 @@ function TraceDetailView({ traceId, onBack }: { traceId: string; onBack: () => v
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               {detail.spans.map((sp) => (
-                <div key={`tl-${sp.span_id}-${sp.start_ts}`} className="flex flex-wrap items-center gap-2 border-b pb-2 last:border-0">
+                <div
+                  key={`tl-${sp.span_id}-${sp.start_ts}`}
+                  className="flex flex-wrap items-center gap-2 border-b pb-2 [contain-intrinsic-size:auto_32px] [content-visibility:auto] last:border-0"
+                >
                   <span className="font-mono tabular-nums">{formatClock(sp.start_ts, i18n.language)}</span>
-                  <Badge variant="secondary">{sp.kind}</Badge>
+                  <Badge variant="secondary">{t(`traces.kinds.${sp.kind}`, { defaultValue: sp.kind })}</Badge>
                   <span className="font-medium">{sp.service}</span>
                   <span className="text-muted-foreground">{sp.name}</span>
                 </div>

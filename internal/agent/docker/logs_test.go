@@ -119,3 +119,31 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+func TestInferLogLevelTrustsDeclaredLevel(t *testing.T) {
+	cases := map[string]string{
+		`{"level":"info","msg":"debug endpoint ready","trace_id":"abc"}`: "info",
+		`{"level":30,"msg":"trace sampled"}`:                             "info",
+		`{"severity": "WARNING", "message": "slow"}`:                     "warn",
+		`time=2026-10-14T10:00:00Z level=error msg="db down"`:            "error",
+		`GET /health 200 trace_id=abc`:                                   "info",
+		`panic: runtime error: index out of range`:                       "error",
+		`[DEBUG] cache miss`:                                             "debug",
+		`Warning: deprecated flag`:                                       "warn",
+	}
+	for msg, want := range cases {
+		if got := inferLogLevel(msg); got != want {
+			t.Errorf("inferLogLevel(%q) = %q, want %q", msg, got, want)
+		}
+	}
+}
+
+func TestStripANSI(t *testing.T) {
+	in := "\x1b[32minfo\x1b[39m: server \x1b[1mstarted\x1b[0m on :8080"
+	if got := stripANSI(in); got != "info: server started on :8080" {
+		t.Fatalf("stripANSI = %q", got)
+	}
+	if got := stripANSI("plain"); got != "plain" {
+		t.Fatalf("plain = %q", got)
+	}
+}

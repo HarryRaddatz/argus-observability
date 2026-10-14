@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { GroupSelect } from "@/components/filters/group-select"
 import { TimeRangePicker } from "@/components/filters/time-range-picker"
 import { ListPager } from "@/components/list-pager"
@@ -32,6 +33,7 @@ import {
 } from "@/lib/api"
 import { instabilityReason, isUnstable, stateLabel, stateVariant } from "@/lib/container-state"
 import { formatBytes, formatPercent } from "@/lib/format"
+import { textTone } from "@/lib/meter"
 import { PAGE_SIZE, pageIndex, pageSlice } from "@/lib/page"
 import { GroupsPanel } from "@/views/groups-panel"
 
@@ -68,12 +70,14 @@ export function ContainersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const withSeries = view === "grid"
   const load = useCallback(() => {
+    const empty = Promise.resolve({ series: [] as ContainerSeries[] })
     Promise.all([
       listWorkloads("30m"),
       fetchFleetStatus(),
-      fetchMetricSeries("cpu.usage", since),
-      fetchMetricSeries("memory.usage_pct", since),
+      withSeries ? fetchMetricSeries("cpu.usage", since) : empty,
+      withSeries ? fetchMetricSeries("memory.usage_pct", since) : empty,
     ])
       .then(([wl, fl, cpu, mem]) => {
         setWorkloads(wl)
@@ -82,9 +86,9 @@ export function ContainersPage() {
         setMemSeries(mem.series ?? [])
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t("containers.loadError")))
+      .catch(() => setError(t("containers.loadError")))
       .finally(() => setLoading(false))
-  }, [since, t])
+  }, [since, withSeries, t])
 
   usePolling(load)
 
@@ -159,7 +163,8 @@ export function ContainersPage() {
   }, [rows, cpuSeries])
 
   const tablePage = useMemo(() => pageSlice(rows, pageIndex(pageRaw), PAGE_SIZE), [rows, pageRaw])
-  const gridRows = rows.filter((r) => r.workload).slice(0, GRID_LIMIT)
+  const withWorkload = useMemo(() => rows.filter((r) => r.workload), [rows])
+  const gridRows = withWorkload.slice(0, GRID_LIMIT)
   const allContainers = useMemo(() => workloads.map((w) => w.container).sort(), [workloads])
 
   return (
@@ -183,7 +188,7 @@ export function ContainersPage() {
         }
       />
 
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? <LoadError message={error} onRetry={load} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t("containers.running")} value={counts.running} loading={loading} />
@@ -223,7 +228,7 @@ export function ContainersPage() {
             title={t("containers.cpuTopTitle")}
             description={t("containers.cpuTopOf", {
               shown: stackedCpu.length,
-              total: rows.filter((r) => r.workload).length,
+              total: withWorkload.length,
             })}
             series={stackedCpu}
             loading={loading}
@@ -243,10 +248,14 @@ export function ContainersPage() {
                 ))}
           </div>
           {!loading && gridRows.length === 0 ? <EmptyRows filtered={Boolean(group || filter)} /> : null}
-          {rows.length > gridRows.length ? (
+          {withWorkload.length > gridRows.length ? (
             <p className="text-muted-foreground text-sm">
-              {t("containers.gridShows", { shown: gridRows.length, total: rows.length })}{" "}
-              <button type="button" className="text-primary hover:underline" onClick={() => setView("table")}>
+              {t("containers.gridShows", { shown: gridRows.length, total: withWorkload.length })}{" "}
+              <button
+                type="button"
+                className="text-primary focus-visible:ring-ring rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11"
+                onClick={() => setView("table")}
+              >
                 {t("containers.seeAllTable")}
               </button>
             </p>
@@ -315,7 +324,7 @@ export function ContainersPage() {
                       <TableRow key={s.service}>
                         <TableCell className="font-medium">{s.service}</TableCell>
                         <TableCell className="tabular-nums">
-                          {s.replicas_up} {t("containers.of")} {s.replicas_total}
+                          {t("containers.replicasValue", { up: s.replicas_up, total: s.replicas_total })}
                         </TableCell>
                         <TableCell className="tabular-nums">{s.restarting || "—"}</TableCell>
                         <TableCell className="tabular-nums">{s.unhealthy || "—"}</TableCell>
@@ -351,6 +360,9 @@ function EmptyRows({ filtered }: { filtered: boolean }) {
   )
 }
 
+const rowLink =
+  "text-primary focus-visible:ring-ring inline-flex items-center rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:min-h-11"
+
 function ContainerRow({ row }: { row: Row }) {
   const { t } = useTranslation()
   const { workload: w, status } = row
@@ -372,31 +384,33 @@ function ContainerRow({ row }: { row: Row }) {
       </TableCell>
       <TableCell className="tabular-nums">
         {w ? (
-          <Badge variant={w.cpu_usage > 80 ? "destructive" : "secondary"}>{formatPercent(w.cpu_usage)}</Badge>
+          <Badge variant={w.cpu_usage > 80 ? "destructive" : "secondary"}>
+            {w.cpu_usage > 80 ? t("containers.cpuHigh", { pct: formatPercent(w.cpu_usage) }) : formatPercent(w.cpu_usage)}
+          </Badge>
         ) : (
           "—"
         )}
       </TableCell>
       <TableCell className="text-sm tabular-nums">
         {w ? (
-          <>
-            {formatBytes(w.memory_usage)}
-            {w.memory_limit > 0 ? <span className="text-muted-foreground"> {t("containers.of")} {formatBytes(w.memory_limit)}</span> : null}
-          </>
+          w.memory_limit > 0
+            ? t("card.memoryOf", { used: formatBytes(w.memory_usage), limit: formatBytes(w.memory_limit) })
+            : formatBytes(w.memory_usage)
         ) : (
           "—"
         )}
       </TableCell>
-      <TableCell className={status && status.restart_count > 3 ? "font-medium text-amber-600 tabular-nums" : "tabular-nums"}>
+      <TableCell className={status && status.restart_count > 3 ? `font-medium tabular-nums ${textTone.warning}` : "tabular-nums"}>
         {status?.restart_count ?? "—"}
+        {status && status.restart_count > 3 ? <span className="ml-1 text-xs">{t("severity.warning")}</span> : null}
       </TableCell>
       <TableCell className="text-sm">{unstable && status ? instabilityReason(t, status) : "—"}</TableCell>
       <TableCell>
         <div className="flex gap-3 text-xs">
-          <Link to={`/metrics?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
+          <Link to={`/metrics?container=${encodeURIComponent(row.container)}`} className={rowLink}>
             {t("containers.metricsLink")}
           </Link>
-          <Link to={`/logs?container=${encodeURIComponent(row.container)}`} className="text-primary hover:underline">
+          <Link to={`/logs?container=${encodeURIComponent(row.container)}`} className={rowLink}>
             {t("containers.logsLink")}
           </Link>
         </div>
