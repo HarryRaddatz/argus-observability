@@ -6,7 +6,9 @@ import { MultiSeriesChart } from "@/components/metrics/multi-series-chart"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { StatToggle } from "@/components/metrics/stat-toggle"
 import { useQueryPatch, useQueryState } from "@/hooks/use-query-state"
+import { parseStatMode } from "@/lib/stats"
 import { fetchMetricCatalog, fetchMetricSeries, type ContainerSeries, type MetricCatalogEntry, type WorkloadSnapshot } from "@/lib/api"
 import { localizeMetricLabel } from "@/lib/i18n-catalog"
 import { deleteView, loadSavedViews, matchesService, saveView, type SavedView } from "@/lib/observability"
@@ -26,7 +28,8 @@ export function MetricCompare({ since, group, workloads }: Props) {
   const { t } = useTranslation()
   const [metric, setMetric] = useQueryState("metric", "memory.usage_pct")
   const [chartType, setChartType] = useQueryState("chart", "area")
-  const [stat, setStat] = useQueryState("stat", "avg")
+  const [statRaw, setStat] = useQueryState("stat", "avg")
+  const stat = parseStatMode(statRaw)
   const [containersParam] = useQueryState("containers", "")
   const [service] = useQueryState("service", "")
   const patch = useQueryPatch()
@@ -148,14 +151,7 @@ export function MetricCompare({ since, group, workloads }: Props) {
             ))}
           </select>
           <div className="flex flex-wrap gap-2">
-            <div role="group" aria-label={t("chart.summary")} className="flex gap-1">
-              <Button size="sm" variant={stat === "avg" ? "default" : "outline"} aria-pressed={stat === "avg"} onClick={() => setStat("avg")}>
-                {t("chart.avg")}
-              </Button>
-              <Button size="sm" variant={stat === "max" ? "default" : "outline"} aria-pressed={stat === "max"} onClick={() => setStat("max")}>
-                {t("chart.peak")}
-              </Button>
-            </div>
+            <StatToggle value={stat} onChange={setStat} />
             <div role="group" aria-label={t("chart.chartType")} className="flex gap-1">
               <Button size="sm" variant={chartType === "area" ? "default" : "outline"} aria-pressed={chartType === "area"} onClick={() => setChartType("area")}>
                 {t("chart.area")}
@@ -242,7 +238,7 @@ export function MetricCompare({ since, group, workloads }: Props) {
           unit={unit}
           transform={transform}
           chartType={chartType === "line" ? "line" : "area"}
-          statMode={stat === "max" ? "max" : "avg"}
+          statMode={stat}
         />
         {openable.length > 0 ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
