@@ -21,12 +21,12 @@ func GenerateFleet(containers []model.ContainerFleetStatus) []model.Insight {
 			out = append(out, model.Insight{
 				ID: key, Theme: "oom_killed", Severity: "critical",
 				Title:     fmt.Sprintf("OOM kill — %s", c.Container),
-				Summary:   "Container foi encerrado por falta de memória (OOMKilled).",
+				Summary:   "The container was killed for running out of memory (OOMKilled).",
 				Container: c.Container, EntityUID: c.EntityUID,
 				Evidence: map[string]any{"oom_killed": true, "restart_count": c.RestartCount},
 				Recommendations: []string{
-					"Aumentar limite de memória no compose ou reduzir heap/cache",
-					"Correlacionar com logs de GC e memória antes do kill",
+					"Raise the memory limit in compose or reduce heap and caches",
+					"Compare with GC and memory logs before the kill",
 				},
 			})
 		}
@@ -43,12 +43,12 @@ func GenerateFleet(containers []model.ContainerFleetStatus) []model.Insight {
 			out = append(out, model.Insight{
 				ID: key, Theme: "restart_loop", Severity: sev,
 				Title:     fmt.Sprintf("Restart loop — %s", c.Container),
-				Summary:   fmt.Sprintf("%d restarts acumulados — instabilidade ou crash loop.", c.RestartCount),
+				Summary:   fmt.Sprintf("%d restarts so far. The container is unstable or crash looping.", c.RestartCount),
 				Container: c.Container, EntityUID: c.EntityUID,
 				Evidence: map[string]any{"restart_count": c.RestartCount, "state": c.State},
 				Recommendations: []string{
-					"Verificar logs de startup e exit code",
-					"Conferir healthcheck e dependências (DB, filas)",
+					"Check the startup logs and the exit code",
+					"Check the healthcheck and dependencies (database, queues)",
 				},
 			})
 		}
@@ -60,13 +60,13 @@ func GenerateFleet(containers []model.ContainerFleetStatus) []model.Insight {
 			seen[key] = struct{}{}
 			out = append(out, model.Insight{
 				ID: key, Theme: "unhealthy", Severity: "warning",
-				Title:     fmt.Sprintf("Healthcheck falhou — %s", c.Container),
-				Summary:   "Docker healthcheck reportou unhealthy.",
+				Title:     fmt.Sprintf("Healthcheck failing — %s", c.Container),
+				Summary:   "The Docker healthcheck reports unhealthy.",
 				Container: c.Container, EntityUID: c.EntityUID,
 				Evidence: map[string]any{"health": c.Health, "status_text": c.StatusText},
 				Recommendations: []string{
-					"Inspecionar endpoint de health da aplicação",
-					"Verificar latência ou dependência indisponível",
+					"Inspect the application health endpoint",
+					"Check for latency or an unavailable dependency",
 				},
 			})
 		}

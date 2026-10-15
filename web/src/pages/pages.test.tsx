@@ -126,7 +126,7 @@ describe("panel pages", () => {
     expect(screen.getByLabelText("Trace ID")).toBeInTheDocument()
     await waitFor(() => {
       const link = screen.getByRole("link", { name: "abc123de…" })
-      expect(link).toHaveAttribute("href", "/traces?trace_id=abc123def4567890")
+      expect(link).toHaveAttribute("href", "/traces?trace_id=abc123def4567890&since=1h")
     })
   })
 

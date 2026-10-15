@@ -46,14 +46,17 @@
     "pagerRange": "{{start}}–{{end}} de {{total}}",
     "pagerPrev": "Página anterior",
     "pagerNext": "Próxima página",
-    "pagerTruncated": "Este total parou no limite da varredura. Pode haver linhas mais antigas.",
-    "navPanel": "Navegação do painel"
+    "pagerTruncated": "Este total parou no limite da busca. Pode haver linhas mais antigas.",
+    "retry": "Tentar de novo",
+    "loading": "Carregando…",
+    "navPanel": "Navegação do painel",
+    "groupsError": "Não foi possível carregar os grupos"
   },
   "overview": {
     "title": "Visão geral",
     "alerts": "Alertas ativos",
     "slosBreached": "SLOs violados",
-    "lowBudget": "{{count}} com margem baixa",
+    "lowBudget": "{{count}} com pouco orçamento de erro",
     "unstableContainers": "Containers com problema",
     "httpErrors": "Serviços HTTP com erro",
     "httpHint": "Mais de 1% em 1 hora",
@@ -62,8 +65,9 @@
     "more": "Mais {{count}} nos indicadores acima.",
     "sloOf": "SLO de {{service}}",
     "violated": "Violado",
-    "lowMargin": "Margem baixa",
-    "httpDetail": "{{pct}} das requisições HTTP com erro"
+    "lowMargin": "Pouco orçamento de erro",
+    "httpDetail": "{{pct}} das requisições HTTP com erro",
+    "unstableBadge": "Instável"
   },
   "problems": {
     "title": "Problemas",
@@ -76,7 +80,7 @@
     "logsOf": "Logs do container",
     "metricsOf": "Métricas do container",
     "groupMetrics": "Métricas do grupo",
-    "loadError": "Não foi possível carregar os problemas",
+    "loadError": "Não foi possível carregar os problemas. Verifique se o hub está no ar e tente de novo.",
     "themeGroup": "Grupo",
     "downTitle": "Fora agora",
     "downEmpty": "Nada está fora por falha.",
@@ -84,10 +88,11 @@
     "intentionalEmpty": "Nenhum container foi parado de propósito.",
     "intentionalDetail": "Saída {{code}}. Alguém pediu a parada.",
     "unexpectedDetail": "Saída {{code}}. O processo terminou sozinho.",
-    "oomDetail": "O kernel encerrou porque faltou memória."
+    "oomDetail": "O kernel encerrou porque faltou memória.",
+    "onContainer": ", em {{container}}"
   },
   "events": {
-    "loadError": "Não foi possível carregar os eventos",
+    "loadError": "Não foi possível carregar os eventos. Verifique se o hub está no ar e tente de novo.",
     "empty": "Nenhum evento no período. Amplie o período para ver mais.",
     "time": "Hora",
     "type": "Tipo",
@@ -100,7 +105,8 @@
     "empty": "Nenhum SLO configurado no hub.",
     "httpMetrics": "Métricas HTTP do serviço",
     "latency": "p95 abaixo de {{ms}} ms em {{target}}% das requisições",
-    "availability": "{{target}}% das requisições sem erro"
+    "availability": "{{target}}% das requisições sem erro",
+    "loadError": "Não foi possível carregar os SLOs. Verifique se o hub está no ar e tente de novo."
   },
   "containers": {
     "title": "Containers",
@@ -123,7 +129,7 @@
     "health": "Health",
     "restarts": "Reinícios",
     "stopped": "Parados",
-    "loadError": "Não foi possível carregar os containers",
+    "loadError": "Não foi possível carregar os containers. Verifique se o hub está no ar e tente de novo.",
     "empty": "Nenhum container neste filtro.",
     "emptyAgent": "Nenhum container monitorado. Suba o agent com acesso ao socket do Docker.",
     "unstableBanner": "Mostrando só containers com problema.",
@@ -140,7 +146,9 @@
     "healthFailing": "Healthcheck falhando",
     "of": "de",
     "metricsLink": "Métricas",
-    "logsLink": "Logs"
+    "logsLink": "Logs",
+    "replicasValue": "{{up}} de {{total}}",
+    "cpuHigh": "{{pct}} alta"
   },
   "state": {
     "running": "Rodando",
@@ -186,7 +194,7 @@
     "title": "Métricas",
     "byContainer": "Por container",
     "compare": "Comparar containers",
-    "loadError": "Não foi possível carregar as séries",
+    "loadError": "Não foi possível carregar as séries. Verifique se o hub está no ar e tente de novo.",
     "noContainer": "Nenhum container neste filtro.",
     "logsOf": "Logs deste container",
     "compareOthers": "Comparar com outros",
@@ -219,7 +227,8 @@
     "httpLatencyLogs": "Calculada dos logs",
     "httpErrorStatus": "Status 400 ou maior",
     "statAvg": "média",
-    "statPeak": "pico"
+    "statPeak": "pico",
+    "notRecent": "Nenhum dado deste container na última hora. Ele pode ter parado ou mudado de nome."
   },
   "logs": {
     "title": "Logs",
@@ -239,24 +248,34 @@
     "trace": "Trace",
     "oneOccurrence": "1 ocorrência",
     "nOccurrences": "{{count}} ocorrências",
-    "patternsError": "Não foi possível carregar os padrões",
+    "patternsError": "Não foi possível carregar os padrões. Verifique se o hub está no ar e tente de novo.",
     "patternsEmpty": "Nenhum padrão repetido com estes filtros no período.",
     "metricsOf": "Métricas de {{container}}",
     "openLines": "Abrir como linhas",
     "linesOnlyFilters": "Tópico, nível e trace filtram só o modo Linhas.",
-    "searchError": "Não foi possível buscar os logs",
+    "searchError": "Não foi possível buscar os logs. Verifique se o hub está no ar e tente de novo.",
     "time": "Hora",
     "topics": "Tópicos",
     "linesEmpty": "Nenhuma linha com estes filtros. Amplie o período ou limpe um filtro.",
-    "viewLines": "Ver as linhas"
+    "viewLines": "Ver as linhas",
+    "messagePlaceholder": "Texto na mensagem…",
+    "traceBanner": "Linhas deste trace em todos os containers:",
+    "viewTrace": "Ver o trace",
+    "clearTrace": "Limpar trace",
+    "levels": {
+      "error": "Erro",
+      "warn": "Atenção",
+      "info": "Info",
+      "debug": "Depuração"
+    }
   },
   "traces": {
     "title": "Traces",
     "openById": "Abrir um trace pelo ID",
     "open": "Abrir trace",
-    "loadError": "Não foi possível carregar os traces",
+    "loadError": "Não foi possível carregar os traces. Verifique se o hub está no ar e tente de novo.",
     "empty": "Nenhum trace no período. Traces vêm de spans OTLP enviados ao hub ou de logs com trace_id.",
-    "noSpans": "Nenhum span para este trace nas últimas 24 horas. Confira o ID ou configure o envio OTLP para POST /v1/traces.",
+    "noSpans": "Nenhum span para este trace no período escolhido. Amplie o período, confira o ID ou configure o envio OTLP para POST /v1/traces.",
     "service": "Serviço",
     "start": "Início",
     "duration": "Duração",
@@ -271,18 +290,37 @@
     "ok": "Ok",
     "backToList": "Voltar para a lista",
     "logsOfTrace": "Logs deste trace",
-    "totalSpans": "{{duration}} no total, {{count}} spans, fonte {{source}}",
     "waterfall": "Waterfall",
     "timeline": "Linha do tempo",
-    "metricsOf": "Métricas de {{container}}"
+    "metricsOf": "Métricas de {{container}}",
+    "traceId": "ID do trace",
+    "detailError": "Não foi possível carregar este trace. Verifique se o hub está no ar e tente de novo.",
+    "spanError": "Erro",
+    "totalSpans_one": "{{duration}} no total, {{count}} span, fonte {{source}}",
+    "totalSpans_other": "{{duration}} no total, {{count}} spans, fonte {{source}}",
+    "kinds": {
+      "server": "Servidor",
+      "client": "Cliente",
+      "internal": "Interno",
+      "producer": "Produtor",
+      "consumer": "Consumidor",
+      "log": "Log"
+    }
   },
   "topology": {
     "title": "Topologia",
     "description": "Quem chama o serviço selecionado, e quem ele chama.",
     "empty": "Nenhuma dependência no período. As arestas vêm de observação do kernel ou dos logs.",
-    "loadError": "Não foi possível carregar a topologia.",
-    "summary": "{{critical}} críticos, {{warning}} em atenção, de {{total}}.",
+    "loadError": "Não foi possível carregar a topologia. Confira se o hub está no ar e tente de novo.",
+    "staleError": "A última atualização falhou. A lista abaixo pode estar desatualizada.",
+    "summary_one": "{{critical}} críticos e {{warning}} em atenção, de {{count}} serviço com nome.",
+    "summary_other": "{{critical}} críticos e {{warning}} em atenção, de {{count}} serviços com nome.",
+    "focusMissing": "{{name}} não apareceu neste período. Mostrando primeiro o serviço que pede atenção.",
     "search": "Buscar serviço",
+    "searchPlaceholder": "checkout, gateway…",
+    "showAddresses_one": "Mostrar {{count}} IP ou ID de container",
+    "showAddresses_other": "Mostrar {{count}} IPs e IDs de container",
+    "hideAddresses": "Ocultar IPs e IDs de container",
     "shown": "{{shown}} de {{total}}",
     "noMatch": "Nenhum serviço com esse nome.",
     "path": "Caminho",
@@ -290,8 +328,19 @@
     "downstream": "Dependências",
     "noUpstream": "Ninguém chama",
     "noDownstream": "Sem dependências",
-    "edgeMeta": "{{kind}} · {{count}} · {{origin}}",
-    "originUnknown": "origem não informada",
+    "edgeMeta": "{{kind}}, {{calls}}",
+    "calls_one": "{{count}} chamada",
+    "calls_other": "{{count}} chamadas",
+    "kinds": {
+      "http": "HTTP",
+      "amqp": "Fila AMQP",
+      "tcp": "TCP",
+      "mongodb": "MongoDB",
+      "mysql": "MySQL",
+      "postgres": "PostgreSQL",
+      "redis": "Redis"
+    },
+    "originUnknown": "Origem não registrada",
     "detail": "Serviço selecionado",
     "cpu": "CPU",
     "memory": "Memória",
@@ -299,9 +348,9 @@
     "errorRate": "Taxa de erro",
     "latency": "Latência média",
     "latencyMs": "{{ms}} ms",
-    "noHttp": "Nenhum resumo HTTP usa esse nome.",
-    "noWorkload": "Nenhum snapshot de workload corresponde a esse nome.",
-    "noFleet": "Nenhum status de fleet corresponde a esse nome.",
+    "noHttp": "Nenhum tráfego HTTP com esse nome neste período.",
+    "noWorkload": "Nenhum container com esse nome reportou CPU ou memória recentemente.",
+    "noFleet": "Nenhum container, rodando ou parado, tem esse nome.",
     "status": {
       "critical": "Crítico",
       "warning": "Atenção",
@@ -326,7 +375,8 @@
   },
   "alerts": {
     "cpuHigh": "CPU elevada",
-    "memoryHigh": "Memória crítica"
+    "memoryHigh": "Memória crítica",
+    "valueNow": "Agora em {{value}}"
   },
   "insight": {
     "group_degradation": "Grupo"
@@ -347,10 +397,13 @@
   },
   "card": {
     "of": "de",
-    "cpuHour": "CPU na última hora",
-    "memHour": "Memória na última hora",
+    "cpuHour": "Tendência de CPU",
+    "memHour": "Tendência de memória",
     "oneRestart": "1 reinício",
-    "nRestarts": "{{count}} reinícios"
+    "nRestarts": "{{count}} reinícios",
+    "memoryOf": "{{used}} de {{limit}}",
+    "restarts_one": "{{count}} reinício",
+    "restarts_other": "{{count}} reinícios"
   },
   "sloExtra": {
     "ok": "Dentro do objetivo",
@@ -373,7 +426,18 @@
     "empty": "Sem dados no período.",
     "emptyHint": "Sem dados no período — tente ampliar o intervalo.",
     "statLine": "{{label}}: {{value}}{{unit}}",
-    "total": "Total"
+    "total": "Total",
+    "noData": "Sem dados",
+    "sparkSummary": "{{label}}: agora {{last}}, entre {{min}} e {{max}}",
+    "chartLabel": "Gráfico de {{title}}, {{count}} pontos",
+    "seriesLabel": "Gráfico de {{title}}, {{count}} séries: {{names}}",
+    "stats": {
+      "avg": "Média",
+      "p85": "p85",
+      "p90": "p90",
+      "p95": "p95",
+      "max": "Pico"
+    }
   },
   "views": {
     "name": "Nome da visão",

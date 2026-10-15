@@ -2,29 +2,36 @@ import { useCallback, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { UsageBar } from "@/components/metrics/metric-meter"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePolling } from "@/hooks/use-polling"
 import { fetchSLOStatuses, type SLOStatus } from "@/lib/api"
+import { formatNumber, formatPercent } from "@/lib/format"
 import { budgetTone, sloMetricsLink, sloObjective } from "@/lib/slo"
 
 export function SLOList() {
   const { t } = useTranslation()
   const [rows, setRows] = useState<SLOStatus[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = useCallback(() => {
     fetchSLOStatuses()
-      .then(setRows)
-      .catch(() => setRows([]))
+      .then((r) => {
+        setRows(r)
+        setError(false)
+      })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
 
   usePolling(load)
 
-  if (loading) return <Skeleton className="h-48 w-full" />
+  if (loading && rows.length === 0) return <Skeleton className="h-48 w-full" />
+  if (error && rows.length === 0) return <LoadError message={t("slo.loadError")} onRetry={load} />
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{t("slo.empty")}</p>
   }
@@ -49,18 +56,18 @@ export function SLOList() {
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span>{t("sloExtra.compliance")}</span>
-                <span className="font-mono tabular-nums">{row.compliance.toFixed(2)}%</span>
+                <span className="font-mono tabular-nums">{formatPercent(row.compliance, 2)}</span>
               </div>
               <UsageBar value={row.compliance} tone={row.breached ? "critical" : "default"} label={t("sloExtra.complianceOf", { name: row.slo.name })} />
               <p className="text-muted-foreground text-xs tabular-nums">
                 {t("sloExtra.requests", { good: row.good_events, total: row.total_events })}
-                {row.p95_latency_ms > 0 ? t("sloExtra.p95", { ms: row.p95_latency_ms.toFixed(0) }) : ""}
+                {row.p95_latency_ms > 0 ? t("sloExtra.p95", { ms: formatNumber(row.p95_latency_ms) }) : ""}
               </p>
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span>{t("sloExtra.budget")}</span>
-                <span className="font-mono tabular-nums">{row.error_budget_remaining.toFixed(1)}%</span>
+                <span className="font-mono tabular-nums">{formatPercent(row.error_budget_remaining)}</span>
               </div>
               <UsageBar
                 value={row.error_budget_remaining}

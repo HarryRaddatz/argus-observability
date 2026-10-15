@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { PageHeader } from "@/components/layout/page-header"
 import { StatCard } from "@/components/metrics/stat-card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { usePolling } from "@/hooks/use-polling"
 import {
@@ -95,7 +96,7 @@ export function OverviewPage() {
         key: `container-${c.entity_uid}`,
         title: c.container,
         detail: instabilityReason(t, c),
-        status: <Badge variant="destructive">{t("common.container")}</Badge>,
+        status: <Badge variant="destructive">{t("overview.unstableBadge")}</Badge>,
         to: `/logs?container=${encodeURIComponent(c.container)}`,
       })
     }
@@ -104,7 +105,11 @@ export function OverviewPage() {
         key: `http-${s.service}`,
         title: s.service,
         detail: t("overview.httpDetail", { pct: formatPercent(s.error_rate * 100) }),
-        status: <Badge variant={s.error_rate >= 0.05 ? "destructive" : "secondary"}>HTTP</Badge>,
+        status: (
+          <Badge variant={s.error_rate >= 0.05 ? "destructive" : "secondary"}>
+            {severityLabel(t, s.error_rate >= 0.05 ? "critical" : "warning")}
+          </Badge>
+        ),
         to: `/metrics?mode=compare&metric=http.error_rate&service=${encodeURIComponent(s.service)}`,
       })
     }
@@ -116,8 +121,13 @@ export function OverviewPage() {
       <PageHeader title={t("overview.title")} />
 
       {error ? (
-        <Card className="border-destructive/50">
-          <CardContent className="text-destructive pt-6 text-sm">{error}</CardContent>
+        <Card className="border-destructive/50" role="alert">
+          <CardContent className="flex flex-wrap items-center gap-3 pt-6 text-sm">
+            <span className="text-destructive">{error}</span>
+            <Button size="sm" variant="outline" onClick={load}>
+              {t("common.retry")}
+            </Button>
+          </CardContent>
         </Card>
       ) : null}
 
@@ -125,7 +135,9 @@ export function OverviewPage() {
         <StatCard
           label={t("overview.alerts")}
           value={data.alerts.length}
-          tone={data.alerts.length > 0 ? "critical" : "default"}
+          tone={
+            data.alerts.some((a) => a.severity === "critical") ? "critical" : data.alerts.length > 0 ? "warning" : "default"
+          }
           to="/problems"
           loading={loading}
         />

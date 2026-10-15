@@ -29,7 +29,7 @@ VALUES (?, ?, ?, ?, 1, ?, ?)
 ON CONFLICT(pattern_key, container) DO UPDATE SET
   count = log_patterns.count + 1,
   last_seen = excluded.last_seen,
-  sample = CASE WHEN length(excluded.sample) > 0 THEN excluded.sample ELSE sample END
+  sample = CASE WHEN length(excluded.sample) > 0 THEN excluded.sample ELSE log_patterns.sample END
 `)
 	if err != nil {
 		return err
