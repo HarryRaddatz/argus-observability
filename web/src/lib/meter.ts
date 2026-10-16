@@ -14,6 +14,6 @@ export const barTone: Record<MeterTone, string> = {
 
 export const textTone: Record<MeterTone, string> = {
   default: "",
-  warning: "text-amber-600",
+  warning: "text-amber-700 dark:text-amber-400",
   critical: "text-destructive",
 }

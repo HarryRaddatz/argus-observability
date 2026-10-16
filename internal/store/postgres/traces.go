@@ -447,9 +447,19 @@ func (s *Postgres) seedDefaultSLOs() error {
 	_, err := s.db.Exec(`
 INSERT INTO slos (id, name, service, group_id, sli_metric, target, window_hours, latency_threshold_ms, created_at)
 VALUES
-  ('slo-demo-latency', 'Latência p95 demo-api', 'demo-api', '', 'latency_p95', 99.9, 720, 500, ?),
-  ('slo-demo-availability', 'Disponibilidade demo-api', 'demo-api', '', 'availability', 99.9, 720, 0, ?)
+  ('slo-demo-latency', 'demo-api p95 latency', 'demo-api', '', 'latency_p95', 99.9, 720, 500, ?),
+  ('slo-demo-availability', 'demo-api availability', 'demo-api', '', 'availability', 99.9, 720, 0, ?)
 ON CONFLICT (id) DO NOTHING
 `, now, now)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`
+UPDATE slos SET name = CASE id
+  WHEN 'slo-demo-latency' THEN 'demo-api p95 latency'
+  ELSE 'demo-api availability' END
+WHERE (id = 'slo-demo-latency' AND name = 'Latência p95 demo-api')
+   OR (id = 'slo-demo-availability' AND name = 'Disponibilidade demo-api')
+`)
 	return err
 }

@@ -80,25 +80,25 @@ func GenerateGroup(
 	if criticalMem >= 2 || (criticalMem >= 1 && len(members) <= 3) {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_memory_critical", Theme: "group_degradation", Severity: "critical",
-			Title:   fmt.Sprintf("Memória crítica no grupo — %s", groupLabel),
-			Summary: fmt.Sprintf("%d de %d membros acima de 90%% de memória.", criticalMem, len(members)),
+			Title:   fmt.Sprintf("Critical memory in group — %s", groupLabel),
+			Summary: fmt.Sprintf("%d of %d members above 90%% memory.", criticalMem, len(members)),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"critical_members": criticalMem}),
 			Recommendations: []string{
-				"Revisar limites e heap dos serviços do grupo",
-				"Correlacionar com logs GC/OOM dos membros",
+				"Review limits and heap for the services in this group",
+				"Compare with GC and OOM logs from the members",
 			},
 		})
 	} else if pressureCount >= 3 || (pressureCount*100/len(members)) >= 40 {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_degradation", Theme: "group_degradation", Severity: "warning",
-			Title:   fmt.Sprintf("Degradação simultânea — %s", groupLabel),
-			Summary: fmt.Sprintf("%d membros com pressão de CPU/memória no grupo.", pressureCount),
+			Title:   fmt.Sprintf("Simultaneous degradation — %s", groupLabel),
+			Summary: fmt.Sprintf("%d members under CPU or memory pressure.", pressureCount),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"pressure_members": pressureCount}),
 			Recommendations: []string{
-				"Investigar dependência compartilhada (DB, fila, gateway)",
-				"Ver fleet e métricas HTTP derivadas do grupo",
+				"Look for a shared dependency (database, queue, gateway)",
+				"See the fleet and derived HTTP metrics for the group",
 			},
 		})
 	}
@@ -110,13 +110,13 @@ func GenerateGroup(
 		}
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_errors", Theme: "error_spike", Severity: sev,
-			Title:     fmt.Sprintf("Pico de erros no grupo — %s", groupLabel),
-			Summary:   fmt.Sprintf("%d linhas de erro agregadas no período.", errLines),
+			Title:     fmt.Sprintf("Error spike in group — %s", groupLabel),
+			Summary:   fmt.Sprintf("%d error lines across the group in this period.", errLines),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"error_log_lines": errLines}),
 			Recommendations: []string{
-				"Filtrar logs do grupo por tópico error",
-				"Correlacionar com traceId entre serviços",
+				"Filter the group logs by the error topic",
+				"Follow the trace_id across services",
 			},
 		})
 	}
@@ -124,12 +124,12 @@ func GenerateGroup(
 	if gcLines >= 30 {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_gc", Theme: "gc_thrashing", Severity: "warning",
-			Title:     fmt.Sprintf("Pressão de GC no grupo — %s", groupLabel),
-			Summary:   fmt.Sprintf("%d linhas GC agregadas entre os membros.", gcLines),
+			Title:     fmt.Sprintf("GC pressure in group — %s", groupLabel),
+			Summary:   fmt.Sprintf("%d GC lines across the members.", gcLines),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"gc_log_lines": gcLines}),
 			Recommendations: []string{
-				"Ajustar heap JVM nos serviços JVM do grupo",
+				"Tune the JVM heap for the JVM services in this group",
 			},
 		})
 	}
@@ -149,18 +149,18 @@ func GenerateGroup(
 	if oom > 0 {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_oom", Theme: "oom_killed", Severity: "critical",
-			Title:     fmt.Sprintf("OOM kill no grupo — %s", groupLabel),
-			Summary:   fmt.Sprintf("%d membros com OOMKilled.", oom),
+			Title:     fmt.Sprintf("OOM kill in group — %s", groupLabel),
+			Summary:   fmt.Sprintf("%d members were OOMKilled.", oom),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"oom_members": oom}),
-			Recommendations: []string{"Aumentar limite de memória ou reduzir footprint"},
+			Recommendations: []string{"Raise the memory limit or reduce the footprint"},
 		})
 	}
 	if restarts >= 2 {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_restarts", Theme: "restart_loop", Severity: "warning",
-			Title:     fmt.Sprintf("Restart loops no grupo — %s", groupLabel),
-			Summary:   fmt.Sprintf("%d membros com RestartCount > 3.", restarts),
+			Title:     fmt.Sprintf("Restart loops in group — %s", groupLabel),
+			Summary:   fmt.Sprintf("%d members restarted more than 3 times.", restarts),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"restart_members": restarts}),
 			Recommendations: []string{"Verificar fleet e logs de crash dos membros"},
@@ -170,11 +170,11 @@ func GenerateGroup(
 	if hotCPU >= 3 {
 		out = append(out, model.Insight{
 			ID: g.ID + ":group_cpu", Theme: "cpu_hot", Severity: "warning",
-			Title:     fmt.Sprintf("CPU saturada no grupo — %s", groupLabel),
-			Summary:   fmt.Sprintf("%d membros com CPU >= 80%%.", hotCPU),
+			Title:     fmt.Sprintf("CPU saturated in group — %s", groupLabel),
+			Summary:   fmt.Sprintf("%d members at 80%% CPU or more.", hotCPU),
 			Container: groupLabel,
 			Evidence:  mergeEvidence(evidence, map[string]any{"hot_cpu_members": hotCPU}),
-			Recommendations: []string{"Distribuir carga ou escalar réplicas"},
+			Recommendations: []string{"Spread the load or add replicas"},
 		})
 	}
 

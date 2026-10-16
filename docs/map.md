@@ -97,6 +97,7 @@ flowchart LR
 |---|---|---|
 | `agents` | `postgres/db.go` | — |
 | `metric_points` | `postgres/db.go` | `ARGUS_RETENTION_METRICS` |
+| `workload_latest` | `postgres/db.go` | latest CPU and memory per container, `ARGUS_RETENTION_METRICS` |
 | `log_entries` | `postgres/db.go` | `ARGUS_RETENTION_LOGS` |
 | `events` | `postgres/db.go` | `ARGUS_RETENTION_EVENTS` |
 | `ingest_batches` | `postgres/batch.go` | id of a batch already written |

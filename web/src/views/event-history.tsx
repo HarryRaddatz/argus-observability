@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
+import { LoadError } from "@/components/load-error"
 import { ListPager } from "@/components/list-pager"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -42,7 +43,7 @@ export function EventHistory({ since }: { since: string }) {
         setResult(ev)
         setError(null)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t("events.loadError")))
+      .catch(() => setError(t("events.loadError")))
       .finally(() => setLoading(false))
   }, [since, page, t])
 
@@ -50,7 +51,7 @@ export function EventHistory({ since }: { since: string }) {
 
   return (
     <>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? <LoadError message={error} onRetry={load} /> : null}
       <ScrollArea className="rounded-md border">
         <Table>
           <TableHeader>

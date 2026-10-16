@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -94,10 +96,11 @@ func (c *Collector) containerLogs(ctx context.Context, ctr containerInfo, tail i
 		if !state.shouldKeep(ctr.Name, line.ts) {
 			continue
 		}
+		msg := stripANSI(line.message)
 		out = append(out, model.LogEntry{
 			TS:        line.ts,
-			Message:   line.message,
-			Level:     inferLogLevel(line.message),
+			Message:   msg,
+			Level:     inferLogLevel(msg),
 			EntityUID: entityUID,
 			Labels:    labels,
 		})
@@ -322,21 +325,66 @@ func splitDockerTimestamp(line string) (time.Time, string, bool) {
 	return ts, strings.TrimSpace(line[idx+1:]), true
 }
 
-func inferLogLevel(msg string) string {
-	lower := strings.ToLower(msg)
-	switch {
-	case strings.Contains(lower, `"level":"error"`), strings.Contains(lower, `"level": "error"`):
-		return "error"
-	case strings.Contains(lower, `"level":"warn"`), strings.Contains(lower, `"level":"debug"`):
-		if strings.Contains(lower, `"level":"debug"`) {
+var (
+	ansiEscape      = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
+	structuredLevel = regexp.MustCompile(`(?i)"(?:level|severity|lvl|loglevel|log\.level)"\s*:\s*"?([a-z]+|\d+)"?`)
+	logfmtLevel     = regexp.MustCompile(`(?i)(?:^|\s)(?:level|lvl|severity)=["']?([a-z]+)`)
+	errorWord       = regexp.MustCompile(`\b(?:fatal|panic|error|exception)\b`)
+	warnWord        = regexp.MustCompile(`\bwarn(?:ing)?\b`)
+	debugWord       = regexp.MustCompile(`\b(?:debug|trace)\b`)
+)
+
+// stripANSI removes terminal color and control sequences that containers write to stdout.
+func stripANSI(s string) string {
+	if !strings.Contains(s, "\x1b") {
+		return s
+	}
+	return ansiEscape.ReplaceAllString(s, "")
+}
+
+// normalizeLevel maps a declared level (name or pino/bunyan number) to error, warn, info or debug.
+func normalizeLevel(v string) string {
+	if n, err := strconv.Atoi(v); err == nil {
+		switch {
+		case n >= 50:
+			return "error"
+		case n >= 40:
+			return "warn"
+		case n >= 30:
+			return "info"
+		default:
 			return "debug"
 		}
-		return "warn"
-	case strings.Contains(lower, "fatal"), strings.Contains(lower, "panic"), strings.Contains(lower, " error"), strings.HasPrefix(lower, "error"):
+	}
+	switch strings.ToLower(v) {
+	case "fatal", "panic", "error", "err", "critical", "crit", "alert", "emerg", "emergency", "severe":
 		return "error"
-	case strings.Contains(lower, "warn"), strings.Contains(lower, "warning"):
+	case "warn", "warning":
 		return "warn"
-	case strings.Contains(lower, "debug"), strings.Contains(lower, "trace"):
+	case "info", "information", "informational", "notice":
+		return "info"
+	case "debug", "trace", "verbose", "fine", "finer", "finest":
+		return "debug"
+	}
+	return ""
+}
+
+// inferLogLevel trusts a declared level (JSON or logfmt) before guessing from words in the text.
+func inferLogLevel(msg string) string {
+	for _, re := range []*regexp.Regexp{structuredLevel, logfmtLevel} {
+		if m := re.FindStringSubmatch(msg); m != nil {
+			if level := normalizeLevel(m[1]); level != "" {
+				return level
+			}
+		}
+	}
+	lower := strings.ToLower(msg)
+	switch {
+	case errorWord.MatchString(lower):
+		return "error"
+	case warnWord.MatchString(lower):
+		return "warn"
+	case debugWord.MatchString(lower):
 		return "debug"
 	default:
 		return "info"
